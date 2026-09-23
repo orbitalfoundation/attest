@@ -5,4 +5,4 @@ code = "local"
 deploy = "none"
 status = "active"        # active | parked (struck through on the dashboard) | archived (hidden)
 autodeploy = false
-notes = ""
+notes = "working name; attestations + emitter scoring service, separate from the desk; under orbital"
