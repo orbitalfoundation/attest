@@ -1,0 +1,8 @@
+name = "attest"
+horizon = "2027"
+repo = ""
+code = "local"
+deploy = "none"
+status = "active"        # active | parked (struck through on the dashboard) | archived (hidden)
+autodeploy = false
+notes = ""
