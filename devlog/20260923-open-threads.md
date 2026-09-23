@@ -317,3 +317,49 @@ Design answer, which becomes requirements for milestone 2:
 
 So the failure mode is: fresh sign-ins and fresh publication pause;
 existing identities, existing statements and every site keep working.
+
+## Addendum, same day: the desk as the first tenant, concretely
+
+Anselm: futuresdesk.ai is static (Cloudflare Pages); he wants a
+dependable, easy sign-up service so the desk needs no database and no
+server, and the service can "report on what the user upvoted and so
+on". That is milestones 2 and 3 exactly. The integration shape, which
+is the spec for those milestones:
+
+**What the desk ships**: one script tag and data attributes on the
+page (the giscus pattern), plus a static client-metadata JSON at
+futuresdesk.ai so the static site is itself the OAuth client (atproto
+OAuth supports browser clients with PKCE; no desk server). No build
+step changes.
+
+**What attest provides**:
+
+1. *Sign-in.* Redirect to attest, sign up with email or provider,
+   return to the desk with a session held in the browser. The account
+   is a `did:plc` with a hosted key.
+2. *Write.* `POST /attest` with a signed record: key, target URL
+   (NIP-73 normalised), kind (upvote, comment, vouch, statement),
+   optional body, timestamp, signature. Signed by the hosted key on
+   the user's behalf, or client-side once keys live on devices.
+   Idempotent by (key, target, kind); a `neg` record retracts.
+3. *Read by target.* `GET /read?targets=url1,url2,...` returns counts
+   and recent comments per URL. Public, cacheable at the CDN, no auth.
+   This is what the article page calls on load.
+4. *Read by key.* `GET /by/<did>` returns everything that key has
+   attested. Public. This is "what the user upvoted", used to paint
+   the page's own state and for a profile page.
+5. *Subscribe.* The log as a firehose, so a mirror or a scorer can
+   follow it. Not needed by the desk; needed for the outage story and
+   for milestone 5.
+
+**Requirements carried from the outage addendum**: records are
+self-contained and verifiable without the server; keys exportable;
+reads cacheable; `did:plc` for people.
+
+**Privacy note**: the by-target read tells attest which article the
+reader is on. For a first-party site this is the same as the site's
+own logs; the unlinkable-reads requirement matters for the plugin and
+for third-party sites, and is deferred to milestone 7.
+
+**What the desk drops**: the placeholder vote code, any thought of a
+users table, password reset, and a server.
