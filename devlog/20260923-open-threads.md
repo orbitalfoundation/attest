@@ -109,3 +109,105 @@ says the same.
 The name, sign-in providers, `did:web` versus `did:plc` for our own
 accounts, hosting, whether a public ledger ever enters. All still open
 from `20260922-plan-of-attack.md`.
+
+## Addendum, same day: a pasted discussion
+
+Anselm pasted a discussion between himself and another assistant (not
+this session) on ledgers, C2PA, key custody and chokepoints. His own
+lines are quoted; the other assistant's factual claims (C2PA has no
+ledger and a paid CA list; the Web of Trust browser extension sold
+browsing histories; Keybase's fate; Manifest V3) came with its own web
+search and are **not verified here**. They are recorded as claims to
+check, not as catalogue rows. What it settles or adds:
+
+### Settled by Anselm's words
+
+- **The key is the identity.** "I don't feel like one needs to bind a
+  key to a person - a key itself builds rep. It can burn rep as well."
+  A person may claim a key (Keybase-style proof on a public site) but
+  the claim is optional. Thread 4 above is therefore wrong in one
+  respect: an emitter is a key, full stop; "person", "site" and
+  "byline" are what a key's holder chooses to prove about it.
+- **Attestations are the anchor; everything else is rebuildable.**
+  "anybody can build the rest of the fabric themselves." The other
+  assistant called this the narrow waist. Consequence for us: the
+  commons is signed statements, append-only, mirrored. Score
+  computation is *not* in the commons; it is one client among many.
+  This is thread 1 made structural, and it dissolves "who owns the
+  score" before it starts.
+- **Raw ledgers are too low-level.** Recovery is unsolved there, and he
+  wants "slow money" as a general principle: nothing irreversible
+  should also be fast. The other assistant's line, "rate limits are a
+  security primitive", is the same rule as years-to-rebuild-rep.
+  *Slow trust*: an identity's standing can only rise at a bounded rate.
+  This belongs in the score function, not just the social norm.
+- **Curating a trust graph is basic social hygiene.** He expects people
+  will have to do this work. The other assistant's reframe: this is
+  the ancestral default returning, the broadcast century was the
+  anomaly; "gardening, not homework". Thread 6's one-click "vouch for
+  who I follow" is the first gardening tool.
+- **"The CT logs idea is interesting."** Not decided, but the open
+  question "whether a public ledger ever enters" now has a candidate
+  answer: a Certificate-Transparency-shaped log (append-only Merkle
+  structure, few writers, anyone can audit and mirror), not a chain.
+  *Note from memory, verify*: an atproto PDS repo is already a signed
+  Merkle search tree and the relay firehose is already a mirror; a
+  self-hosted PDS plus one independent mirror may give most of CT's
+  properties for free. Worth a catalogue row on CT itself and on
+  OpenTimestamps for existence proofs.
+- **A browser plugin as chokepoint**, filtering social sites "including
+  twitter", scoring at least articles. He wants this.
+
+### Added by the other assistant, worth keeping
+
+- **Two-tier attestation.** Institutions hold keys and sign content
+  into the log; separately they attest "this byline is a real human in
+  our employ"; the author's own key is optional. The DKIM precedent:
+  signing scaled when the domain did it and the individual never saw
+  it. And the case that matters for journalism: a source under threat
+  needs *pseudonymous key with institutional voucher* as a first-class
+  citizen, never an exception. This fits thread 4 once "emitter = key"
+  is applied: the masthead's vouch is an attestation from one key about
+  another.
+- **"Trusted by people you trust", never "trustworthy".** Sybil
+  resistance is easy locally and unsolved globally, and this design
+  works because it only ever asks the local question. The badge must
+  say from whom. Confirms thread 1 and names its UX cost.
+- **Edge cost, three kinds**: time (age-weighted edges), liability
+  (reputation flows out through vouches, a bad vouch damages you), and
+  attested history (the log gives the longitudinal record). Thread 2
+  had the second; add the first.
+- **The first mass consumer may be a model, not a person.** Retrieval
+  agents must weight sources now and degrade visibly when they cite
+  slop; they are not hosted inside the adversary's browser. Design the
+  read endpoint for batch scoring of many URLs from a root, not only
+  for one card on one page. This is new and changes deliverable 2's
+  endpoint shape.
+- **The plugin's failure mode is surveillance.** If the claim about the
+  Web of Trust extension holds, the lesson is: a trust filter that
+  phones home with every URL you visit is a browsing-history collector.
+  *Proposal*: reads must be private even though attestations are
+  public. Either the client scores locally from a mirrored log, or the
+  endpoint answers by hash prefix so it never learns the URL. This is a
+  constraint on deliverable 2, not a later feature.
+- The plugin is the **reference client** that proves the fabric
+  renders; the plugin on X is DOM-scraping against a hostile surface;
+  the browser vendor is a landlord (Manifest V3 as precedent, claim
+  unverified here).
+
+### Revised list of what deliverable 2 must have
+
+Restating with the above folded in: an attestation is a signed record
+from one key about a target (URL by NIP-73 grammar, or another key);
+records go to an append-only, mirrorable log; a read endpoint takes a
+root and a batch of targets and answers with trust-weighted results
+that name the root; reads are unlinkable to the reader; scores rise at
+a bounded rate. Everything else (plugin, model client, resolver, site
+vouches for bylines) is a client or a later kind.
+
+### Not this project's
+
+The first part of the paste is a critique of a Dingo Daily article's
+writing (it tells the reader what to think, "bad actors" misused, a
+moralising summation). That belongs on the desk and in the writing
+rules; a feedback memory was saved so every room sees it.
