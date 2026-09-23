@@ -363,3 +363,39 @@ for third-party sites, and is deferred to milestone 7.
 
 **What the desk drops**: the placeholder vote code, any thought of a
 users table, password reset, and a server.
+
+## Addendum, same day: Keybase-style proofs and C2PA-style authorship
+
+Anselm sees two more uses: proving you own services (Keybase) and
+proving you created an image (C2PA). Both are attestation kinds over
+the same record, with the target grammar widened.
+
+**Proof of control** ("this key is @anselm on GitHub", "this key
+controls hook.org"). Two records: a *claim* by the key about a handle
+or URL, and a *verification* by whoever checked it, which is what
+Keybase did centrally and Webmention does by fetch. The key posts a
+signed token at the service (a gist, a DNS TXT, a well-known file);
+any verifier key fetches it and signs "I checked, it was there on
+date". Attest's own key is one verifier; anyone can be another, and a
+verification is trusted as far as the verifier is trusted from the
+asker's root. For domains, atproto already does exactly this: handle
+verification by DNS TXT or `/.well-known/atproto-did`, so "prove you
+own a domain" is free on a PDS. Target grammar gains `did:` and
+service handles (`github:anselm`), and NIP-73 already has geo, ISBN,
+DOI.
+
+**Authorship of content** ("I made this image"). A claim by a key
+about a content hash (CID or sha256), timestamped and entered in the
+log. Honest scope: this proves that a key claimed the bytes at a time
+and nobody claimed them earlier in this log. It is precedence and
+attribution, not provenance. C2PA proves a pipeline ("this file came
+out of a conformant camera"), signed by a device under a paid CA; ours
+proves a key stood behind it, and the key's standing is what gives
+the claim weight. The two are complementary: a C2PA manifest, where
+present, is one more piece of evidence a verifier can attest to.
+Target grammar gains a hash kind. Re-encoded copies break exact
+hashes; perceptual hashing is a later verifier, not a v1 concern.
+
+Both are milestone 4 kinds, after the desk renders upvotes. Neither
+changes milestone 2 except that the target grammar must be open from
+day one: URL, DOI, ISBN, DID, handle, hash.
