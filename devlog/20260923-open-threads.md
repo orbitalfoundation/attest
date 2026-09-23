@@ -211,3 +211,55 @@ The first part of the paste is a critique of a Dingo Daily article's
 writing (it tells the reader what to think, "bad actors" misused, a
 moralising summation). That belongs on the desk and in the writing
 rules; a feedback memory was saved so every room sees it.
+
+## Addendum, same day: Friedman and Resnick read; who else wrote on burnable identity
+
+Anselm asked whether others have written about burnable identities.
+The 1999 working-paper version of Friedman and Resnick was found in the
+freehaven.net anonbib cache and read in full (copy in
+`reference/papers/`; catalogue row updated). What it says, in their
+words:
+
+- "no equilibrium can sustain significantly more cooperation than the
+  dues-paying equilibrium" when players can change identities freely
+  (Proposition 3, and the bound is tight).
+- "there is an inherent social cost to free name changes."
+- Their fixes: entry fees, which "may exclude poor people or those who
+  are just exploring"; or, "a better solution", "the option of
+  committing not to change identifiers" via blind-signature
+  once-in-a-lifetime pseudonyms within an arena. That reaches full
+  cooperation.
+
+So the paper backs the newcomers-at-zero rule exactly, and its authors
+recommend the opposite of burnable identity: commitment to one
+pseudonym per arena (not doxxed, but unreplaceable). Our rule knowingly
+pays their social cost for the right to walk away. Worth stating in
+the brief as a choice, not as something the literature endorses. Their
+"arena" idea is also useful: the scope within which one identity is
+committed can be narrow (one site) or broad (the web); broader is more
+accountable and less private.
+
+Others found, from search results only (abstracts, not full texts):
+
+- Feldman, Papadimitriou, Chuang, Stoica, "Free-riding and whitewashing
+  in peer-to-peer systems" (IEEE JSAC 24, 2006): penalising all
+  newcomers works "under many scenarios", degrading only when turnover
+  is high. The practical cousin of Friedman and Resnick.
+- Cheng and Friedman, "Sybilproof reputation mechanisms" (SIGCOMM
+  P2PEcon 2005): "there is no symmetric sybilproof reputation
+  function"; asymmetric flow-based functions from a source can be
+  sybilproof. This is the theorem behind root-as-parameter: a global
+  score cannot be sybilproof, a score from a root can.
+- Ohlhaver, Weyl, Buterin, "Decentralized Society: Finding Web3's
+  Soul" (SSRN, 2022-05-10): the named opposite, non-transferable
+  soulbound tokens; secondary sources say the paper itself lists
+  revocable SBTs and "multiple souls" as mitigations for the escape
+  problem.
+- Already in the catalogue: Seradji and Fallah 2017 (whitewashing as a
+  Bayesian game), Hoffman et al. survey, Kuntze 2006 (price the
+  pseudonym).
+
+Nobody found argues *for* free identity change as a design goal; the
+literature treats it as an attack to price or prevent. Anselm's
+position is that the escape is a feature worth its cost. That is a
+position, not a citation.
