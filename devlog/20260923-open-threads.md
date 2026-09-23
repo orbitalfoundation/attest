@@ -263,3 +263,21 @@ Nobody found argues *for* free identity change as a design goal; the
 literature treats it as an attack to price or prevent. Anselm's
 position is that the escape is a feature worth its cost. That is a
 position, not a citation.
+
+## Addendum, same day: should it be built, and should other projects use it for auth
+
+Anselm asked directly. The session's recommendation, for the record:
+
+- Build milestones 2 and 3 only (minimum service, desk renders from
+  it). Small, and it settles goal 1 with a real consumer.
+- Do not make attest the authentication for other projects. Split the
+  two: identity is AT Protocol accounts (sign in with your handle, via
+  atproto OAuth; our hosted-key accounts live on our PDS and are
+  ordinary atproto accounts), attestations are the new thing attest
+  adds. Then "migrating" a project means adding atproto sign-in, which
+  does not depend on attest being up, and attest never becomes a
+  single point of failure across twenty projects.
+- Migrate only projects with public participation (the desk first);
+  private apps keep their own auth. Apps still own sessions and
+  authorization; what they shed is sign-up, passwords and reset.
+- Defer scoring until the desk has real vouches to score.
