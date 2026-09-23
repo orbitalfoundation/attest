@@ -2,7 +2,7 @@ name = "attest"
 horizon = "2027"
 repo = "orbitalfoundation/attest"
 code = "local"
-deploy = "none"
+deploy = "exe:attest"
 status = "active"        # active | parked (struck through on the dashboard) | archived (hidden)
 autodeploy = false
-notes = "working name; attestations + emitter scoring service, separate from the desk; under orbital"
+notes = "manual deploy: deploy/deploy.sh; push != deploy; staging at https://attest.exe.xyz (pass 1, 2026-09-23); local run: PORT=8100 npm start; e2e: npm run e2e"
