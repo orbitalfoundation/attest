@@ -1,0 +1,56 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>attest · sign in</title><link rel="stylesheet" href="/style.css"></head><body><main>
+<h1>attest</h1>
+<p id="for" class="muted"></p>
+<div class="card">
+  <label class="small muted" for="handle">your handle</label>
+  <input id="handle" placeholder="lowercase, 2 to 32 characters" autocomplete="username webauthn" spellcheck="false">
+  <div style="display:flex;gap:.5rem;margin-top:.75rem;flex-wrap:wrap"><button id="signin">Sign in with passkey</button><button id="register" class="quiet">Create account</button></div>
+  <p id="msg" class="small" style="margin:.75rem 0 0"></p>
+</div>
+<p class="small muted">Sign-in is your passkey signing a 30-day permission for this device, on this site, to sign on your behalf. Nothing is stored about you but the handle and the public key.</p>
+</main>
+<script type="module">
+import * as A from "/attest-core.js";
+const q = new URLSearchParams(location.search), $ = (id) => document.getElementById(id), msg = (t, cls = "") => { $("msg").textContent = t; $("msg").className = "small " + cls; };
+// Whose device key: passed in by another site's widget, or this origin's own.
+let device, origin = location.origin;
+if (q.get("device") && q.get("key")) { const jwk = JSON.parse(new TextDecoder().decode(A.unb64u(q.get("key")))); device = { did: q.get("device"), jwk }; if (A.didFromJwk(jwk) !== device.did) { msg("device key does not match", "err"); throw new Error("bad device"); } }
+else device = await A.deviceKey();
+if (q.get("origin")) { if (!/^https?:\/\/[^/]+$/.test(q.get("origin"))) { msg("bad origin", "err"); throw new Error("bad origin"); } origin = q.get("origin"); }
+$("for").textContent = origin === location.origin ? "Sign in to attest." : "Sign in to attest for " + origin + ".";
+$("handle").value = localStorage.getItem("attest:handle") || "";
+if (!window.PublicKeyCredential) msg("This browser has no passkey support.", "err");
+const toBuf = A.unb64u, b64u = A.b64u;
+const creationOptions = (o) => ({ ...o, challenge: toBuf(o.challenge), user: { ...o.user, id: toBuf(o.user.id) }, excludeCredentials: (o.excludeCredentials || []).map((c) => ({ ...c, id: toBuf(c.id) })) });
+const requestOptions = (o) => ({ ...o, challenge: toBuf(o.challenge), allowCredentials: (o.allowCredentials || []).map((c) => ({ ...c, id: toBuf(c.id) })) });
+function credToJSON(c) {
+  if (typeof c.toJSON === "function") return c.toJSON();
+  const r = c.response, j = { id: c.id, rawId: b64u(c.rawId), type: c.type, clientExtensionResults: c.getClientExtensionResults(), authenticatorAttachment: c.authenticatorAttachment || undefined, response: { clientDataJSON: b64u(r.clientDataJSON) } };
+  if (r.attestationObject) { j.response.attestationObject = b64u(r.attestationObject); j.response.transports = r.getTransports?.() || []; }
+  else { j.response.authenticatorData = b64u(r.authenticatorData); j.response.signature = b64u(r.signature); if (r.userHandle) j.response.userHandle = b64u(r.userHandle); }
+  return j;
+}
+async function delegate(root, handle) {
+  const now = new Date(), until = new Date(now.getTime() + 30 * 86400e3);
+  const delegation = { v: 1, type: "delegation", root, device: device.did, devKey: { x: device.jwk.x, y: device.jwk.y }, origin, from: now.toISOString(), until: until.toISOString() };
+  const { options } = await A.req("delegate.start", { delegation });
+  msg("Your passkey signs a 30-day permission for this device…");
+  const cred = await navigator.credentials.get({ publicKey: requestOptions(options) });
+  const r = await A.req("delegate.finish", { delegation, credentialId: cred.id, assertion: credToJSON(cred) });
+  const session = { id: r.id, delegation, root: r.root, handle: r.handle, until: r.until };
+  localStorage.setItem("attest:handle", r.handle);
+  if (window.opener && origin !== location.origin) { window.opener.postMessage({ type: "attest:session", session }, origin); msg("Signed in as @" + r.handle + ". You can close this window.", "ok"); setTimeout(() => window.close(), 800); }
+  else { A.setSession(session); msg("Signed in as @" + r.handle + ".", "ok"); const back = q.get("return"); if (back && back.startsWith("/")) location.href = back; else if (back) location.href = back; else location.href = "/me"; }
+}
+const busy = (on) => { $("signin").disabled = on; $("register").disabled = on; };
+$("signin").onclick = async () => { busy(true); try { const handle = $("handle").value.trim().toLowerCase(); if (!handle) throw new Error("enter your handle"); const { did } = await A.req("lookup", { handle }); await delegate(did, handle); } catch (e) { msg(e.message, "err"); } finally { busy(false); } };
+$("register").onclick = async () => { busy(true); try {
+  const handle = $("handle").value.trim().toLowerCase(); if (!handle) throw new Error("choose a handle");
+  const { nonce, options } = await A.req("passkey.register.start", { handle });
+  msg("Your device creates a passkey…");
+  const cred = await navigator.credentials.create({ publicKey: creationOptions(options) });
+  const { did } = await A.req("passkey.register.finish", { nonce, response: credToJSON(cred) });
+  msg("Account @" + handle + " created as " + did.slice(0, 20) + "…");
+  await delegate(did, handle);
+} catch (e) { msg(e.message, "err"); } finally { busy(false); } };
+</script></body></html>

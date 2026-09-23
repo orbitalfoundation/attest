@@ -1,0 +1,20 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>attest · what I attested</title><link rel="stylesheet" href="/style.css"></head><body><main>
+<h1 id="h">what I attested</h1>
+<p class="muted small" id="who"></p>
+<table id="t"><thead><tr><th>when</th><th>kind</th><th>target</th><th>body</th></tr></thead><tbody></tbody></table>
+<p class="muted small" id="empty"></p>
+</main>
+<script type="module">
+import * as A from "/attest-core.js"; import "/menu.js";
+const q = new URLSearchParams(location.search), did = q.get("did") || A.session()?.root;
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+if (!did) { document.getElementById("empty").innerHTML = `Not signed in. <a href="/login?return=/me">Sign in</a>, or open <code>/me?did=did:key:…</code> for any key.`; }
+else {
+  const me = await A.by(did);
+  document.getElementById("h").textContent = me.handle ? "@" + me.handle : "an unknown key";
+  document.getElementById("who").innerHTML = `<code>${esc(did)}</code>${me.since ? " · since " + new Date(me.since).toLocaleDateString() : ""} · <a href="/by/${encodeURIComponent(did)}">json</a>`;
+  const tb = document.querySelector("tbody");
+  tb.innerHTML = me.records.map((r) => `<tr${r.retracted ? ' style="opacity:.45;text-decoration:line-through"' : ""}><td class="small">${new Date(r.at).toLocaleString()}</td><td>${esc(r.kind)}</td><td class="small">${/^https?:/.test(r.target) ? `<a href="${esc(r.target)}">${esc(r.target)}</a>` : esc(r.target)}${r.ref ? ` <span class="muted">→ ${r.ref.slice(0, 8)}</span>` : ""}</td><td>${esc(r.body)} <a class="muted small" href="/record/${r.id}">#${r.id.slice(0, 8)}</a></td></tr>`).join("");
+  if (!me.records.length) document.getElementById("empty").textContent = "Nothing signed yet.";
+}
+</script></body></html>

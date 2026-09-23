@@ -1,0 +1,20 @@
+:root{--accent:#1f6f8b;--fg:#1b1f23;--bg:#fff;--muted:#5b6470;--line:#e3e6ea;--attest-accent:var(--accent)}
+@media(prefers-color-scheme:dark){:root{--fg:#e6e8eb;--bg:#111417;--muted:#98a2ad;--line:#2a3036}}
+*{box-sizing:border-box}html{color-scheme:light dark}
+body{margin:0;font:16px/1.55 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--fg);background:var(--bg)}
+main{max-width:44rem;margin:0 auto;padding:3.5rem 1rem 4rem}
+h1{font-size:1.6rem;margin:0 0 .25rem;letter-spacing:-.01em}h1 small{font-weight:400;color:var(--muted);font-size:1rem;margin-left:.5rem}
+h2{font-size:1.15rem;margin:2.2rem 0 .5rem}h3{font-size:1rem;margin:1.4rem 0 .3rem}
+p,li{max-width:40rem}a{color:var(--accent)}code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em}
+pre{background:color-mix(in srgb,var(--fg) 6%,transparent);padding:.75rem;border-radius:3px;overflow:auto}
+.muted{color:var(--muted)}.small{font-size:.9rem}
+table{border-collapse:collapse;width:100%;font-size:.95rem}td,th{text-align:left;padding:.4rem .5rem;border-top:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-weight:500;border-top:0}
+input,button,textarea{font:inherit}input,textarea{padding:.45rem .6rem;border:1px solid var(--line);border-radius:3px;background:transparent;color:inherit;width:100%}
+button{padding:.45rem .9rem;border:1px solid var(--accent);border-radius:3px;background:var(--accent);color:#fff;cursor:pointer}button.quiet{background:transparent;color:var(--accent)}button:disabled{opacity:.5;cursor:default}
+.card{border:1px solid var(--line);border-radius:3px;padding:1rem;margin:1rem 0}
+.err{color:#b91c1c}.ok{color:#15803d}
+/* floating menu, top right */
+.menu{position:fixed;top:.75rem;right:.75rem;z-index:10}.menu>button{width:2.2rem;height:2.2rem;padding:0;border-radius:3px;background:var(--bg);color:var(--fg);border:1px solid var(--line);font-size:1.1rem}
+.menu ul{display:none;position:absolute;right:0;top:2.6rem;margin:0;padding:.3rem 0;list-style:none;background:var(--bg);border:1px solid var(--line);border-radius:3px;min-width:11rem;box-shadow:0 4px 16px rgba(0,0,0,.12)}
+.menu.open ul{display:block}.menu li a,.menu li span{display:block;padding:.4rem .9rem;color:var(--fg);text-decoration:none;white-space:nowrap}.menu li a:hover{background:color-mix(in srgb,var(--fg) 6%,transparent)}.menu li span{color:var(--muted);font-size:.85rem}
+.status{font-size:.9rem;color:var(--muted)}

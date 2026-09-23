@@ -1,0 +1,18 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>attest</title><link rel="stylesheet" href="/style.css"></head><body><main>
+<h1>attest <small>signed statements about URLs and keys</small></h1>
+<p>One sign-up, with a passkey your device holds. Then any site can let you upvote, comment, vouch for someone, or make a public statement, and none of those sites has to run accounts, passwords or a database. Every statement is signed by your key, is public, and can be checked by anyone without asking us.</p>
+<p class="status" id="status">…</p>
+<h2>Try it</h2>
+<p>The <a href="/demo">demo page</a> has live upvote and comment widgets. <a href="/me">What I attested</a> lists everything your key has signed. <a href="/about">About</a> explains why this exists and where it is going.</p>
+<h2>Put it on a static site</h2>
+<pre>&lt;script type="module" src="ORIGIN/attest.js"&gt;&lt;/script&gt;
+&lt;div data-attest data-target="https://example.com/article" data-comments&gt;&lt;/div&gt;</pre>
+<p class="small muted">Leave out <code>data-target</code> to attest the page's own canonical URL. Counts also come from a plain cacheable GET: <code>ORIGIN/read?targets=https://example.com/article</code>. Everything a key has signed: <code>ORIGIN/by/did:key:…</code>. The whole append-only log, for mirrors: <code>ORIGIN/log?since=0</code>.</p>
+<p class="small muted" id="stats"></p>
+</main>
+<script type="module">
+import { session, server } from "/attest-core.js"; import "/menu.js";
+document.querySelectorAll("pre, p.small").forEach((n) => n.innerHTML = n.innerHTML.replaceAll("ORIGIN", server));
+const s = session(); document.getElementById("status").innerHTML = s ? `Signed in as <b>@${s.handle}</b>, delegation valid until ${new Date(s.until).toLocaleDateString()}.` : `Not signed in. <a href="/login?return=/">Sign in or create an account</a>.`;
+fetch("/stats").then((r) => r.json()).then((j) => document.getElementById("stats").textContent = `${j.accounts} accounts · ${j.records} live records · ${j.log} log entries`);
+</script></body></html>

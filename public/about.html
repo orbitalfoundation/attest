@@ -1,0 +1,75 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>attest · about</title><link rel="stylesheet" href="/style.css"></head><body><main>
+<h1>about <small>why this exists, what it does, where it goes</small></h1>
+
+<h2>See the cat? See the cradle?</h2>
+<p>In Kurt Vonnegut's <i>Cat's Cradle</i> a child is shown the string figure and cannot find the cat or the cradle in it. There is nothing there but string, and the shapes the string makes between two pairs of hands. The book's invented religion has a word for the group of people your life is actually tangled with, whether or not you know it: a <i>karass</i>. It has another word for the groups people announce they belong to, the nation, the alumni association, the fan club: a <i>granfalloon</i>. A granfalloon is a label. A karass is a set of relationships.</p>
+<p>Nearly everything the web tells you about a person is a granfalloon. A verified tick. A follower count. A bio. A badge you can buy. None of it is made of relationships, and all of it can be minted.</p>
+<p>attest takes the other view. A key here has no profile, no badge and no score of its own. It is defined entirely by what it has signed, who has vouched for it, and what it turned out to be right about. Pull those strings away and there is nothing left, which is the point. You cannot buy a shape that is made only of other people's hands.</p>
+
+<h2>What it is</h2>
+<p>A public bag of signed statements about URLs and about keys, and a service that lets any web page use it without running accounts.</p>
+<ul>
+<li>You sign up once, with a passkey. Your phone or laptop holds the private key. We hold a handle and a public key, nothing else.</li>
+<li>Any site can put an upvote, a comment box, a vouch or a public statement on a page with one script tag. The site keeps no users, no passwords, no database. Static pages on a CDN work.</li>
+<li>Every statement is signed by your key, timestamped, and appended to a log anyone can mirror. Anyone can check a statement against the log and your public key without asking us.</li>
+<li>Counts are a plain cacheable GET. What a key has attested is a plain GET. The whole log is a plain GET.</li>
+</ul>
+<p>Your identity is the key. You can prove a key is yours by naming it somewhere public, and you can also throw it away. A key that behaves badly can be abandoned, and its owner can start over from zero. Reputation belongs to the key. Mistakes are escapable, at the cost of the years it takes to earn standing again.</p>
+
+<h2>What is built today</h2>
+<table>
+<tr><th>piece</th><th>how</th></tr>
+<tr><td>Sign-up and sign-in</td><td>Passkeys (WebAuthn, ES256). The passkey's public key becomes a <code>did:key</code>. No email, no password, no recovery questions.</td></tr>
+<tr><td>Silent signing</td><td>On sign-in your passkey signs a 30-day delegation to a device key that lives in the site's own browser storage and never leaves it. Upvotes are then signed locally with no prompt. Each site gets its own device key, so a site cannot act as you on another site.</td></tr>
+<tr><td>Records</td><td>upvote, comment, vouch, statement, retract. Targets: a URL, a DOI, an ISBN, a key, a service handle, a content hash. One upvote per key per target; retraction is its own signed record.</td></tr>
+<tr><td>Reads</td><td><code>/read?targets=…</code> for counts and recent comments, <code>/by/&lt;did&gt;</code> for everything a key signed, <code>/record/&lt;id&gt;</code> for one envelope, <code>/log?since=…</code> for mirrors.</td></tr>
+<tr><td>Live</td><td>One socket per page; counts push to everyone watching the same target.</td></tr>
+<tr><td>Checking</td><td>A record's id is the SHA-256 of its canonical JSON. Its signature verifies against the device key in the delegation; the delegation verifies against the passkey's public key, which <code>/by</code> publishes. No call to us is needed for either.</td></tr>
+<tr><td>Limits</td><td>Per-address and per-key rate limits on writes. Reads carry cache headers for CDNs.</td></tr>
+</table>
+
+<h2>Why</h2>
+<p>Nothing on the web scores the people and outlets that feed us. The founder's phrase for it: "I liken this to the food and drug administration, or to a river; I am being fed pollutants and there isn't even any scoring." PageRank scored emitters once. The platforms took it away and score items, or nothing.</p>
+<p>From the builder's side the same gap looks different. A small publication should not have to write its own sign-up, votes and comments, and should not have to hand its readers to a platform that then owns the relationship. Every small service rebuilds the same identity layer, badly, and each rebuild is another silo where reputation cannot travel.</p>
+<p>Those are one problem. Signed statements are the anchor. Everything else, scores included, can be rebuilt by anyone from the log.</p>
+
+<h2>What is different about it</h2>
+<p>We read forty-eight prior efforts before writing a line. Labelers on the AT Protocol, Community Notes, the Ethereum Attestation Service, Nostr reactions, Advogato's trust metric, EigenTrust, SybilGuard, Certificate Transparency, the web of trust, Keybase, the outlet raters. None combines ordinary sign-up with a key the person holds, signed statements about arbitrary URLs and keys, a read endpoint a static page can render, and trust computed by bounded flow with burnable identity. Each of the nearest is missing at least two of those. The flow-based trust math was worked out twenty years ago and shelved because nobody had an adversary worth it. The adversary has arrived.</p>
+<ul>
+<li><b>Emitters are scored, not items.</b> An article inherits the standing of whoever wrote it and whoever vouched for it.</li>
+<li><b>The score is never global.</b> When scoring lands, every answer will be "trusted as seen from this root", and the asker picks the root. A million fake keys vouching for each other in a cluster you never touched cannot reach you. There is no symmetric sybil-proof reputation function; there are asymmetric ones, and this is one.</li>
+<li><b>Nobody can be talked down.</b> Negative statements are shown as evidence and never propagate. A key's standing falls only through its own record: claims that resolved false, vouches that resolved false.</li>
+<li><b>Public by construction.</b> Statements are public records, so any analytics built on them are public too, to competitors as well. There will be no private dashboards.</li>
+<li><b>Slow trust.</b> Standing rises at a bounded rate. Nothing irreversible should also be fast.</li>
+</ul>
+
+<h2>What comes next</h2>
+<p>In order. Each step is usable on its own.</p>
+<h3>1. A first tenant</h3>
+<p>A static news site replaces its placeholder votes with the widget, drops its plans for a users table, and keeps no server.</p>
+<h3>2. Vouches and proofs</h3>
+<p><b>Vouch</b>: "I know this key's owner", one key about another. Vouching costs the voucher: each key has finite capacity to give, and a vouch for a key that is later abandoned or shown false counts against the voucher's own record. <b>Proof of control</b>, the Keybase move: a key claims a handle or a domain, posts a signed token there, and any other key can sign that it checked. Domains are free, since a passkey account can be bound to a domain the way AT Protocol binds handles. <b>Authorship</b>: a key claims a content hash, timestamped in the log. That proves precedence and attribution, that this key stood behind these bytes first, and it complements C2PA, which proves which camera or editor a file came out of.</p>
+<h3>3. Institutions</h3>
+<p>A masthead holds a key, signs its articles, and separately attests "this byline is a person in our employ". The author's own key is optional. A source writing under threat gets a pseudonymous key vouched for by an institution, as a first-class case.</p>
+<h3>4. Scoring as a labeler</h3>
+<p>Trust by flow from a root through vouches, with a capacity bound at each hop so a cluster's reach is limited by how many honest vouches it can attract. Edges age. Standing rises at a bounded rate. Counts shown to sites become trust-weighted from a root the site names. Scores publish in the AT Protocol label format, so any client that subscribes to labelers can subscribe to a root's view.</p>
+<h3>5. Track record</h3>
+<p>A claim with a resolution date. Statements that support or challenge it. A resolution that stands unless challenged within a window. A Brier score per key, feeding its standing. A key that is often right earns more than a key that is often vouched for.</p>
+<h3>6. Clients</h3>
+<p>A browser extension that scores what you are reading, on any site, from your own root, and never sends the service the URLs you visit: it reads from a mirrored log or asks by hash prefix. A batch endpoint for retrieval agents, which need to weight sources today and degrade in public when they cite slop. The first mass consumer of the graph may well be a model.</p>
+<h3>7. Custody</h3>
+<p>A second passkey on the same account. Key export. Migration of an account to another host, so this service going away does not take identities with it. A mirror run by someone else.</p>
+
+<h2>What it will not do</h2>
+<ul>
+<li>Publish a single number called "trustworthy". Every score names its root.</li>
+<li>Carry a left-right axis, or any party colours. Neutrality here is arithmetic, not policy.</li>
+<li>Sell, log or retain what anyone reads. The extension is designed so we cannot know.</li>
+<li>Keep private metrics. If it is in the log it is public; if it is not in the log we do not have it.</li>
+<li>Bind a key to a person against their will. You can leave. It will cost you years, and that cost is what makes the standing of everyone who stays mean something.</li>
+</ul>
+
+<h2>Lineage</h2>
+<p class="small">Friedman and Resnick, <a href="https://www.freehaven.net/anonbib/cache/cheap-pseudonyms.pdf">The Social Cost of Cheap Pseudonyms</a> (the newcomer-at-zero result, and the cost we knowingly pay). Cheng and Friedman, <a href="https://dl.acm.org/doi/10.1145/1080192.1080202">Sybilproof reputation mechanisms</a> (no symmetric sybil-proof score exists; asymmetric flow from a source can be). Levien, <a href="https://levien.com/free/tmetric-HOWTO.html">the Advogato trust metric</a>. Kamvar et al., <a href="https://nlp.stanford.edu/pubs/eigentrust.pdf">EigenTrust</a>. Yu et al., <a href="https://www.comp.nus.edu.sg/~yuhf/sybilguard-sigcomm06.pdf">SybilGuard</a>. Cao et al., <a href="https://www.usenix.org/system/files/conference/nsdi12/nsdi12-final42_2.pdf">SybilRank</a>. Gyöngyi et al., <a href="https://www.vldb.org/conf/2004/RS15P3.PDF">TrustRank</a>. The <a href="https://atproto.com/specs/label">AT Protocol label</a> record and <a href="https://github.com/nostr-protocol/nips/blob/master/73.md">NIP-73</a> target grammar. <a href="https://github.com/twitter/communitynotes">Community Notes</a> and the <a href="https://arxiv.org/abs/2604.11224">per-rater quality weight</a>. Vonnegut, <i>Cat's Cradle</i>, 1963.</p>
+</main>
+<script type="module" src="/menu.js"></script></body></html>

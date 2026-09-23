@@ -1,0 +1,9 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>attest · demo</title><link rel="stylesheet" href="/style.css"></head><body><main>
+<h1>demo <small>live widgets</small></h1>
+<p>Each block below is one <code>&lt;div data-attest&gt;</code> pointed at a URL. Upvote, retract, comment. The first click asks you to sign in; after that, your device key signs silently for 30 days. Counts update live for everyone on the page.</p>
+<div class="card"><p><b>This page</b> <span class="muted small">(no data-target: the canonical URL)</span></p><div data-attest data-comments></div></div>
+<div class="card"><p><b><a href="https://futuresdesk.ai/">The Future Times</a></b> <span class="muted small">https://futuresdesk.ai/</span></p><div data-attest data-target="https://futuresdesk.ai/" data-comments></div></div>
+<div class="card"><p><b><a href="https://hook.org/">hook.org</a></b> <span class="muted small">upvote only</span></p><div data-attest data-target="https://hook.org/"></div></div>
+<div class="card"><p><b>A DOI</b> <span class="muted small">doi:10.1145/1080192.1080202 · Cheng and Friedman, Sybilproof reputation mechanisms</span></p><div data-attest data-target="doi:10.1145/1080192.1080202" data-comments></div></div>
+</main>
+<script type="module" src="/attest.js"></script><script type="module" src="/menu.js"></script></body></html>
