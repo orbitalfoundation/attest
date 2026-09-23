@@ -281,3 +281,39 @@ Anselm asked directly. The session's recommendation, for the record:
   private apps keep their own auth. Apps still own sessions and
   authorization; what they shed is sign-up, passwords and reset.
 - Defer scoring until the desk has real vouches to score.
+
+## Addendum, same day: all projects are public, so attest is the auth; what happens when it is down
+
+Anselm: every project duplicates auth, "a waste of focus"; what he
+needs everywhere is that users can sign utterances, attest other users
+as real, upvote, comment, make public statements; "for most projects
+this is all public." That removes the private-state objection above:
+for these projects, auth *is* "prove you hold a key", and one identity
+fabric is right. The session's earlier advice to keep attest out of
+auth was for private apps; it does not apply here.
+
+His question: what is the user fallback if the service goes down?
+Design answer, which becomes requirements for milestone 2:
+
+- **Identity survives the host.** Accounts are `did:plc` (resolved by
+  the PLC directory, not our server); the DID document names the PDS.
+  Our server down means the account still exists and can be migrated
+  to another PDS with the user's rotation key. `did:web` on our domain
+  would die with our domain, so `did:web` is for sites, not people.
+- **Signing never needs the server.** The hosted key is a convenience;
+  the user can export it. An attestation is self-contained (key,
+  target, kind, timestamp, signature), with no server-issued nonce,
+  so a client holding the key can sign offline and submit later. An
+  outage delays publication; nothing is lost.
+- **Verification never needs the server.** Anyone with the DID
+  document, cached or from PLC, can check a signature.
+- **Reads degrade to cache.** The log is mirrorable; consuming sites
+  cache the last answer and show stale counts or "unavailable". The
+  content itself never lived in attest, so no page goes down with it.
+- **The one hard case**: hosted key, new device, service down. The
+  user cannot sign in fresh until it returns. Mitigation is key
+  custody on the device (passkeys or an exported key), which is a
+  later feature; for v1 the honest answer is "wait".
+
+So the failure mode is: fresh sign-ins and fresh publication pause;
+existing identities, existing statements and every site keep working.
