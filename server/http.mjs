@@ -1,15 +1,18 @@
 // HTTP: the public, cacheable reads a static site or an agent calls, the embed script, the log for mirrors, and the pages.
 import fastifyStatic from "@fastify/static";
+import httpProxy from "@fastify/http-proxy";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import * as records from "./records.mjs";
 import * as store from "./store.mjs";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CANONICAL_HOST = process.env.CANONICAL_HOST || "";
+const PDS_URL = process.env.PDS_URL || ""; // when set, atproto paths are proxied to the PDS behind this origin (websockets included)
 export async function routes(app) {
   // One origin for passkeys: when CANONICAL_HOST is set, any other host is redirected there (GET only; sockets and writes are origin-checked anyway).
-  if (CANONICAL_HOST) app.addHook("onRequest", async (req, reply) => { if (req.method === "GET" && req.hostname !== CANONICAL_HOST && !req.url.startsWith("/socket.io")) return reply.code(301).redirect("https://" + CANONICAL_HOST + req.url); });
-  app.addHook("onSend", async (req, reply, payload) => { reply.header("Access-Control-Allow-Origin", "*"); return payload; });
+  if (CANONICAL_HOST) app.addHook("onRequest", async (req, reply) => { const h = req.hostname.split(":")[0]; const pdsPath = /^\/(xrpc|oauth|\.well-known)/.test(req.url); if (req.method === "GET" && h !== CANONICAL_HOST && !req.url.startsWith("/socket.io") && !(pdsPath && h.endsWith("." + CANONICAL_HOST))) return reply.code(301).redirect("https://" + CANONICAL_HOST + req.url); });
+  if (PDS_URL) for (const prefix of ["/xrpc", "/oauth", "/.well-known/atproto-did", "/.well-known/oauth-authorization-server", "/.well-known/oauth-protected-resource", "/@atproto", "/tls-check", "/robots-pds"]) await app.register(httpProxy, { upstream: PDS_URL, prefix, rewritePrefix: prefix, websocket: prefix === "/xrpc", replyOptions: { rewriteRequestHeaders: (req, headers) => ({ ...headers, host: req.hostname, "x-forwarded-proto": "https" }) } });
+  app.addHook("onSend", async (req, reply, payload) => { if (!reply.getHeader("Access-Control-Allow-Origin")) reply.header("Access-Control-Allow-Origin", "*"); return payload; });
   app.get("/read", async (req, reply) => {
     const targets = String(req.query.targets || req.query.target || "").split(",").map((s) => s.trim()).filter(Boolean);
     if (!targets.length) return reply.code(400).send({ error: "targets required" });
