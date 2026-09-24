@@ -55,6 +55,18 @@
 <p>Sign-in is one instance of a general shape: the passkey signs an action by signing a WebAuthn assertion whose challenge is the action's SHA-256. The others are <code>revoke</code> (a delegation), <code>add-key</code> and <code>remove-key</code> (passkeys on the account). Each is appended to the log with its assertion, so a mirror can replay account history. The service offers only the account's own passkeys in the browser prompt, and never the one being removed.</p>
 <h2>Proof of control and the service key</h2>
 <p>A <code>claim</code> record says a key controls a handle or URL. The token <code>attest-proof:&lt;claim id&gt;</code> goes where only the controller can put it: the page itself or <code>/.well-known/attest.txt</code> for a website, a TXT record at <code>_attest.&lt;domain&gt;</code>, a public gist, a Bluesky bio. The service fetches, and if it finds the token it signs a <code>verify</code> record with the evidence URL. The service has a key of its own for this (P-256, generated on first start, DID at <code>/service</code>), and its records carry the public key in the envelope instead of a delegation. Any other key may verify a claim by hand and its verification counts as far as that key is trusted; the service's counts as far as the service is.</p>
+<h2>Practices borrowed from neighbours, and what is still to adopt</h2>
+<table>
+<tr><th>practice</th><th>source</th><th>here</th></tr>
+<tr><td>Bind the context into the signed payload so a signature cannot be replayed elsewhere</td><td>badge.blue binds the repository DID into the CID it signs</td><td>Partly. The root-signed delegation carries the site origin, and the server enforces it; the device-signed record does not yet carry the origin. Planned for the v2 record: an explicit context field, so the check holds offline too.</td></tr>
+<tr><td>Low-S normalisation of ECDSA signatures</td><td>badge.blue; Bitcoin before it</td><td>Not yet. Our ids hash the record, not the signature, so malleability cannot change an id or duplicate a record, but a normalised form is cheap and we will emit and require it.</td></tr>
+<tr><td>Content-addressed ids in a form other systems can reference</td><td>badge.blue's CIDv1 over DAG-CBOR; AT Protocol generally</td><td>Our id is SHA-256 over canonical JSON. A v2 could define the CID of the same canonical bytes so a record can be pointed at by a <code>strongRef</code> from an atproto repo.</td></tr>
+<tr><td>Third-party attestations as separate proof records the subject's owner may or may not reference</td><td>badge.blue remote attestations</td><td>Different by design: every record here is public in one log regardless of the subject's wishes. The subject's control is the root-as-parameter score, not editing what others said.</td></tr>
+<tr><td>Access policies over a vouch graph ("only keys my graph vouches for")</td><td>socialweb.computer's policy engine</td><td>The consumer we want for milestone 5's labeler output.</td></tr>
+<tr><td>Stackable, subscribable labels</td><td>AT Protocol labelers</td><td>Adopted as the publication format for scores.</td></tr>
+<tr><td>Per-app signer keys under one root</td><td>Farcaster</td><td>Adopted as per-site device keys under a passkey.</td></tr>
+<tr><td>Signed-once, proven-by-fetch identity claims</td><td>Keybase, Webmention</td><td>Adopted as proof of control.</td></tr>
+</table>
 <h2>Canonical JSON</h2>
 <p>Object keys sorted lexicographically at every level; arrays in given order; <code>undefined</code> members dropped; <code>null</code> kept; no whitespace; strings and numbers as <code>JSON.stringify</code> emits them. It is deliberately smaller than RFC 8785 and identical to it for the shapes we sign.</p>
 

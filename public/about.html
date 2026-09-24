@@ -49,6 +49,22 @@
 <li><b>Slow trust.</b> Standing rises at a bounded rate. Nothing irreversible should also be fast.</li>
 </ul>
 
+<h2>Other work</h2>
+<p>Nobody builds this alone, and several of these are worth your time before ours. If you know one we missed, the <a href="#ways-in">ways in</a> section says how to tell us.</p>
+<ul>
+<li><a href="https://badge.blue/">badge.blue</a>: a CID-first attestation spec for AT Protocol records, inline signatures or remote proof records, with the repository DID bound into the signed payload so a signature cannot be replayed elsewhere. The closest thing to a shared envelope convention in the atproto world; we are adopting its context binding and low-S normalisation.</li>
+<li><a href="https://socialweb.computer/">socialweb.computer</a>: a pre-alpha compute marketplace on AT Protocol whose access policies read a vouch graph ("only keys my graph vouches for may bid"). A consumer of exactly what this service publishes.</li>
+<li><a href="https://atproto.com/specs/label">AT Protocol labels</a> and <a href="https://github.com/bluesky-social/ozone">Ozone</a>: signed, revocable annotations any client can subscribe to; our record envelope follows theirs.</li>
+<li><a href="https://levien.com/free/tmetric-HOWTO.html">Advogato's trust metric</a> and Raph Levien's metadata HOWTO: flow from seeds through certifications with a capacity bound. The scoring we intend, written in 2000.</li>
+<li><a href="https://github.com/ethereum-attestation-service">Ethereum Attestation Service</a>: schema, attester, recipient, reference, revocable, expiry; off-chain mode is a clean attestation model minus the chain.</li>
+<li><a href="https://github.com/twitter/communitynotes">Community Notes</a>: bridging consensus across a disagreement axis, open source; needs volume we do not have.</li>
+<li>Nostr <a href="https://github.com/nostr-protocol/nips/blob/master/25.md">reactions</a> with <a href="https://github.com/nostr-protocol/nips/blob/master/73.md">NIP-73</a> targets and <a href="https://github.com/nostr-wot/nostr-wot">nostr-wot</a>: signed reactions to arbitrary URLs today, plus an oracle for social distance.</li>
+<li><a href="https://docs.passport.human.tech/">Human Passport</a>, <a href="https://proofofhumanity.id/">Proof of Humanity</a>, <a href="https://www.brightid.org/">BrightID</a>: proof-of-person by stamps, vouch-plus-deposit, or social graph.</li>
+<li>Keybase, Certificate Transparency, the PGP web of trust, Webmention, Hypothesis, Farcaster's per-app signer keys: each contributed one idea here, named on the <a href="/technical">technical page</a>.</li>
+<li>The theory: <a href="https://www.freehaven.net/anonbib/cache/cheap-pseudonyms.pdf">Friedman and Resnick</a>, <a href="https://dl.acm.org/doi/10.1145/1080192.1080202">Cheng and Friedman</a>, <a href="https://nlp.stanford.edu/pubs/eigentrust.pdf">EigenTrust</a>, <a href="https://www.comp.nus.edu.sg/~yuhf/sybilguard-sigcomm06.pdf">SybilGuard</a>, <a href="https://www.usenix.org/system/files/conference/nsdi12/nsdi12-final42_2.pdf">SybilRank</a>, <a href="https://www.vldb.org/conf/2004/RS15P3.PDF">TrustRank</a>.</li>
+</ul>
+<p class="small muted">The full catalogue, 50 entries with the URL read and the date, is in the repository under <code>reference/</code>.</p>
+
 <h2>What comes next</h2>
 <p>In order. Each step is usable on its own.</p>
 <h3>1. A first tenant</h3>
@@ -66,7 +82,7 @@
 <h3>7. Custody</h3>
 <p>A second passkey on the same account. Key export. Migration of an account to another host, so this service going away does not take identities with it. A mirror run by someone else.</p>
 
-<h2>Ways in</h2>
+<h2 id="ways-in">Ways in</h2>
 <p>This project is useful in more than one way, and not all of them involve using it.</p>
 <ul>
 <li><b>Take the approach.</b> Read <a href="https://github.com/orbitalfoundation/attest">the source</a> (MIT), copy the shape, or just the idea: let users sign their own statements with a key they hold. A signature made here matches across every project that checks it, which gives a person durable control over their record that walled gardens do not offer. Enough projects doing this, and the web of trust people have talked about since 1992 starts to exist.</li>

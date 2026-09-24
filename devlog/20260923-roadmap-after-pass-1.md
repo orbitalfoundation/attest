@@ -78,3 +78,16 @@ it safe to ask real people to sign up; the profile, vouch and proof
 pages give those people something to do that the scoring later needs.
 Then C13, because a per-domain page is the pitch to the next site
 owner. Scoring (D) waits until vouches exist.
+
+## Addendum, same night: first outside feedback
+
+A reader on the Substack post pointed at badge.blue (a CID-first
+attestation spec for atproto records) and socialweb.computer (a
+pre-alpha atproto compute marketplace whose policies read a vouch
+graph). Both read and added to `reference/20260923-prior-art-additions.md`;
+About gained an "Other work" section and the technical page a table of
+practices borrowed and still to adopt. Roadmap changes: A5 (bind the
+context into the device signature) now has a precedent and a v2 record
+shape to carry it; add low-S normalisation; define a CID form of the
+record id for atproto references. socialweb.computer is the first named
+consumer for the milestone 5 labeler.
