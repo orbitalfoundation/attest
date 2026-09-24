@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "version": "0.1.0",
+  "license": "MIT",
   "description": "Signed attestations about URLs and keys; sign-in and votes for static sites; emitter trust later.",
   "scripts": {
     "start": "node server/index.mjs",
