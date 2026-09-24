@@ -16,6 +16,11 @@
 <p class="small muted">Two passkeys mean a lost phone is not a lost account. Adding one takes two prompts: the new device creates a passkey, then an existing passkey approves it.</p>
 <table id="keys"><thead><tr><th>added</th><th>id</th><th></th></tr></thead><tbody></tbody></table>
 <p><button id="addkey" class="quiet">Add a passkey on this device</button> <span id="keymsg" class="small"></span></p>
+<h2>Proofs of control</h2>
+<p class="small muted">Prove this key is yours somewhere public, the Keybase way: claim a site or handle, put a token there, and the service checks and signs that it saw it. Anyone else can check too.</p>
+<ul id="proofs" class="small"></ul>
+<form id="claim" style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center"><select id="ptype" style="width:auto"><option value="https://">website URL</option><option value="dns:">domain (DNS TXT)</option><option value="github:">GitHub user</option><option value="bsky:">Bluesky handle</option></select><input id="pvalue" style="flex:1;min-width:12rem" placeholder="hook.org, anselm, anselm.bsky.social…"><button type="submit" class="quiet">claim</button></form>
+<p id="pmsg" class="small"></p>
 </section>
 </main>
 <script type="module">
@@ -38,8 +43,15 @@ else {
     const renderSessions = () => { document.querySelector("#sessions tbody").innerHTML = me.delegations.map((d) => { const live = !d.revoked && Date.parse(d.until) > Date.now(); return `<tr${live ? "" : ' style="opacity:.5"'}><td>${esc(d.origin)}${d.id === s.id ? ' <span class="muted small">(this browser)</span>' : ""}</td><td class="small"><code>${esc(d.device.slice(8, 20))}…</code></td><td class="small">${d.revoked ? "revoked " + new Date(d.revoked).toLocaleDateString() : "until " + new Date(d.until).toLocaleDateString()}</td><td>${live ? `<button class="quiet small" data-revoke="${d.id}">revoke</button>` : ""}</td></tr>`; }).join(""); };
     const renderKeys = () => { document.querySelector("#keys tbody").innerHTML = me.keys.map((k) => `<tr><td class="small">${new Date(k.created).toLocaleDateString()}</td><td class="small"><code>${esc(k.id.slice(0, 12))}…</code></td><td>${me.keys.length > 1 ? `<button class="quiet small" data-remove="${esc(k.id)}">remove</button>` : ""}</td></tr>`).join(""); };
     const refresh = async () => { const m = await A.by(did); me.delegations = m.delegations; me.keys = m.keys; renderSessions(); renderKeys(); };
-    renderSessions(); renderKeys();
+    const pmsg = (t, cls = "") => { const el = document.getElementById("pmsg"); el.innerHTML = t; el.className = "small " + cls; };
+    const renderProofs = () => { document.getElementById("proofs").innerHTML = me.proofs.map((p) => `<li>${esc(p.target)} ${p.verifications.length ? `<span class="ok">✓ verified</span> (<a href="${esc(p.verifications[0].evidence)}">evidence</a>)` : `<span class="muted">unverified</span> <button class="quiet small" data-show="${p.id}">how</button> <button class="quiet small" data-check="${p.id}">check now</button>`} <button class="quiet small" data-retractclaim="${p.id}" data-target="${esc(p.target)}">remove</button></li>`).join("") || "<li class='muted'>none yet</li>"; };
+    renderSessions(); renderKeys(); renderProofs();
+    document.getElementById("claim").onsubmit = async (e) => { e.preventDefault(); const t = document.getElementById("ptype").value, v = document.getElementById("pvalue").value.trim(); if (!v) return; try { const target = t === "https://" ? (/^https?:\/\//.test(v) ? v : "https://" + v) : t + v; const r = await A.attest("claim", target); const i = await A.req("proof.instructions", { claim: r.id }); pmsg(esc(i.instructions), "ok"); document.getElementById("pvalue").value = ""; me.proofs = (await A.by(did)).proofs; renderProofs(); } catch (err) { pmsg(esc(err.message), "err"); } };
     document.getElementById("own").addEventListener("click", async (e) => {
+      const show = e.target.dataset.show, chk = e.target.dataset.check, rc = e.target.dataset.retractclaim;
+      if (show) { const i = await A.req("proof.instructions", { claim: show }); pmsg(esc(i.instructions)); return; }
+      if (chk) { e.target.disabled = true; try { const r = await A.req("proof.check", { claim: chk }); pmsg("Verified: " + esc(r.evidence), "ok"); me.proofs = (await A.by(did)).proofs; renderProofs(); } catch (err) { pmsg(esc(err.message), "err"); e.target.disabled = false; } return; }
+      if (rc) { try { await A.attest("retract", e.target.dataset.target, { ref: rc }); me.proofs = (await A.by(did)).proofs; renderProofs(); } catch (err) { pmsg(esc(err.message), "err"); } return; }
       const rv = e.target.dataset.revoke, rm = e.target.dataset.remove; if (!rv && !rm) return; e.target.disabled = true;
       try {
         if (rv) { await A.rootAction({ v: 1, type: "revoke", root: did, del: rv, at: stamp() }); if (rv === s.id) A.clearSession(); msg("Session revoked.", "ok"); }

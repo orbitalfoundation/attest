@@ -1,0 +1,40 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>attest · profile</title>
+<meta name="robots" content="noindex"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css"></head><body><main>
+<h1 id="h">…</h1>
+<p class="muted small" id="who"></p>
+<p id="vouchrow"></p>
+<h2>Vouched for by <span id="nvb" class="muted"></span></h2>
+<ul id="vouchedby" class="small"></ul>
+<h2>Proofs of control</h2>
+<ul id="proofs" class="small"></ul>
+<h2>Vouches for <span id="nv" class="muted"></span></h2>
+<ul id="vouches" class="small"></ul>
+<h2>Statements and comments</h2>
+<table id="t"><tbody></tbody></table>
+<p class="muted small" id="counts"></p>
+</main>
+<script type="module">
+import * as A from "/attest-core.js"; import "/menu.js";
+const handle = decodeURIComponent(location.pathname.replace(/^\/@/, "")), $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const link = (t) => /^https?:/.test(t) ? `<a href="${esc(t)}">${esc(t)}</a>` : esc(t);
+const r = await fetch("/handle/" + encodeURIComponent(handle)); if (!r.ok) { $("h").textContent = "no such handle"; throw new Error("404"); }
+const me = await r.json(); document.title = "attest · @" + me.handle;
+$("h").textContent = "@" + me.handle + (me.service ? " (the service)" : "");
+$("who").innerHTML = `<code>${esc(me.did)}</code>${me.since ? " · since " + new Date(me.since).toLocaleDateString() : ""} · ${me.keys.length} passkey${me.keys.length === 1 ? "" : "s"} · <a href="/by/${encodeURIComponent(me.did)}">json</a>`;
+$("nvb").textContent = me.vouchedBy.length; $("nv").textContent = me.vouches.length;
+$("vouchedby").innerHTML = me.vouchedBy.map((v) => `<li><a href="/@${esc(v.handle)}">@${esc(v.handle || A.short(v.by))}</a> <span class="muted">${new Date(v.at).toLocaleDateString()}</span></li>`).join("") || "<li class='muted'>nobody yet</li>";
+$("vouches").innerHTML = me.vouches.map((v) => `<li><a href="/@${esc(v.handle)}">@${esc(v.handle || A.short(v.target))}</a> <span class="muted">${new Date(v.at).toLocaleDateString()}</span></li>`).join("") || "<li class='muted'>nobody yet</li>";
+$("proofs").innerHTML = me.proofs.map((p) => `<li>${link(p.target)} ${p.verifications.length ? `<span class="ok">✓ verified</span> by ${p.verifications.map((v) => `<a href="/@${esc(v.handle)}">@${esc(v.handle || A.short(v.by))}</a> (<a href="${esc(v.evidence)}">evidence</a>)`).join(", ")}` : `<span class="muted">claimed, unverified</span>`}</li>`).join("") || "<li class='muted'>none</li>";
+document.querySelector("#t tbody").innerHTML = me.records.filter((x) => (x.kind === "statement" || x.kind === "comment") && !x.retracted).map((x) => `<tr><td class="small muted">${new Date(x.at).toLocaleDateString()}</td><td>${esc(x.body)}<div class="small muted">${x.kind} on ${link(x.target)}</div></td></tr>`).join("") || "<tr><td class='muted'>none yet</td></tr>";
+$("counts").textContent = Object.entries(me.counts).map(([k, n]) => `${n} ${k}${n === 1 ? "" : "s"}`).join(" · ");
+// vouch button: only on the service's own origin, only for someone else
+const s = A.session();
+if (s && A.server === location.origin && s.root !== me.did && !me.service) {
+  const mine = (await A.by(s.root)); let my = mine.vouches.find((v) => v.target === me.did)?.id || null;
+  const render = () => { $("vouchrow").innerHTML = `<button id="vouch" class="${my ? "" : "quiet"}">${my ? "✓ I know this person · retract" : "I know this person"}</button> <span class="small muted">you have vouched for ${mine.vouches.length} key${mine.vouches.length === 1 ? "" : "s"}</span> <span id="vmsg" class="small err"></span>`;
+    $("vouch").onclick = async () => { $("vouch").disabled = true; try { if (my) { await A.attest("retract", me.did, { ref: my }); my = null; } else { const r = await A.attest("vouch", me.did); my = r.id; } mine.vouches = (await A.by(s.root)).vouches; render(); const fresh = await (await fetch("/handle/" + encodeURIComponent(handle))).json(); $("nvb").textContent = fresh.vouchedBy.length; $("vouchedby").innerHTML = fresh.vouchedBy.map((v) => `<li><a href="/@${esc(v.handle)}">@${esc(v.handle || A.short(v.by))}</a></li>`).join("") || "<li class='muted'>nobody yet</li>"; } catch (e) { $("vmsg").textContent = e.message; $("vouch").disabled = false; } }; };
+  render();
+} else if (s && s.root === me.did) $("vouchrow").innerHTML = `<a href="/me">This is you: sessions, passkeys and proofs</a>`;
+else if (!s && A.server === location.origin) $("vouchrow").innerHTML = `<a href="/login?return=${encodeURIComponent(location.pathname)}">Sign in</a> to vouch for this person.`;
+</script></body></html>

@@ -46,7 +46,7 @@ class Widget {
     const s = A.session(); this.$(".n").textContent = this.counts.upvotes; this.$(".up").setAttribute("aria-pressed", String(!!this.mine));
     this.$(".who").innerHTML = s ? `@${esc(s.handle)} · <a href="#" class="out">sign out</a>` : `<a href="#" class="in">sign in</a>`;
     const out = this.$(".out"), inn = this.$(".in"); if (out) out.onclick = (e) => { e.preventDefault(); A.clearSession(); this.mine = null; this.render(); }; if (inn) inn.onclick = (e) => { e.preventDefault(); this.ensureSession().catch((err) => this.error(err)); };
-    if (this.comments) this.$(".list").innerHTML = this.counts.comments.map((c) => `<li><b>@${esc(c.handle || A.short(c.by))}</b><time>${when(c.at)}</time><div>${esc(c.body)}</div></li>`).join("");
+    if (this.comments) this.$(".list").innerHTML = this.counts.comments.map((c) => `<li><b>${c.handle ? `<a href="${A.server}/@${esc(c.handle)}" style="color:inherit;text-decoration:none">@${esc(c.handle)}</a>` : "@" + esc(A.short(c.by))}</b><time>${when(c.at)}</time><div>${esc(c.body)}</div></li>`).join("");
   }
 }
 export async function mount(root = document) {

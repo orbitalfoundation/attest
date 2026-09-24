@@ -15,6 +15,9 @@ export async function routes(app) {
     if (!targets.length) return reply.code(400).send({ error: "targets required" });
     reply.header("Cache-Control", "public, max-age=0, s-maxage=10"); return { targets: records.read(targets) };
   });
+  app.get("/handle/:handle", async (req, reply) => { const r = records.byHandle(req.params.handle); if (!r) return reply.code(404).send({ error: "no such handle" }); reply.header("Cache-Control", "public, max-age=0, s-maxage=5"); return r; });
+  app.get("/@:handle", (req, reply) => reply.type("text/html").sendFile("profile.html", join(root, "public")));
+  app.get("/service", async () => ({ did: records.serviceDid(), handle: "attest", note: "The service's own key; it signs verify records after checking a proof. Trust it as far as you trust this service." }));
   app.get("/by/:did", async (req, reply) => { reply.header("Cache-Control", "public, max-age=0, s-maxage=5"); return records.by(req.params.did); });
   app.get("/record/:id", async (req, reply) => { const r = store.getRecord(req.params.id); if (!r) return reply.code(404).send({ error: "no such record" }); reply.header("Cache-Control", "public, max-age=3600"); return r; });
   app.get("/log", async (req, reply) => { reply.header("Cache-Control", "public, max-age=5"); return { entries: store.logSince(Number(req.query.since || 0), Number(req.query.limit || 500)) }; });

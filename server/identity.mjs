@@ -34,8 +34,11 @@ export async function checkRecord(r, { KINDS, normalizeTarget }) {
   if (r.body !== undefined && (typeof r.body !== "string" || r.body.length > 4000)) throw new Error("body must be a string under 4000 chars");
   if (r.kind === "comment" && !(r.body && r.body.trim())) throw new Error("comment needs a body");
   if (r.kind === "statement" && !(r.body && r.body.trim())) throw new Error("statement needs a body");
-  if (r.kind === "retract" && !/^[0-9a-f]{64}$/.test(r.ref || "")) throw new Error("retract needs ref");
-  if (r.kind !== "retract" && r.ref !== undefined) throw new Error("only retract carries ref");
+  if ((r.kind === "retract" || r.kind === "verify") && !/^[0-9a-f]{64}$/.test(r.ref || "")) throw new Error(r.kind + " needs ref");
+  if (r.kind !== "retract" && r.kind !== "verify" && r.ref !== undefined) throw new Error("only retract and verify carry ref");
+  if (r.kind === "vouch") { if (!isDid(r.target)) throw new Error("vouch targets a key"); if (r.target === r.by) throw new Error("you cannot vouch for yourself"); }
+  if (r.kind === "claim" && isDid(r.target)) throw new Error("claim targets a handle or URL, not a key");
+  if (r.kind === "verify" && !(r.body && /^(https?:\/\/|dns:)/.test(r.body))) throw new Error("verify needs an evidence URL in body");
   const allowed = new Set(["v", "type", "kind", "by", "target", "at", "body", "ref"]); for (const k of Object.keys(r)) if (!allowed.has(k)) throw new Error("unexpected field " + k);
   return idOf(r);
 }

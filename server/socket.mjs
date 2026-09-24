@@ -6,6 +6,7 @@ import * as records from "./records.mjs";
 import * as passkeys from "./passkeys.mjs";
 import { didFromJwk } from "./identity.mjs";
 import { allow } from "./ratelimit.mjs";
+import * as proofs from "./proofs.mjs";
 import { randomBytes } from "node:crypto";
 const pending = new Map(); // nonce -> {challenge, handle, at}
 setInterval(() => { const cutoff = Date.now() - 5 * 60e3; for (const [k, v] of pending) if (v.at < cutoff) pending.delete(k); }, 60e3).unref();
@@ -29,7 +30,7 @@ const handlers = {
   // Sign-in is signing a delegation: the client builds the delegation, we hand back WebAuthn options whose challenge is its id.
   async "delegate.start"({ delegation }, ctx) {
     const { checkDelegation } = await import("./identity.mjs"); const id = await checkDelegation(delegation);
-    const options = await passkeys.authenticationOptions({ origin: ctx.origin, challenge: Buffer.from(id, "hex").toString("base64url") });
+    const options = await passkeys.authenticationOptions({ origin: ctx.origin, challenge: Buffer.from(id, "hex").toString("base64url"), allow: store.keysOf(delegation.root) });
     return { id, options };
   },
   async "delegate.finish"({ delegation, credentialId, assertion }, ctx) {
@@ -65,6 +66,8 @@ const handlers = {
   },
   async subscribe({ targets }, ctx) { for (const t of (targets || []).slice(0, 100)) ctx.socket.join("t:" + t); return { ok: true }; },
   async whois({ did }) { return { did, handle: records.whois(did) }; },
+  async "proof.instructions"({ claim }) { const c = store.getRecord(claim); if (!c || c.record.kind !== "claim") throw new Error("no such claim"); return { token: proofs.tokenFor(claim), instructions: proofs.instructions(c.record.target, claim) }; },
+  async "proof.check"({ claim }, ctx) { if (!allow("proof:" + ctx.ip, 10)) throw new Error("too many checks; slow down"); return proofs.check(claim); },
   async lookup({ handle }) { const a = store.getAccountByHandle(String(handle || "").trim().toLowerCase()); if (!a) throw new Error("no account with that handle"); return { did: a.did, handle: a.handle }; },
   async read({ targets }) { return records.read(targets || []); },
 };

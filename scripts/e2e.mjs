@@ -64,6 +64,34 @@ ok(await waitFor(`document.getElementById('keymsg').textContent.startsWith('Adde
 const keysNow = (await (await fetch(base + "/by/" + encodeURIComponent(await evaluate(`JSON.parse(localStorage.getItem('attest:session')).root`)))).json()).keys.length; ok(keysNow === 2, `account now lists ${keysNow} passkeys`);
 await evaluate(`document.querySelector('#keys [data-remove]').click(); true`);
 ok(await waitFor(`document.getElementById('keymsg').textContent.startsWith('Passkey removed') || document.getElementById('keymsg').className.includes('err')`, 15000), "remove a passkey: " + await evaluate(`document.getElementById('keymsg').textContent`));
+console.log("profile, vouch from a second account, proof of control");
+const site = process.env.SITE || "http://localhost:8101", siteDir = process.env.SITE_DIR || "";
+const did1 = await evaluate(`JSON.parse(localStorage.getItem('attest:session')).root`);
+await go("/@" + handle, 2000);
+ok(await evaluate(`document.getElementById('h').textContent === '@' + ${JSON.stringify(handle)} && document.body.innerText.includes('This is you')`), "own profile page renders");
+// claim the test site and put the token where the verifier looks
+await go("/me", 2500);
+await evaluate(`document.getElementById('ptype').value = 'https://'; document.getElementById('pvalue').value = ${JSON.stringify(site + "/")}; document.getElementById('claim').requestSubmit(); true`);
+ok(await waitFor(`document.getElementById('pmsg').textContent.includes('attest-proof:')`), "claim made; instructions show the token");
+const claimId = await evaluate(`document.querySelector('#proofs [data-check]')?.dataset.check`); ok(!!claimId, "claim listed as unverified");
+await evaluate(`document.querySelector('#proofs [data-check]').click(); true`);
+ok(await waitFor(`document.getElementById('pmsg').className.includes('err')`), "check before the token is placed fails honestly: " + await evaluate(`document.getElementById('pmsg').textContent`));
+if (siteDir) { const { mkdirSync, writeFileSync } = await import("node:fs"); mkdirSync(siteDir + "/.well-known", { recursive: true }); writeFileSync(siteDir + "/.well-known/attest.txt", "attest-proof:" + claimId + "\n"); }
+await sleep(31000); // the verifier refuses to re-check the same claim within 30 s
+await go("/me", 2500); await evaluate(`document.querySelector('#proofs [data-check]').click(); true`);
+ok(await waitFor(`document.getElementById('pmsg').textContent.startsWith('Verified')`, 15000), "proof verified once the token is in /.well-known/attest.txt: " + await evaluate(`document.getElementById('pmsg').textContent`));
+// a second account vouches for the first
+const handle2 = handle + "b"; await evaluate(`localStorage.removeItem('attest:session'); true`); await go("/login?return=/@" + handle);
+await evaluate(`document.getElementById('handle').value = ${JSON.stringify(handle2)}; document.getElementById('register').click(); true`);
+ok(await waitFor(`location.pathname === '/@' + ${JSON.stringify(handle)}`, 15000), "second account registered and landed on the first's profile");
+await sleep(1500); await evaluate(`document.getElementById('vouch').click(); true`);
+ok(await waitFor(`document.getElementById('vouch').textContent.startsWith('✓') && document.getElementById('nvb').textContent === '1'`), "vouch recorded; profile shows 1 voucher");
+const p1 = await (await fetch(`${base}/by/${encodeURIComponent(did1)}`)).json();
+ok(p1.vouchedBy.length === 1 && p1.vouchedBy[0].handle === handle2 && p1.proofs[0].verifications.length === 1 && p1.proofs[0].verifications[0].handle === "attest", "/by lists the voucher and the service's verification");
+const selfVouch = await evaluate(`(async () => { const A = await import('/attest-core.js'); const s = A.session(); try { await A.attest('vouch', s.root); return 'accepted'; } catch (e) { return e.message; } })()`);
+ok(/yourself/.test(selfVouch), "self-vouch refused: " + selfVouch);
+await evaluate(`localStorage.removeItem('attest:session'); true`); await go("/login?return=/me");
+await evaluate(`document.getElementById('handle').value = ${JSON.stringify(handle)}; document.getElementById('signin').click(); true`); ok(await waitFor(`location.pathname === '/me'`), "back as the first account");
 console.log("bad record is refused");
 const refused = await evaluate(`(async () => { const A = await import('/attest-core.js'); const env = await A.makeRecord('upvote', 'https://example.org/x'); env.record.body = 'tampered'; try { await A.req('attest', env); return 'accepted'; } catch (e) { return e.message; } })()`);
 ok(/signature does not verify|unexpected|body/.test(refused), "tampered record refused: " + refused);

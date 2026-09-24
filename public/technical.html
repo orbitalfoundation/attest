@@ -40,17 +40,21 @@
 <h2>Threat model, as it stands</h2>
 <table>
 <tr><th>threat</th><th>today</th></tr>
-<tr><td>Stolen device key (XSS on the integrating site)</td><td>Can sign as the user on that origin until the delegation expires (≤90 days). Cannot act on other origins. No revocation of a delegation yet; planned as a signed <code>revoke</code> from the root.</td></tr>
+<tr><td>Stolen device key (XSS on the integrating site)</td><td>Can sign as the user on that origin until the delegation expires (≤90 days) or the root revokes it from <code>/me</code>: a <code>revoke</code> action signed by the passkey, appended to the log; later records under that delegation are refused. Cannot act on other origins.</td></tr>
 <tr><td>Stolen delegation without the device key</td><td>Useless: the device private key is non-extractable and never transmitted.</td></tr>
 <tr><td>Replay of a record</td><td>Idempotent: the id is content-derived; a duplicate upvote is a no-op.</td></tr>
 <tr><td>Spoofed <code>Origin</code> header from a non-browser client</td><td>The origin check is a browser guarantee, not a cryptographic one. A non-browser attacker still needs the device key. Binding the origin into what the device key signs is a planned tightening.</td></tr>
 <tr><td>Sybil keys</td><td>Free to create. Counts today are raw and say so. Bounded-flow scoring from a root is the answer and is the next milestone after vouches exist.</td></tr>
 <tr><td>Whitewashing (burn and return)</td><td>By design. Newcomers start at zero; the cost is paid in time. See Friedman and Resnick.</td></tr>
-<tr><td>Lost passkey</td><td>Lost account. A second passkey and key export are the custody milestone.</td></tr>
+<tr><td>Lost passkey</td><td>Lost account unless a second passkey was added: a new device registers one, and an existing passkey signs <code>add-key</code> to adopt it. Removing one needs a signature from another. Key export is still to come.</td></tr>
 <tr><td>Our server lies or rewrites</td><td>Detectable by any mirror of the log; not yet provable. Signed tree heads are planned.</td></tr>
 <tr><td>Reads reveal what you look at</td><td>True for the first-party site's own reads. The planned browser client scores from a mirror or asks by hash prefix.</td></tr>
 </table>
 
+<h2>Root actions</h2>
+<p>Sign-in is one instance of a general shape: the passkey signs an action by signing a WebAuthn assertion whose challenge is the action's SHA-256. The others are <code>revoke</code> (a delegation), <code>add-key</code> and <code>remove-key</code> (passkeys on the account). Each is appended to the log with its assertion, so a mirror can replay account history. The service offers only the account's own passkeys in the browser prompt, and never the one being removed.</p>
+<h2>Proof of control and the service key</h2>
+<p>A <code>claim</code> record says a key controls a handle or URL. The token <code>attest-proof:&lt;claim id&gt;</code> goes where only the controller can put it: the page itself or <code>/.well-known/attest.txt</code> for a website, a TXT record at <code>_attest.&lt;domain&gt;</code>, a public gist, a Bluesky bio. The service fetches, and if it finds the token it signs a <code>verify</code> record with the evidence URL. The service has a key of its own for this (P-256, generated on first start, DID at <code>/service</code>), and its records carry the public key in the envelope instead of a delegation. Any other key may verify a claim by hand and its verification counts as far as that key is trusted; the service's counts as far as the service is.</p>
 <h2>Canonical JSON</h2>
 <p>Object keys sorted lexicographically at every level; arrays in given order; <code>undefined</code> members dropped; <code>null</code> kept; no whitespace; strings and numbers as <code>JSON.stringify</code> emits them. It is deliberately smaller than RFC 8785 and identical to it for the shapes we sign.</p>
 

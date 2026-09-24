@@ -39,7 +39,8 @@ await A.subscribe([url]); A.onCounts(({ target, counts }) => …)  // live</pre>
 <table>
 <tr><th>endpoint</th><th>returns</th></tr>
 <tr><td><code>GET /read?targets=a,b,c</code></td><td><code>{targets: {a: {target, upvotes, vouches, comments:[{id, by, handle, at, body}]}}}</code>. Up to 100 targets. Comma-separate; URL-encode each target.</td></tr>
-<tr><td><code>GET /by/:did</code></td><td><code>{did, handle, since, keys:[{id, jwk}], records:[{id, kind, target, at, ref, retracted, body}]}</code>. <code>keys</code> are the passkey public keys, for checking delegations yourself.</td></tr>
+<tr><td><code>GET /by/:did</code></td><td><code>{did, handle, since, keys:[{id, jwk, created}], delegations:[{id, device, origin, from, until, revoked}], counts, vouchedBy:[{by, handle, at}], vouches:[{target, handle, at}], proofs:[{id, target, verifications:[{by, handle, evidence}]}], records:[…]}</code>. <code>keys</code> are the passkey public keys, for checking delegations yourself.</td></tr>
+<tr><td><code>GET /handle/:handle</code></td><td>the same, looked up by handle. <code>/@handle</code> is the human page.</td></tr>
 <tr><td><code>GET /record/:id</code></td><td>the full signed envelope <code>{record, del, sig, id, retracted}</code></td></tr>
 <tr><td><code>GET /log?since=N&amp;limit=500</code></td><td>the append-only log from sequence N: <code>{entries:[{seq, type:"record"|"delegation", id, received, …envelope}]}</code>. Mirror by paging <code>since</code>.</td></tr>
 <tr><td><code>GET /stats</code></td><td>account, record and log counts</td></tr>
@@ -54,7 +55,10 @@ await A.subscribe([url]); A.onCounts(({ target, counts }) => …)  // live</pre>
 <tr><td><code>lookup</code></td><td><code>{handle}</code> → <code>{did, handle}</code></td></tr>
 <tr><td><code>delegate.start</code></td><td><code>{delegation}</code> → <code>{id, options}</code> (WebAuthn request options whose challenge is the delegation's id)</td></tr>
 <tr><td><code>delegate.finish</code></td><td><code>{delegation, credentialId, assertion}</code> → <code>{id, root, handle, until}</code></td></tr>
-<tr><td><code>attest</code></td><td><code>{record, del, sig}</code> → <code>{id, counts, duplicate?}</code></td></tr>
+<tr><td><code>attest</code></td><td><code>{record, del, sig}</code> → <code>{id, counts, duplicate?}</code>. Refused with "delegation revoked" once the root has revoked that delegation.</td></tr>
+<tr><td><code>root.start</code>, <code>root.finish</code></td><td>actions only the passkey may sign, on the service origin: <code>{v:1, type:"revoke", root, del, at}</code>, <code>{type:"add-key", credentialId}</code>, <code>{type:"remove-key", credentialId}</code>. Same shape as sign-in: the action's id is the WebAuthn challenge.</td></tr>
+<tr><td><code>passkey.add.start/finish</code></td><td>register a second passkey for an account; it is adopted when an existing passkey signs <code>add-key</code></td></tr>
+<tr><td><code>proof.instructions</code>, <code>proof.check</code></td><td><code>{claim}</code> → where to put the token <code>attest-proof:&lt;claim id&gt;</code>; then the service fetches and, if found, signs a <code>verify</code> record. Website: the URL itself or <code>/.well-known/attest.txt</code>; DNS: TXT at <code>_attest.&lt;domain&gt;</code>; GitHub: a public gist; Bluesky: the bio.</td></tr>
 <tr><td><code>subscribe</code></td><td><code>{targets}</code>; the server then emits <code>counts</code> events <code>{target, counts}</code></td></tr>
 <tr><td><code>whois</code>, <code>read</code></td><td>as the GETs</td></tr>
 </table>
@@ -64,14 +68,15 @@ await A.subscribe([url]); A.onCounts(({ target, counts }) => …)  // live</pre>
 <pre>record     {v:1, type:"record", kind, by:"did:key:z…", target, at:"ISO-8601", body?, ref?}
 envelope   {record, del:"&lt;delegation id&gt;", sig:"&lt;base64url ES256 over canonical(record)&gt;"}
 id         hex sha256 of canonical(record)</pre>
-<p><b>kind</b> is one of <code>upvote</code>, <code>comment</code>, <code>vouch</code>, <code>statement</code>, <code>retract</code>. <code>comment</code> and <code>statement</code> need a <code>body</code> (under 4000 characters). <code>retract</code> needs <code>ref</code>, the id of the author's own record on the same target, and only that kind carries <code>ref</code>.</p>
+<p><b>kind</b> is one of <code>upvote</code>, <code>comment</code>, <code>vouch</code>, <code>statement</code>, <code>claim</code>, <code>retract</code>, and <code>verify</code>. <code>comment</code> and <code>statement</code> need a <code>body</code> (under 4000 characters). <code>vouch</code> targets a key (a <code>did:key</code>), never your own. <code>claim</code> targets a handle or URL you say you control (<code>https://…</code>, <code>dns:example.com</code>, <code>github:user</code>, <code>bsky:handle</code>). <code>retract</code> needs <code>ref</code>, the id of the author's own record on the same target. <code>verify</code> is issued by a verifier, not submitted: it carries <code>ref</code> (the claim) and <code>body</code> (the evidence URL). One live upvote, vouch and claim per key per target.</p>
+<p>A record signed by the service itself (today only <code>verify</code>) has no delegation: its envelope is <code>{record, sig, key}</code> and <code>record.by</code> equals <code>didFromJwk(key)</code>. <code>GET /service</code> gives the service key's DID. Trust it as far as you trust the service; any other key may also issue verifications by hand.</p>
 <p><b>target</b> is normalised before signing, and the server refuses a record whose target is not in normal form. Forms: a URL (scheme and host lowercased, fragment dropped, empty path becomes <code>/</code>); <code>doi:10.…</code> lowercased; <code>isbn:…</code> without hyphens; a <code>did:key:…</code>; a service handle such as <code>github:anselm</code>; <code>sha256:&lt;hex&gt;</code> for content.</p>
 <p><b>canonical JSON</b>: object keys sorted at every depth, arrays kept in order, no whitespace, <code>undefined</code> dropped. The shared module <code>ORIGIN/lib/did.js</code> exports <code>canonical</code>, <code>idOf</code>, <code>verifyObject</code>, <code>didFromJwk</code> and <code>normalizeTarget</code>, and runs unchanged in browsers and Node.</p>
 
 <h2>6. Verifying without us</h2>
 <ol>
 <li>Fetch the envelope (<code>/record/:id</code>) or take it from the log. Check <code>sha256(canonical(record)) === id</code>.</li>
-<li>Fetch the delegation by <code>del</code> from the log. Check <code>delegation.root === record.by</code>, that <code>record.at</code> lies within <code>from</code>…<code>until</code>, and that <code>didFromJwk(delegation.devKey) === delegation.device</code>.</li>
+<li>Fetch the delegation by <code>del</code> from the log. Check <code>delegation.root === record.by</code>, that <code>record.at</code> lies within <code>from</code>…<code>until</code>, and that <code>didFromJwk(delegation.devKey) === delegation.device</code>. A <code>revoke</code> entry in the log naming that delegation means records received after it were refused; the log's order tells you which.</li>
 <li>Verify <code>sig</code> as ECDSA P-256 / SHA-256, raw <code>r||s</code>, over <code>canonical(record)</code>, with <code>delegation.devKey</code>.</li>
 <li>To go one step further, verify the WebAuthn assertion stored with the delegation against the root's passkey public key (<code>/by/:did</code> → <code>keys</code>): its challenge must equal the delegation's id as base64url bytes.</li>
 </ol>

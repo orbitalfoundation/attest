@@ -47,4 +47,4 @@ export function normalizeTarget(t) {
   if (/^sha256:[0-9a-f]{64}$/i.test(t)) return "sha256:" + t.slice(7).toLowerCase();
   throw new Error("unrecognised target: " + t.slice(0, 80));
 }
-export const KINDS = ["upvote", "comment", "vouch", "statement", "retract"];
+export const KINDS = ["upvote", "comment", "vouch", "statement", "retract", "claim", "verify"];

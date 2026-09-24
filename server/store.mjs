@@ -20,6 +20,9 @@ export function open(path = process.env.ATTEST_DB || "data/attest.sqlite") {
     CREATE INDEX IF NOT EXISTS records_by ON records(by_did, at);
     CREATE UNIQUE INDEX IF NOT EXISTS records_one_upvote ON records(by_did, target) WHERE kind = 'upvote' AND retracted = 0;
     CREATE TABLE IF NOT EXISTS revocations (del TEXT PRIMARY KEY, root TEXT NOT NULL, at TEXT NOT NULL, json TEXT NOT NULL);
+    CREATE UNIQUE INDEX IF NOT EXISTS records_one_vouch ON records(by_did, target) WHERE kind = 'vouch' AND retracted = 0;
+    CREATE UNIQUE INDEX IF NOT EXISTS records_one_claim ON records(by_did, target) WHERE kind = 'claim' AND retracted = 0;
+    CREATE INDEX IF NOT EXISTS records_ref ON records(ref);
   `);
   return db;
 }
@@ -27,6 +30,7 @@ const now = () => new Date().toISOString();
 // accounts and credentials
 export const getAccount = (did) => db.prepare("SELECT did, handle, created FROM accounts WHERE did = ?").get(did) || null;
 export const getAccountByHandle = (handle) => db.prepare("SELECT did, handle, created FROM accounts WHERE handle = ?").get(handle) || null;
+export function ensureServiceAccount(did, handle) { db.prepare("INSERT OR IGNORE INTO accounts (did, handle, created) VALUES (?, ?, ?)").run(did, handle, now()); }
 export function createAccount({ did, handle, credential }) {
   const tx = db.prepare("INSERT INTO accounts (did, handle, created) VALUES (?, ?, ?)"), c = db.prepare("INSERT INTO credentials (id, did, public_key, jwk, counter, transports, created) VALUES (?, ?, ?, ?, ?, ?, ?)");
   db.exec("BEGIN"); try { tx.run(did, handle, now()); c.run(credential.id, did, credential.publicKey, JSON.stringify(credential.jwk), credential.counter, JSON.stringify(credential.transports), now()); db.exec("COMMIT"); } catch (e) { db.exec("ROLLBACK"); throw e; }
@@ -60,6 +64,7 @@ export function putRecord(id, envelope) {
   } catch (e) { db.exec("ROLLBACK"); throw e; }
 }
 export function getRecord(id) { const r = db.prepare("SELECT json, retracted FROM records WHERE id = ?").get(id); return r ? { ...JSON.parse(r.json), id, retracted: !!r.retracted } : null; }
+export const findLive = (by, target, kind) => db.prepare("SELECT id FROM records WHERE by_did = ? AND target = ? AND kind = ? AND retracted = 0").get(by, target, kind)?.id || null;
 export const findUpvote = (by, target) => db.prepare("SELECT id FROM records WHERE by_did = ? AND target = ? AND kind = 'upvote' AND retracted = 0").get(by, target)?.id || null;
 export function countsFor(target) {
   const up = db.prepare("SELECT COUNT(*) AS n FROM records WHERE target = ? AND kind = 'upvote' AND retracted = 0").get(target).n;
@@ -68,6 +73,13 @@ export function countsFor(target) {
   const vouches = db.prepare("SELECT COUNT(*) AS n FROM records WHERE target = ? AND kind = 'vouch' AND retracted = 0").get(target).n;
   return { upvotes: up, vouches, comments };
 }
+export const vouchesFor = (did) => db.prepare("SELECT r.id, r.by_did, r.at, a.handle FROM records r LEFT JOIN accounts a ON a.did = r.by_did WHERE r.target = ? AND r.kind = 'vouch' AND r.retracted = 0 ORDER BY r.at DESC").all(did).map((r) => ({ id: r.id, by: r.by_did, handle: r.handle, at: r.at }));
+export const vouchesBy = (did) => db.prepare("SELECT r.id, r.target, r.at, a.handle FROM records r LEFT JOIN accounts a ON a.did = r.target WHERE r.by_did = ? AND r.kind = 'vouch' AND r.retracted = 0 ORDER BY r.at DESC").all(did).map((r) => ({ id: r.id, target: r.target, handle: r.handle, at: r.at }));
+export function claimsOf(did) {
+  return db.prepare("SELECT id, target, at FROM records WHERE by_did = ? AND kind = 'claim' AND retracted = 0 ORDER BY at DESC").all(did).map((c) => ({ ...c,
+    verifications: db.prepare("SELECT r.id, r.by_did, r.at, r.json, a.handle FROM records r LEFT JOIN accounts a ON a.did = r.by_did WHERE r.kind = 'verify' AND r.ref = ? AND r.retracted = 0 ORDER BY r.at DESC").all(c.id).map((v) => ({ id: v.id, by: v.by_did, handle: v.handle, at: v.at, evidence: JSON.parse(v.json).record.body })) }));
+}
+export const countsBy = (did) => db.prepare("SELECT kind, COUNT(*) AS n FROM records WHERE by_did = ? AND retracted = 0 GROUP BY kind").all(did).reduce((o, r) => (o[r.kind] = r.n, o), {});
 export function recordsBy(did, limit = 200) {
   return db.prepare("SELECT id, kind, target, at, ref, retracted, json FROM records WHERE by_did = ? ORDER BY at DESC LIMIT ?").all(did, limit)
     .map((r) => ({ id: r.id, kind: r.kind, target: r.target, at: r.at, ref: r.ref || undefined, retracted: !!r.retracted, body: JSON.parse(r.json).record.body }));

@@ -7,7 +7,7 @@ Origin: https://attest.monster (staging). Source: https://github.com/orbitalfoun
 ## If you are an agent reading the web
 
 - Batch counts for pages: GET /read?targets=<url1>,<url2>,... (URL-encode each; up to 100). Returns per target: upvotes, vouches, comments[{id, by, handle, at, body}]. Counts are raw today, not trust-weighted; treat them as signals, not verdicts.
-- Everything one key signed: GET /by/<did>. Includes the key's passkey public keys under `keys`.
+- Everything one key signed: GET /by/<did> (or GET /handle/<handle>). Includes passkey public keys under `keys`, delegations with `revoked`, who vouched for it (`vouchedBy`), whom it vouches for (`vouches`), and its proofs of control with verifications (`proofs`). Human page: /@<handle>.
 - One signed envelope: GET /record/<id>. The whole log: GET /log?since=<seq>&limit=500 (append-only, page by seq).
 - Targets are normalised: URLs lowercase scheme and host, no fragment; doi:..., isbn:..., did:key:..., github:<handle>, sha256:<hex>.
 - Identities are did:key over P-256 passkey public keys (prefix did:key:zDna). A key has no profile; its meaning is what it signed and who vouched for it. Reputation belongs to the key, not a person; keys can be abandoned.
@@ -15,12 +15,16 @@ Origin: https://attest.monster (staging). Source: https://github.com/orbitalfoun
 ## Record format
 
 record   {v:1, type:"record", kind, by:"did:key:z...", target, at:"ISO-8601", body?, ref?}
-kind     upvote | comment | vouch | statement | retract   (retract carries ref = id of the author's own record)
+kind     upvote | comment | vouch | statement | claim | retract | verify
+         vouch targets a did:key (never your own); claim targets a handle/URL you control; retract carries ref = your own record id;
+         verify is issued by a verifier (the service key, GET /service, or any key) with ref = claim id and body = evidence URL.
+         Service-signed envelopes are {record, sig, key} with no delegation.
 envelope {record, del:"<delegation id>", sig:"<base64url ECDSA P-256/SHA-256 raw r||s over canonical(record)>"}
 id       hex sha256(canonical(record))
 canonical JSON: keys sorted at every depth, no whitespace, undefined dropped.
 
 delegation {v:1, type:"delegation", root, device, devKey:{x,y}, origin, from, until}
+revoke     {v:1, type:"revoke", root, del, at} signed by the root passkey; later records under that delegation are refused
 The root's passkey signed a WebAuthn assertion whose challenge is the delegation's id (sha256 of its canonical JSON); the assertion is stored in the log entry. The device key signs records; the delegation binds it to one root and one site origin for at most 90 days.
 
 ## Verify a record without the service

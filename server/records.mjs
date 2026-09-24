@@ -4,6 +4,27 @@ import { checkDelegation, checkRecord, checkAction, verifyObject } from "./ident
 import { KINDS, normalizeTarget } from "../packages/orbital-attest/verify.mjs";
 import { verifyAssertion } from "./passkeys.mjs";
 import { EventEmitter } from "node:events";
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { dirname } from "node:path";
+import { signObject, didFromJwk } from "../packages/orbital-attest/verify.mjs";
+// The service's own key: it signs verification records ("I checked this proof"). Generated on first start, kept next to the database.
+let service = null;
+export async function initServiceKey(path = (process.env.ATTEST_DB || "data/attest.sqlite").replace(/[^/]*$/, "service-key.json")) {
+  mkdirSync(dirname(path), { recursive: true });
+  let jwk; if (existsSync(path)) jwk = JSON.parse(readFileSync(path, "utf8"));
+  else { const pair = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]); jwk = await crypto.subtle.exportKey("jwk", pair.privateKey); writeFileSync(path, JSON.stringify(jwk), { mode: 0o600 }); }
+  const privateKey = await crypto.subtle.importKey("jwk", jwk, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
+  const pub = { x: jwk.x, y: jwk.y }; service = { privateKey, pub, did: didFromJwk(pub) };
+  store.ensureServiceAccount(service.did, "attest"); return service.did;
+}
+export const serviceDid = () => service?.did || null;
+// A record signed by the service key itself: envelope {record, sig, key} with no delegation.
+export async function serviceRecord(kind, target, extra = {}) {
+  const record = { v: 1, type: "record", kind, by: service.did, target, at: new Date().toISOString(), ...extra };
+  const id = await checkRecord(record, { KINDS, normalizeTarget }); const sig = await signObject(service.privateKey, record);
+  if (!store.getRecord(id)) store.putRecord(id, { record, sig, key: service.pub });
+  return { id, record };
+}
 export const events = new EventEmitter(); // "counts" {target, counts}
 // A delegation envelope: { delegation, credentialId, assertion } where assertion is the WebAuthn response whose challenge was the delegation id.
 export async function acceptDelegation({ envelope, origin }) {
@@ -52,7 +73,8 @@ export async function acceptRecord({ envelope, origin }) {
   if (origin && dg.origin !== origin) throw new Error("delegation was issued for " + dg.origin + ", not " + origin);
   const at = Date.parse(record.at); if (at < Date.parse(dg.from) || at > Date.parse(dg.until)) throw new Error("delegation not valid at record time");
   if (!(await verifyObject(dg.devKey, record, sig))) throw new Error("signature does not verify");
-  if (record.kind === "upvote") { const existing = store.findUpvote(record.by, record.target); if (existing) return { id: existing, duplicate: true, counts: store.countsFor(record.target) }; }
+  if (record.kind === "verify") throw new Error("verify records are issued by verifiers, not submitted");
+  for (const k of ["upvote", "vouch", "claim"]) if (record.kind === k) { const existing = store.findLive(record.by, record.target, k); if (existing) return { id: existing, duplicate: true, counts: store.countsFor(record.target) }; }
   if (record.kind === "retract") { const target = store.getRecord(record.ref); if (!target) throw new Error("retract: no such record"); if (target.record.by !== record.by) throw new Error("retract: not yours"); if (target.record.target !== record.target) throw new Error("retract: target mismatch"); }
   if (!store.getRecord(id)) store.putRecord(id, envelope);
   const counts = store.countsFor(record.target); events.emit("counts", { target: record.target, counts });
@@ -62,5 +84,6 @@ export function read(targets) {
   const out = {}; for (const t of targets.slice(0, 100)) { try { const n = normalizeTarget(t); out[t] = { target: n, ...store.countsFor(n) }; } catch (e) { out[t] = { error: e.message }; } }
   return out;
 }
-export const by = (did) => { const a = store.getAccount(did); return { did, handle: a?.handle || null, since: a?.created || null, keys: store.keysOf(did).map(({ id, jwk, created, transports }) => ({ id, jwk, created, transports })), delegations: store.delegationsOf(did), records: store.recordsBy(did) }; };
+export const by = (did) => { const a = store.getAccount(did); return { did, handle: a?.handle || null, since: a?.created || null, service: did === service?.did || undefined, keys: store.keysOf(did).map(({ id, jwk, created, transports }) => ({ id, jwk, created, transports })), delegations: store.delegationsOf(did), counts: store.countsBy(did), vouchedBy: store.vouchesFor(did), vouches: store.vouchesBy(did), proofs: store.claimsOf(did), records: store.recordsBy(did) }; };
+export const byHandle = (handle) => { const a = store.getAccountByHandle(String(handle || "").toLowerCase()); if (!a) return null; return by(a.did); };
 export const whois = (did) => store.handleOf(did);
