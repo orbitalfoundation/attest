@@ -72,3 +72,43 @@ truth, own vocabulary where a shared one exists. Sunk cost: one day.
 Then the honest position is a proof of concept for URL-subject
 attestation and root-parameter scoring, and the About page should say
 so, with the fold as the stated intent.
+
+## Addendum: the key-custody objection, worked through
+
+Anselm: "not having the user hold the key seems a concern." Before he
+uses attest in other projects it must "work, be durable, be useful,
+survive."
+
+Where the key sits in each design:
+
+- **Standalone today.** Root = passkey, held by the device and synced
+  by Apple or Google; never by us. Every record carries a user-held
+  signature (device key delegated from the passkey). Identity
+  (`did:key`) needs nobody's directory. Survival depends on mirrors of
+  our log existing; today there are none.
+- **atproto.** Day-to-day record signing is by the PDS's repo key, so
+  on bsky.social the host signs, not the person. Identity control is a
+  rotation key the person may hold (Bluesky's "recovery key"), but a
+  passkey cannot be one: WebAuthn signs a challenge structure, not raw
+  bytes, and PLC operations need raw signatures. A user-held rotation
+  key is therefore a key file to back up, the UX passkeys were
+  invented to avoid.
+- **Fold with the custody layer kept.** badge.blue's `signatures`
+  array lets every record carry an inline `did:key` signature from our
+  passkey-delegated device key in addition to the PDS's commit
+  signature. The person's own signature is on every record; the host's
+  key only says "this repo contains it". If we host the PDS ourselves,
+  the host-held key is ours and the account is migratable, not
+  Bluesky's.
+
+Against his four tests: *work* is equal; *durable* and *survive*
+favour the fold (records replicated across a network of relays and
+mirrors that exist today, identity in a directory that outlives us);
+*useful* favours the fold (Tangled and Hypercerts tooling reads the
+records). The one thing the fold gives up is that the person's key is
+the identity itself rather than a signature inside it. Recommendation
+stands: fold, with the inline user signature non-negotiable and our
+own PDS. A cheaper hedge if he is not ready: stay standalone but adopt
+the shared shapes now (badge.blue signatures, DAG-CBOR CIDs, certified
+record fields) so every record can be lifted into a repo later
+without re-signing.
