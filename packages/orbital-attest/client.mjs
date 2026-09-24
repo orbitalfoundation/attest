@@ -1,8 +1,9 @@
 // orbital-attest client: a per-site device key, a delegation from the person's passkey, signing, and one socket to the service.
 // Plain ES module, no build step, no dependencies (socket.io's client is loaded from the service itself).
 // Usage: import * as A from "orbital-attest"; A.configure({ server: "https://attest.monster" }).
-import { didFromJwk, canonical, idOf, signObject, normalizeTarget, b64u, unb64u, KINDS } from "./verify.mjs";
-export { didFromJwk, canonical, idOf, normalizeTarget, b64u, unb64u, KINDS };
+import { didFromJwk, canonical, idOf, signObject, normalizeTarget, b64u, unb64u, KINDS, inlineSign, inlineVerify } from "./verify.mjs";
+export { didFromJwk, canonical, idOf, normalizeTarget, b64u, unb64u, KINDS, inlineSign, inlineVerify };
+const NS = "monster.attest.";
 export let server = null;
 export function configure({ server: origin }) { if (!/^https?:\/\/[^/]+$/.test(origin || "")) throw new Error("configure({server}) needs a bare origin"); server = origin; if (sock) { sock.disconnect(); sock = null; } return server; }
 const need = () => { if (!server) throw new Error("orbital-attest: call configure({server}) first"); return server; };
@@ -43,30 +44,31 @@ export async function req(name, payload = {}) {
 }
 export const onCounts = async (fn) => (await connect()).on("counts", fn);
 export const subscribe = (targets) => req("subscribe", { targets });
-// --- build, sign and submit a record. Needs a session (a delegation for this site's device key).
+// --- build a lexicon-shaped record, sign it inline with this page's device key, submit it to be written into the person's repo.
+// kind: upvote | comment | statement | vouch | claim. extra: {body} for comment/statement, {reason} for vouch, {anchor} for comment.
 export async function makeRecord(kind, target, extra = {}) {
   const s = session(); if (!s) throw new Error("not signed in");
-  const record = { v: 1, type: "record", kind, by: s.root, target: normalizeTarget(target), at: new Date().toISOString(), ...extra };
   const dev = await deviceKey(); if (dev.did !== s.delegation.device) throw new Error("session belongs to another device key; sign in again");
-  const sig = await signObject(dev.privateKey, record);
-  return { record, del: s.id, sig };
+  const createdAt = new Date().toISOString(); let collection, record;
+  if (kind === "upvote") { collection = NS + "vote"; record = { subject: normalizeTarget(target) }; }
+  else if (kind === "comment") { collection = NS + "comment"; record = { subject: normalizeTarget(target), text: extra.body, ...(extra.anchor ? { anchor: extra.anchor } : {}) }; }
+  else if (kind === "statement") { collection = NS + "statement"; record = { ...(target ? { subject: normalizeTarget(target) } : {}), text: extra.body }; }
+  else if (kind === "vouch") { collection = NS + "vouch"; record = { subject: target, ...(extra.reason ? { reason: extra.reason } : {}) }; }
+  else if (kind === "claim") { collection = NS + "claim"; record = { target: normalizeTarget(target) }; }
+  else throw new Error("unknown kind " + kind);
+  record = await inlineSign(dev.privateKey, { $type: collection, ...record, createdAt }, s.root, dev.did);
+  return { collection, record, del: s.id };
 }
-export async function attest(kind, target, extra) { try { return await req("attest", await makeRecord(kind, target, extra)); } catch (e) { if (/revoked|unknown delegation/.test(e.message)) clearSession(); throw e; } }
-// WebAuthn JSON helpers (shared by the service's own pages).
-export const creationOptions = (o) => ({ ...o, challenge: unb64u(o.challenge), user: { ...o.user, id: unb64u(o.user.id) }, excludeCredentials: (o.excludeCredentials || []).map((c) => ({ ...c, id: unb64u(c.id) })) });
-export const requestOptions = (o) => ({ ...o, challenge: unb64u(o.challenge), allowCredentials: (o.allowCredentials || []).map((c) => ({ ...c, id: unb64u(c.id) })) });
-export function credToJSON(c) {
-  if (typeof c.toJSON === "function") return c.toJSON();
-  const r = c.response, j = { id: c.id, rawId: b64u(c.rawId), type: c.type, clientExtensionResults: c.getClientExtensionResults(), authenticatorAttachment: c.authenticatorAttachment || undefined, response: { clientDataJSON: b64u(r.clientDataJSON) } };
-  if (r.attestationObject) { j.response.attestationObject = b64u(r.attestationObject); j.response.transports = r.getTransports?.() || []; }
-  else { j.response.authenticatorData = b64u(r.authenticatorData); j.response.signature = b64u(r.signature); if (r.userHandle) j.response.userHandle = b64u(r.userHandle); }
-  return j;
+export async function attest(kind, target, extra = {}) {
+  try {
+    if (kind === "retract") return await retract(extra.ref);
+    return await req("attest", await makeRecord(kind, target, extra));
+  } catch (e) { if (/revoked|unknown delegation|expired/.test(e.message)) clearSession(); throw e; }
 }
-// A root action: build, have the passkey sign it (one prompt), submit. Only on the service's own origin.
-export async function rootAction(action) {
-  const { options } = await req("root.start", { action });
-  const cred = await navigator.credentials.get({ publicKey: requestOptions(options) });
-  return req("root.finish", { action, credentialId: cred.id, assertion: credToJSON(cred) });
+// Retract = delete the repo record; the device key signs {type:"retract", uri, at}.
+export async function retract(uri) {
+  const s = session(); if (!s) throw new Error("not signed in"); const dev = await deviceKey(); const at = new Date().toISOString();
+  return req("retract", { uri, at, del: s.id, sig: await signObject(dev.privateKey, { type: "retract", uri, at }) });
 }
 export const read = async (targets) => (await (await fetch(need() + "/read?targets=" + encodeURIComponent(targets.join(",")))).json()).targets;
 export const by = async (did) => (await fetch(need() + "/by/" + encodeURIComponent(did))).json();
@@ -83,3 +85,19 @@ export function signIn() {
   });
 }
 export const short = (did) => did.slice(8, 16) + "…" + did.slice(-4);
+// --- WebAuthn JSON helpers and root actions (used by the service's own pages).
+export const creationOptions = (o) => ({ ...o, challenge: unb64u(o.challenge), user: { ...o.user, id: unb64u(o.user.id) }, excludeCredentials: (o.excludeCredentials || []).map((c) => ({ ...c, id: unb64u(c.id) })) });
+export const requestOptions = (o) => ({ ...o, challenge: unb64u(o.challenge), allowCredentials: (o.allowCredentials || []).map((c) => ({ ...c, id: unb64u(c.id) })) });
+export function credToJSON(c) {
+  if (typeof c.toJSON === "function") return c.toJSON();
+  const r = c.response, j = { id: c.id, rawId: b64u(c.rawId), type: c.type, clientExtensionResults: c.getClientExtensionResults(), authenticatorAttachment: c.authenticatorAttachment || undefined, response: { clientDataJSON: b64u(r.clientDataJSON) } };
+  if (r.attestationObject) { j.response.attestationObject = b64u(r.attestationObject); j.response.transports = r.getTransports?.() || []; }
+  else { j.response.authenticatorData = b64u(r.authenticatorData); j.response.signature = b64u(r.signature); if (r.userHandle) j.response.userHandle = b64u(r.userHandle); }
+  return j;
+}
+// A root action (revoke, add-key, remove-key): the passkey signs its id. Only on the service's own origin.
+export async function rootAction(action) {
+  const { options } = await req("root.start", { action });
+  const cred = await navigator.credentials.get({ publicKey: requestOptions(options) });
+  return req("root.finish", { action, credentialId: cred.id, assertion: credToJSON(cred) });
+}

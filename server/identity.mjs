@@ -1,6 +1,6 @@
 // Server-side identity: COSE public keys from passkeys → JWK → did:key; delegation and record verification.
 import { decodeCredentialPublicKey, cose, isoBase64URL } from "@simplewebauthn/server/helpers";
-import { didFromJwk, isDid, canonical, idOf, verifyObject, unb64u, b64u } from "../packages/orbital-attest/verify.mjs";
+import { didFromJwk, isDid, isAccountDid, canonical, idOf, verifyObject, unb64u, b64u } from "../packages/orbital-attest/verify.mjs";
 export { didFromJwk, isDid, canonical, idOf, verifyObject, b64u, unb64u };
 // A passkey's COSE public key (from registration) as a JWK; ES256 only.
 export function jwkFromCose(coseBytes) {
@@ -13,7 +13,7 @@ export const DELEGATION_MAX_DAYS = 90;
 // Shape check for a delegation the client built. Returns the canonical id. Throws with a reason.
 export async function checkDelegation(d) {
   if (!d || d.v !== 1 || d.type !== "delegation") throw new Error("not a v1 delegation");
-  if (!isDid(d.root) || !isDid(d.device)) throw new Error("root and device must be did:key");
+  if (!isAccountDid(d.root) || !isDid(d.device)) throw new Error("root must be an account did, device a did:key");
   if (!d.devKey || typeof d.devKey.x !== "string" || typeof d.devKey.y !== "string") throw new Error("devKey {x,y} required");
   if (didFromJwk(d.devKey) !== d.device) throw new Error("device did does not match devKey");
   if (typeof d.origin !== "string" || !/^https?:\/\/[^/]+$/.test(d.origin)) throw new Error("origin must be a bare origin");
@@ -45,7 +45,7 @@ export async function checkRecord(r, { KINDS, normalizeTarget }) {
 
 // Root actions: things only the passkey may do, each signed by an assertion whose challenge is the action's id.
 export async function checkAction(a) {
-  if (!a || a.v !== 1 || !isDid(a.root)) throw new Error("not a v1 root action");
+  if (!a || a.v !== 1 || !isAccountDid(a.root)) throw new Error("not a v1 root action");
   const at = Date.parse(a.at); if (!(at > 0) || Math.abs(at - Date.now()) > 10 * 60e3) throw new Error("action time is not near now");
   const fields = Object.keys(a).sort().join(",");
   if (a.type === "revoke") { if (!/^[0-9a-f]{64}$/.test(a.del || "")) throw new Error("revoke needs del"); if (fields !== "at,del,root,type,v") throw new Error("unexpected fields " + fields); }

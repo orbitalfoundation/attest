@@ -20,6 +20,7 @@ Environment=HOST=0.0.0.0
 Environment=ATTEST_DB=/srv/attest/data/attest.sqlite
 Environment=CANONICAL_HOST=attest.monster
 Environment=PDS_URL=http://127.0.0.1:3000
+EnvironmentFile=-/etc/attest-pds.env
 ExecStart=/usr/bin/node /srv/attest/server/index.mjs
 Restart=always
 RestartSec=5

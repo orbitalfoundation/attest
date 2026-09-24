@@ -30,7 +30,7 @@ class Widget {
   async ensureSession() { if (A.session()) return; await A.signIn(); await this.loadMine(); }
   async toggle() {
     await this.ensureSession(); const b = this.$(".up"); b.disabled = true;
-    try { const r = this.mine ? await A.attest("retract", this.target, { ref: this.mine }) : await A.attest("upvote", this.target); this.mine = this.mine ? null : r.id; this.apply(r.counts); } finally { b.disabled = false; }
+    try { const r = this.mine ? await A.attest("retract", this.target, { ref: this.mine }) : await A.attest("upvote", this.target); this.mine = this.mine ? null : r.uri; this.apply(r.counts); } finally { b.disabled = false; }
   }
   async post() {
     await this.ensureSession(); const ta = this.$("textarea"), body = ta.value.trim(); if (!body) return;
@@ -38,7 +38,7 @@ class Widget {
   }
   async loadMine() {
     const s = A.session(); this.mine = null;
-    if (s) { const me = await A.by(s.root); this.mine = me.records.find((r) => r.kind === "upvote" && r.target === this.target && !r.retracted)?.id || null; }
+    if (s) { const me = await A.by(s.root); this.mine = me.records.find((r) => r.kind === "upvote" && r.target === this.target && !r.retracted)?.uri || null; }
     this.render();
   }
   apply(counts) { this.counts = counts; this.render(); }

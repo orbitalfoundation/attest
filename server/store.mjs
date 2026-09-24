@@ -24,17 +24,21 @@ export function open(path = process.env.ATTEST_DB || "data/attest.sqlite") {
     CREATE UNIQUE INDEX IF NOT EXISTS records_one_claim ON records(by_did, target) WHERE kind = 'claim' AND retracted = 0;
     CREATE INDEX IF NOT EXISTS records_ref ON records(ref);
   `);
+  for (const [table, col, type] of [["accounts", "key_did", "TEXT"], ["accounts", "pds_handle", "TEXT"], ["accounts", "pds_password", "TEXT"], ["records", "uri", "TEXT"], ["records", "cid", "TEXT"], ["records", "collection", "TEXT"], ["records", "rkey", "TEXT"]])
+    if (!db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`);
+  db.exec("CREATE INDEX IF NOT EXISTS records_uri ON records(uri); CREATE INDEX IF NOT EXISTS records_cid ON records(cid)");
   return db;
 }
 const now = () => new Date().toISOString();
 // accounts and credentials
-export const getAccount = (did) => db.prepare("SELECT did, handle, created FROM accounts WHERE did = ?").get(did) || null;
-export const getAccountByHandle = (handle) => db.prepare("SELECT did, handle, created FROM accounts WHERE handle = ?").get(handle) || null;
-export function ensureServiceAccount(did, handle) { db.prepare("INSERT OR IGNORE INTO accounts (did, handle, created) VALUES (?, ?, ?)").run(did, handle, now()); }
-export function createAccount({ did, handle, credential }) {
-  const tx = db.prepare("INSERT INTO accounts (did, handle, created) VALUES (?, ?, ?)"), c = db.prepare("INSERT INTO credentials (id, did, public_key, jwk, counter, transports, created) VALUES (?, ?, ?, ?, ?, ?, ?)");
-  db.exec("BEGIN"); try { tx.run(did, handle, now()); c.run(credential.id, did, credential.publicKey, JSON.stringify(credential.jwk), credential.counter, JSON.stringify(credential.transports), now()); db.exec("COMMIT"); } catch (e) { db.exec("ROLLBACK"); throw e; }
+export const getAccount = (did) => db.prepare("SELECT did, handle, created, key_did, pds_handle FROM accounts WHERE did = ?").get(did) || null;
+export const getAccountByHandle = (handle) => db.prepare("SELECT did, handle, created, key_did, pds_handle FROM accounts WHERE handle = ?").get(handle) || null;
+export function ensureServiceAccount(did, handle, { keyDid = null, pdsHandle = null, pdsPassword = null } = {}) { db.prepare("INSERT OR IGNORE INTO accounts (did, handle, created, key_did, pds_handle, pds_password) VALUES (?, ?, ?, ?, ?, ?)").run(did, handle, now(), keyDid, pdsHandle, pdsPassword); }
+export function createAccount({ did, handle, credential, keyDid = null, pdsHandle = null, pdsPassword = null }) {
+  const tx = db.prepare("INSERT INTO accounts (did, handle, created, key_did, pds_handle, pds_password) VALUES (?, ?, ?, ?, ?, ?)"), c = db.prepare("INSERT INTO credentials (id, did, public_key, jwk, counter, transports, created) VALUES (?, ?, ?, ?, ?, ?, ?)");
+  db.exec("BEGIN"); try { tx.run(did, handle, now(), keyDid, pdsHandle, pdsPassword); c.run(credential.id, did, credential.publicKey, JSON.stringify(credential.jwk), credential.counter, JSON.stringify(credential.transports), now()); db.exec("COMMIT"); } catch (e) { db.exec("ROLLBACK"); throw e; }
 }
+export const pdsCredentials = (did) => db.prepare("SELECT pds_handle, pds_password FROM accounts WHERE did = ?").get(did) || null;
 export function getCredential(id) { const r = db.prepare("SELECT * FROM credentials WHERE id = ?").get(id); return r ? { ...r, jwk: JSON.parse(r.jwk), transports: JSON.parse(r.transports) } : null; }
 export const setCounter = (id, counter) => db.prepare("UPDATE credentials SET counter = ? WHERE id = ?").run(counter, id);
 export const handleOf = (did) => getAccount(did)?.handle || null;
@@ -54,15 +58,18 @@ export function putDelegation(id, envelope) {
   db.exec("BEGIN"); try { appendLog("delegation", id, envelope); db.prepare("INSERT INTO delegations (id, root, device, origin, from_at, until_at, json) VALUES (?, ?, ?, ?, ?, ?, ?)").run(id, d.root, d.device, d.origin, d.from, d.until, JSON.stringify(envelope)); db.exec("COMMIT"); } catch (e) { db.exec("ROLLBACK"); throw e; }
 }
 export function getDelegation(id) { const r = db.prepare("SELECT json FROM delegations WHERE id = ?").get(id); return r ? JSON.parse(r.json) : null; }
+// A repo record, indexed. id = cid. `kind` is the collection's last segment; `target` the subject/target; `ref` a referenced record's cid.
 export function putRecord(id, envelope) {
   const r = envelope.record;
   db.exec("BEGIN"); try {
     appendLog("record", id, envelope);
-    db.prepare("INSERT INTO records (id, by_did, kind, target, at, ref, json) VALUES (?, ?, ?, ?, ?, ?, ?)").run(id, r.by, r.kind, r.target, r.at, r.ref || null, JSON.stringify(envelope));
-    if (r.kind === "retract") db.prepare("UPDATE records SET retracted = 1 WHERE id = ? AND by_did = ?").run(r.ref, r.by);
+    db.prepare("INSERT INTO records (id, by_did, kind, target, at, ref, json, uri, cid, collection, rkey) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(id, r.by, r.kind, r.target, r.at, r.ref || null, JSON.stringify(envelope), envelope.uri || null, envelope.cid || null, envelope.collection || null, envelope.rkey || null);
     db.exec("COMMIT");
   } catch (e) { db.exec("ROLLBACK"); throw e; }
 }
+export function retractRecord(uri, byDid) { const n = db.prepare("UPDATE records SET retracted = 1 WHERE uri = ? AND by_did = ? AND retracted = 0").run(uri, byDid).changes; if (n) appendLog("retract", uri + "@" + now(), { uri, by: byDid, at: now() }); return n; }
+export const getRecordByUri = (uri) => { const r = db.prepare("SELECT json, id, retracted FROM records WHERE uri = ?").get(uri); return r ? { ...JSON.parse(r.json), id: r.id, retracted: !!r.retracted } : null; };
+export const findLiveUri = (by, target, kind) => db.prepare("SELECT uri FROM records WHERE by_did = ? AND target = ? AND kind = ? AND retracted = 0").get(by, target, kind)?.uri || null;
 export function getRecord(id) { const r = db.prepare("SELECT json, retracted FROM records WHERE id = ?").get(id); return r ? { ...JSON.parse(r.json), id, retracted: !!r.retracted } : null; }
 export const findLive = (by, target, kind) => db.prepare("SELECT id FROM records WHERE by_did = ? AND target = ? AND kind = ? AND retracted = 0").get(by, target, kind)?.id || null;
 export const findUpvote = (by, target) => db.prepare("SELECT id FROM records WHERE by_did = ? AND target = ? AND kind = 'upvote' AND retracted = 0").get(by, target)?.id || null;
@@ -74,9 +81,9 @@ export function countsFor(target) {
   return { upvotes: up, vouches, comments };
 }
 export const vouchesFor = (did) => db.prepare("SELECT r.id, r.by_did, r.at, a.handle FROM records r LEFT JOIN accounts a ON a.did = r.by_did WHERE r.target = ? AND r.kind = 'vouch' AND r.retracted = 0 ORDER BY r.at DESC").all(did).map((r) => ({ id: r.id, by: r.by_did, handle: r.handle, at: r.at }));
-export const vouchesBy = (did) => db.prepare("SELECT r.id, r.target, r.at, a.handle FROM records r LEFT JOIN accounts a ON a.did = r.target WHERE r.by_did = ? AND r.kind = 'vouch' AND r.retracted = 0 ORDER BY r.at DESC").all(did).map((r) => ({ id: r.id, target: r.target, handle: r.handle, at: r.at }));
+export const vouchesBy = (did) => db.prepare("SELECT r.id, r.uri, r.target, r.at, a.handle FROM records r LEFT JOIN accounts a ON a.did = r.target WHERE r.by_did = ? AND r.kind = 'vouch' AND r.retracted = 0 ORDER BY r.at DESC").all(did).map((r) => ({ id: r.id, uri: r.uri, target: r.target, handle: r.handle, at: r.at }));
 export function claimsOf(did) {
-  return db.prepare("SELECT id, target, at FROM records WHERE by_did = ? AND kind = 'claim' AND retracted = 0 ORDER BY at DESC").all(did).map((c) => ({ ...c,
+  return db.prepare("SELECT id, uri, cid, target, at FROM records WHERE by_did = ? AND kind = 'claim' AND retracted = 0 ORDER BY at DESC").all(did).map((c) => ({ ...c,
     verifications: db.prepare("SELECT r.id, r.by_did, r.at, r.json, a.handle FROM records r LEFT JOIN accounts a ON a.did = r.by_did WHERE r.kind = 'verify' AND r.ref = ? AND r.retracted = 0 ORDER BY r.at DESC").all(c.id).map((v) => ({ id: v.id, by: v.by_did, handle: v.handle, at: v.at, evidence: JSON.parse(v.json).record.body })) }));
 }
 export function siteSummary(host, limit = 50) {
@@ -89,8 +96,8 @@ export function siteSummary(host, limit = 50) {
 }
 export const countsBy = (did) => db.prepare("SELECT kind, COUNT(*) AS n FROM records WHERE by_did = ? AND retracted = 0 GROUP BY kind").all(did).reduce((o, r) => (o[r.kind] = r.n, o), {});
 export function recordsBy(did, limit = 200) {
-  return db.prepare("SELECT id, kind, target, at, ref, retracted, json FROM records WHERE by_did = ? ORDER BY at DESC LIMIT ?").all(did, limit)
-    .map((r) => ({ id: r.id, kind: r.kind, target: r.target, at: r.at, ref: r.ref || undefined, retracted: !!r.retracted, body: JSON.parse(r.json).record.body }));
+  return db.prepare("SELECT id, kind, target, at, ref, retracted, json, uri FROM records WHERE by_did = ? ORDER BY at DESC LIMIT ?").all(did, limit)
+    .map((r) => ({ id: r.id, uri: r.uri || undefined, kind: r.kind, target: r.target, at: r.at, ref: r.ref || undefined, retracted: !!r.retracted, body: JSON.parse(r.json).record.body }));
 }
 export const logSince = (seq, limit = 500) => db.prepare("SELECT seq, type, id, json, received FROM log WHERE seq > ? ORDER BY seq LIMIT ?").all(seq, Math.min(limit, 2000)).map((e) => ({ seq: e.seq, type: e.type, id: e.id, received: e.received, ...JSON.parse(e.json) }));
 export const stats = () => ({ accounts: db.prepare("SELECT COUNT(*) AS n FROM accounts").get().n, records: db.prepare("SELECT COUNT(*) AS n FROM records WHERE retracted = 0").get().n, log: db.prepare("SELECT COALESCE(MAX(seq),0) AS n FROM log").get().n });

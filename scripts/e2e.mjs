@@ -73,7 +73,8 @@ ok(await evaluate(`document.getElementById('h').textContent === '@' + ${JSON.str
 await go("/me", 2500);
 await evaluate(`document.getElementById('ptype').value = 'https://'; document.getElementById('pvalue').value = ${JSON.stringify(site + "/")}; document.getElementById('claim').requestSubmit(); true`);
 ok(await waitFor(`document.getElementById('pmsg').textContent.includes('attest-proof:')`), "claim made; instructions show the token");
-const claimId = await evaluate(`document.querySelector('#proofs [data-check]')?.dataset.check`); ok(!!claimId, "claim listed as unverified");
+const claimUri = await evaluate(`document.querySelector('#proofs [data-check]')?.dataset.check`); ok(!!claimUri, "claim listed as unverified: " + claimUri);
+const claimId = (await (await fetch(`${base}/by/${encodeURIComponent(did1)}`)).json()).proofs[0].cid; ok(/^bafy/.test(claimId || ""), "claim has a repo cid " + String(claimId).slice(0, 12));
 await evaluate(`document.querySelector('#proofs [data-check]').click(); true`);
 ok(await waitFor(`document.getElementById('pmsg').className.includes('err')`), "check before the token is placed fails honestly: " + await evaluate(`document.getElementById('pmsg').textContent`));
 if (siteDir) { const { mkdirSync, writeFileSync } = await import("node:fs"); mkdirSync(siteDir + "/.well-known", { recursive: true }); writeFileSync(siteDir + "/.well-known/attest.txt", "attest-proof:" + claimId + "\n"); }
@@ -87,20 +88,22 @@ ok(await waitFor(`location.pathname === '/@' + ${JSON.stringify(handle)}`, 15000
 await sleep(1500); await evaluate(`document.getElementById('vouch').click(); true`);
 ok(await waitFor(`document.getElementById('vouch').textContent.startsWith('✓') && document.getElementById('nvb').textContent === '1'`), "vouch recorded; profile shows 1 voucher");
 const p1 = await (await fetch(`${base}/by/${encodeURIComponent(did1)}`)).json();
-ok(p1.vouchedBy.length === 1 && p1.vouchedBy[0].handle === handle2 && p1.proofs[0].verifications.length === 1 && p1.proofs[0].verifications[0].handle === "attest", "/by lists the voucher and the service's verification");
+ok(p1.vouchedBy.length === 1 && p1.vouchedBy[0].handle === handle2 && p1.proofs[0].verifications.length === 1 && /^attest/.test(p1.proofs[0].verifications[0].handle || ""), "/by lists the voucher and the service's verification");
 const selfVouch = await evaluate(`(async () => { const A = await import('/attest-core.js'); const s = A.session(); try { await A.attest('vouch', s.root); return 'accepted'; } catch (e) { return e.message; } })()`);
 ok(/yourself/.test(selfVouch), "self-vouch refused: " + selfVouch);
 await evaluate(`localStorage.removeItem('attest:session'); true`); await go("/login?return=/me");
 await evaluate(`document.getElementById('handle').value = ${JSON.stringify(handle)}; document.getElementById('signin').click(); true`); ok(await waitFor(`location.pathname === '/me'`), "back as the first account");
 console.log("bad record is refused");
-const refused = await evaluate(`(async () => { const A = await import('/attest-core.js'); const env = await A.makeRecord('upvote', 'https://example.org/x'); env.record.body = 'tampered'; try { await A.req('attest', env); return 'accepted'; } catch (e) { return e.message; } })()`);
-ok(/signature does not verify|unexpected|body/.test(refused), "tampered record refused: " + refused);
+const refused = await evaluate(`(async () => { const A = await import('/attest-core.js'); const env = await A.makeRecord('upvote', 'https://example.org/x'); env.record.subject = 'https://example.org/tampered'; try { await A.req('attest', env); return 'accepted'; } catch (e) { return e.message; } })()`);
+ok(/does not verify/.test(refused), "tampered record refused: " + refused);
 console.log("offline verification");
 const did = await evaluate(`JSON.parse(localStorage.getItem('attest:session')).root`);
 const me = await (await fetch(`${base}/by/${encodeURIComponent(did)}`)).json(); const comment = me.records.find((r) => r.kind === "comment");
 const rec = await (await fetch(`${base}/record/${comment.id}`)).json(); const del = (await (await fetch(`${base}/log?since=0`)).json()).entries.find((e) => e.type === "delegation" && e.id === rec.del);
-ok((await idOf(rec.record)) === comment.id, "record id is the sha256 of its canonical form");
-ok(await verifyObject(del.delegation.devKey, rec.record, rec.sig), "device-key signature verifies from the log alone");
-ok(del.delegation.root === did && me.keys.length === 1, "delegation root is the account; root key is published for checking the passkey assertion");
+const { inlineVerify } = await import("../packages/orbital-attest/verify.mjs");
+ok(rec.uri?.startsWith("at://" + did + "/monster.attest.comment/") && rec.cid === comment.id, "comment lives in the account's repo: " + rec.uri);
+const iv = await inlineVerify(rec.repoRecord, did); ok(iv[0]?.ok === true, "inline device-key signature verifies against the repo did, from public data alone");
+ok(del.delegation.root === did && del.delegation.device === iv[0].key.split("#")[0] && me.keys.length >= 1, "delegation binds that device key to the account; passkey public key published");
+if (process.env.PDS_URL && process.env.PDS_ADMIN_PASSWORD) { const pds = await import("../server/pds.mjs"); for (const d of [did1, did]) { try { await pds.deleteAccount(d); } catch {} } const d2 = (await (await fetch(`${base}/handle/${handle}b`)).json()).did; try { await pds.deleteAccount(d2); } catch {} console.log("  · test repo accounts deleted from the PDS"); }
 console.log(fails ? `${fails} FAILED` : "all passed");
 ws.close(); chrome.kill(); process.exit(fails ? 1 : 0);

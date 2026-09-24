@@ -7,6 +7,8 @@ import * as passkeys from "./passkeys.mjs";
 import { didFromJwk } from "./identity.mjs";
 import { allow } from "./ratelimit.mjs";
 import * as proofs from "./proofs.mjs";
+import * as pds from "./pds.mjs";
+import { randomBytes as rb } from "node:crypto";
 import { randomBytes } from "node:crypto";
 const pending = new Map(); // nonce -> {challenge, handle, at}
 setInterval(() => { const cutoff = Date.now() - 5 * 60e3; for (const [k, v] of pending) if (v.at < cutoff) pending.delete(k); }, 60e3).unref();
@@ -22,10 +24,17 @@ const handlers = {
   async "passkey.register.finish"({ nonce, response }, ctx) {
     const p = pending.get(nonce); if (!p) throw new Error("registration expired; try again"); pending.delete(nonce);
     const credential = await passkeys.verifyRegistration({ origin: ctx.origin, response, challenge: p.challenge });
-    const did = didFromJwk(credential.jwk);
-    if (store.getAccount(did)) throw new Error("this passkey already has an account");
-    store.createAccount({ did, handle: p.handle, credential });
-    return { did, handle: p.handle };
+    const keyDid = didFromJwk(credential.jwk);
+    if (store.getCredential(credential.id)) throw new Error("this passkey already has an account");
+    if (store.getAccountByHandle(p.handle)) throw new Error("that handle is taken");
+    if (pds.enabled()) {
+      // The account is a repo on our PDS. Its password is a server-side secret; the passkey is the person's key.
+      const password = rb(18).toString("base64url"); const a = await pds.createAccount(p.handle, password);
+      store.createAccount({ did: a.did, handle: p.handle, credential, keyDid, pdsHandle: a.handle, pdsPassword: password });
+      return { did: a.did, handle: p.handle, repoHandle: a.handle };
+    }
+    store.createAccount({ did: keyDid, handle: p.handle, credential, keyDid });
+    return { did: keyDid, handle: p.handle };
   },
   // Sign-in is signing a delegation: the client builds the delegation, we hand back WebAuthn options whose challenge is its id.
   async "delegate.start"({ delegation }, ctx) {
@@ -61,12 +70,13 @@ const handlers = {
   },
   async attest(envelope, ctx) {
     if (!allow("ip:" + ctx.ip, 60)) throw new Error("too many writes from this address; slow down");
-    if (envelope?.record?.by && !allow("did:" + envelope.record.by, 30)) throw new Error("too many writes for this identity; slow down");
+    if (envelope?.del && !allow("del:" + envelope.del, 30)) throw new Error("too many writes for this session; slow down");
     return records.acceptRecord({ envelope, origin: ctx.origin });
   },
+  async retract(envelope, ctx) { if (!allow("ip:" + ctx.ip, 60)) throw new Error("too many writes from this address; slow down"); return records.acceptRetract({ envelope, origin: ctx.origin }); },
   async subscribe({ targets }, ctx) { for (const t of (targets || []).slice(0, 100)) ctx.socket.join("t:" + t); return { ok: true }; },
   async whois({ did }) { return { did, handle: records.whois(did) }; },
-  async "proof.instructions"({ claim }) { const c = store.getRecord(claim); if (!c || c.record.kind !== "claim") throw new Error("no such claim"); return { token: proofs.tokenFor(claim), instructions: proofs.instructions(c.record.target, claim) }; },
+  async "proof.instructions"({ claim }) { const c = proofs.claimRecord(claim); return { token: proofs.tokenFor(c.id), instructions: proofs.instructions(c.record.target, c.id) }; },
   async "proof.check"({ claim }, ctx) { if (!allow("proof:" + ctx.ip, 10)) throw new Error("too many checks; slow down"); return proofs.check(claim); },
   async lookup({ handle }) { const a = store.getAccountByHandle(String(handle || "").trim().toLowerCase()); if (!a) throw new Error("no account with that handle"); return { did: a.did, handle: a.handle }; },
   async read({ targets }) { return records.read(targets || []); },

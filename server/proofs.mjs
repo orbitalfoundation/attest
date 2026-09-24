@@ -42,10 +42,12 @@ async function locate(target, token) {
   }
   throw new Error("unsupported target type");
 }
-export async function check(claimId) {
-  const c = store.getRecord(claimId); if (!c || c.record.kind !== "claim" || c.retracted) throw new Error("no such live claim");
+// A claim by its at:// uri or its cid. The proof token uses the cid, which is content-derived and stable.
+export function claimRecord(ref) { const c = String(ref).startsWith("at://") ? store.getRecordByUri(ref) : store.getRecord(ref); if (!c || c.record.kind !== "claim" || c.retracted) throw new Error("no such live claim"); return c; }
+export async function check(ref) {
+  const c = claimRecord(ref); const claimId = c.id;
   const t = lastCheck.get(claimId) || 0; if (Date.now() - t < 30e3) throw new Error("checked less than 30 s ago; wait"); lastCheck.set(claimId, Date.now());
   const { evidence } = await locate(c.record.target, tokenFor(claimId));
-  const v = await records.serviceRecord("verify", c.record.target, { ref: claimId, body: evidence });
-  return { verified: true, evidence, verification: v.id, by: records.serviceDid() };
+  const v = await records.serviceVerification({ claimUri: c.uri, claimCid: c.cid || claimId, target: c.record.target, evidence });
+  return { verified: true, evidence, verification: v.uri, by: records.serviceDid() };
 }

@@ -21,6 +21,7 @@ export function didFromJwk({ x, y }) {
   return "did:key:z" + base58(out);
 }
 export const isDid = (s) => typeof s === "string" && /^did:key:z[1-9A-HJ-NP-Za-km-z]{40,60}$/.test(s);
+export const isAccountDid = (s) => isDid(s) || (typeof s === "string" && /^did:plc:[a-z2-7]{24}$/.test(s));
 // Canonical JSON: object keys sorted at every level, arrays in order, no whitespace. Undefined values are dropped.
 export function canonical(value) {
   if (value === null || typeof value !== "object") return JSON.stringify(value);

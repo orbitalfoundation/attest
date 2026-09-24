@@ -41,7 +41,7 @@ await A.subscribe([url]); A.onCounts(({ target, counts }) => …)  // live</pre>
 <tr><td><code>GET /read?targets=a,b,c</code></td><td><code>{targets: {a: {target, upvotes, vouches, comments:[{id, by, handle, at, body}]}}}</code>. Up to 100 targets. Comma-separate; URL-encode each target.</td></tr>
 <tr><td><code>GET /by/:did</code></td><td><code>{did, handle, since, keys:[{id, jwk, created}], delegations:[{id, device, origin, from, until, revoked}], counts, vouchedBy:[{by, handle, at}], vouches:[{target, handle, at}], proofs:[{id, target, verifications:[{by, handle, evidence}]}], records:[…]}</code>. <code>keys</code> are the passkey public keys, for checking delegations yourself.</td></tr>
 <tr><td><code>GET /handle/:handle</code></td><td>the same, looked up by handle. <code>/@handle</code> is the human page.</td></tr>
-<tr><td><code>GET /record/:id</code></td><td>the full signed envelope <code>{record, del, sig, id, retracted}</code></td></tr>
+<tr><td><code>GET /record?uri=at://…</code> or <code>GET /record/:cid</code></td><td>the indexed record: the repo record under <code>repoRecord</code>, its <code>uri</code>, <code>cid</code>, the delegation id, and whether it was retracted</td></tr>
 <tr><td><code>GET /log?since=N&amp;limit=500</code></td><td>the append-only log from sequence N: <code>{entries:[{seq, type:"record"|"delegation", id, received, …envelope}]}</code>. Mirror by paging <code>since</code>.</td></tr>
 <tr><td><code>GET /domain/:host</code></td><td>public standing of a site: totals, most-attested pages with counts, recent comments, verified domain claims. <code>/site/:host</code> is the human page.</td></tr>
 <tr><td><code>GET /stats</code></td><td>account, record and log counts</td></tr>
@@ -56,7 +56,8 @@ await A.subscribe([url]); A.onCounts(({ target, counts }) => …)  // live</pre>
 <tr><td><code>lookup</code></td><td><code>{handle}</code> → <code>{did, handle}</code></td></tr>
 <tr><td><code>delegate.start</code></td><td><code>{delegation}</code> → <code>{id, options}</code> (WebAuthn request options whose challenge is the delegation's id)</td></tr>
 <tr><td><code>delegate.finish</code></td><td><code>{delegation, credentialId, assertion}</code> → <code>{id, root, handle, until}</code></td></tr>
-<tr><td><code>attest</code></td><td><code>{record, del, sig}</code> → <code>{id, counts, duplicate?}</code>. Refused with "delegation revoked" once the root has revoked that delegation.</td></tr>
+<tr><td><code>attest</code></td><td><code>{collection, rkey?, record, del}</code> → <code>{uri, id (cid), counts, duplicate?}</code>. Refused with "delegation revoked" once the root has revoked that delegation.</td></tr>
+<tr><td><code>retract</code></td><td><code>{uri, at, del, sig}</code> → deletes the repo record; <code>sig</code> is the device key over <code>{type:"retract", uri, at}</code></td></tr>
 <tr><td><code>root.start</code>, <code>root.finish</code></td><td>actions only the passkey may sign, on the service origin: <code>{v:1, type:"revoke", root, del, at}</code>, <code>{type:"add-key", credentialId}</code>, <code>{type:"remove-key", credentialId}</code>. Same shape as sign-in: the action's id is the WebAuthn challenge.</td></tr>
 <tr><td><code>passkey.add.start/finish</code></td><td>register a second passkey for an account; it is adopted when an existing passkey signs <code>add-key</code></td></tr>
 <tr><td><code>proof.instructions</code>, <code>proof.check</code></td><td><code>{claim}</code> → where to put the token <code>attest-proof:&lt;claim id&gt;</code>; then the service fetches and, if found, signs a <code>verify</code> record. Website: the URL itself or <code>/.well-known/attest.txt</code>; DNS: TXT at <code>_attest.&lt;domain&gt;</code>; GitHub: a public gist; Bluesky: the bio.</td></tr>
@@ -66,23 +67,23 @@ await A.subscribe([url]); A.onCounts(({ target, counts }) => …)  // live</pre>
 <p>Limits: 60 writes a minute per address, 30 per key. A duplicate upvote returns the existing id with <code>duplicate: true</code>. Records dated more than 10 minutes from server time are refused.</p>
 
 <h2>5. The record</h2>
-<pre>record     {v:1, type:"record", kind, by:"did:key:z…", target, at:"ISO-8601", body?, ref?}
-envelope   {record, del:"&lt;delegation id&gt;", sig:"&lt;base64url ES256 over canonical(record)&gt;"}
-id         hex sha256 of canonical(record)</pre>
-<p><b>kind</b> is one of <code>upvote</code>, <code>comment</code>, <code>vouch</code>, <code>statement</code>, <code>claim</code>, <code>retract</code>, and <code>verify</code>. <code>comment</code> and <code>statement</code> need a <code>body</code> (under 4000 characters). <code>vouch</code> targets a key (a <code>did:key</code>), never your own. <code>claim</code> targets a handle or URL you say you control (<code>https://…</code>, <code>dns:example.com</code>, <code>github:user</code>, <code>bsky:handle</code>). <code>retract</code> needs <code>ref</code>, the id of the author's own record on the same target. <code>verify</code> is issued by a verifier, not submitted: it carries <code>ref</code> (the claim) and <code>body</code> (the evidence URL). One live upvote, vouch and claim per key per target.</p>
-<p>A record signed by the service itself (today only <code>verify</code>) has no delegation: its envelope is <code>{record, sig, key}</code> and <code>record.by</code> equals <code>didFromJwk(key)</code>. <code>GET /service</code> gives the service key's DID. Trust it as far as you trust the service; any other key may also issue verifications by hand.</p>
-<p><b>target</b> is normalised before signing, and the server refuses a record whose target is not in normal form. Forms: a URL (scheme and host lowercased, fragment dropped, empty path becomes <code>/</code>); <code>doi:10.…</code> lowercased; <code>isbn:…</code> without hyphens; a <code>did:key:…</code>; a service handle such as <code>github:anselm</code>; <code>sha256:&lt;hex&gt;</code> for content.</p>
-<p><b>canonical JSON</b>: object keys sorted at every depth, arrays kept in order, no whitespace, <code>undefined</code> dropped. The shared module <code>ORIGIN/lib/did.js</code> exports <code>canonical</code>, <code>idOf</code>, <code>verifyObject</code>, <code>didFromJwk</code> and <code>normalizeTarget</code>, and runs unchanged in browsers and Node.</p>
-
+<p>Since the fold (see <a href="/changes">changes</a>), a record is an AT Protocol record in the person's own repository, in one of our lexicons, carrying the person's inline signature. The service writes it into the repo and indexes it; anyone can read it back from the repo without us.</p>
+<pre>collection   monster.attest.vote | comment | statement | vouch | claim   (verification is issued by verifiers)
+record       {$type: collection, subject|target, text?, createdAt, signatures: [inline]}
+inline       {$type: "app.certified.signature.defs#inline", key: "did:key:z…#z…", signature: {$bytes}}
+signed       the 36-byte CIDv1 (dag-cbor, sha-256) of the record with `signatures` removed and
+             $sig = {$type, key, repository: &lt;the repo did&gt;} inserted; ECDSA P-256, raw r||s, low-S
+uri, cid     at://did:plc:…/monster.attest.vote/&lt;rkey&gt; and the record's CID, both returned on write</pre>
+<p><b>subject</b> (vote, comment, statement) is a normalised URL, a <code>doi:</code> URI or a <code>sha256:</code> URI. <b>target</b> (claim) is <code>https://origin/</code>, <code>dns:domain</code>, <code>github:user</code> or <code>bsky:handle</code>. A vouch's subject is an account DID, never your own. Vote, vouch and claim use a deterministic record key derived from the subject, so there is one live record per author per subject; comments and statements get a time-ordered key. Retraction deletes the repo record; the client signs <code>{type:"retract", uri, at}</code> with the device key to authorise it.</p>
+<p>The lexicons are in the repository under <code>lexicons/monster/attest/</code> and validate with the AT Protocol lexicon tooling. The shared inline-signature shape is <code>app.certified.signature.defs#inline</code>, the same one Hypercerts and badge.blue use, so their verifiers can check our records.</p>
 <h2>6. Verifying without us</h2>
 <ol>
-<li>Fetch the envelope (<code>/record/:id</code>) or take it from the log. Check <code>sha256(canonical(record)) === id</code>.</li>
-<li>Fetch the delegation by <code>del</code> from the log. Check <code>delegation.root === record.by</code>, that <code>record.at</code> lies within <code>from</code>…<code>until</code>, and that <code>didFromJwk(delegation.devKey) === delegation.device</code>. A <code>revoke</code> entry in the log naming that delegation means records received after it were refused; the log's order tells you which.</li>
-<li>Verify <code>sig</code> as ECDSA P-256 / SHA-256, raw <code>r||s</code>, over <code>canonical(record)</code>, with <code>delegation.devKey</code>.</li>
-<li>To go one step further, verify the WebAuthn assertion stored with the delegation against the root's passkey public key (<code>/by/:did</code> → <code>keys</code>): its challenge must equal the delegation's id as base64url bytes.</li>
+<li>Fetch the record from the repo: <code>com.atproto.repo.getRecord</code> on the PDS named in the DID document of <code>did:plc:…</code>, or from any relay. Or take it from our index at <code>/record?uri=at://…</code>.</li>
+<li>Take the inline entry's <code>key</code>. Rebuild <code>$sig = {$type, key, repository: &lt;repo did&gt;}</code>, remove <code>signatures</code>, encode as DAG-CBOR, compute the CIDv1 bytes.</li>
+<li>Verify the raw ECDSA P-256 signature over those 36 bytes with the public key inside the <code>did:key</code>. <code>orbital-attest/verify</code> exports <code>inlineVerify(record, repoDid)</code>, which does exactly this in browsers and Node.</li>
+<li>To bind that device key to the person: the delegation in our log names it and carries the passkey assertion over the delegation's hash; the passkey public key is at <code>/by/&lt;did&gt;</code> → <code>keys</code>.</li>
 </ol>
 <p>The end-to-end test in the repo does steps 1 to 3 from Node against the live service.</p>
-
 <h2>7. A static site, concretely</h2>
 <p>A page on a CDN adds the script tag and a widget. Sign-in opens the popup; the session is stored in the page's own <code>localStorage</code>, the device key in its own IndexedDB. Counts render from <code>/read</code>; the reader's own votes from <code>/by</code>. Your build does not change and your host learns nothing new. If attest is down, counts fall back to whatever your page last cached, and nothing else on the page is affected.</p>
 <p>Source and issues: <a href="https://github.com/orbitalfoundation/attest">github.com/orbitalfoundation/attest</a> (MIT). Machine-readable summary: <a href="/llms.txt">/llms.txt</a>. Design: <a href="/technical">technical</a>.</p>
