@@ -18,6 +18,7 @@
     "socket.io": "^4.8.3"
   },
   "devDependencies": {
+    "@atproto/lexicon": "^0.7.14",
     "@simplewebauthn/browser": "^14.0.0",
     "ws": "^8.18.0"
   }

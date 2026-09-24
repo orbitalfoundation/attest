@@ -1,0 +1,40 @@
+{
+  "lexicon": 1,
+  "id": "monster.attest.vouch",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "any",
+      "description": "'I know this person': the author vouches for another account. Vouching costs the voucher in trust computations. Delete to retract. Mirrors sh.tangled.graph.vouch where a subject is known there. Record key: a base32 sha256 of the subject/target, so there is one per author per subject.",
+      "record": {
+        "type": "object",
+        "required": [
+          "subject",
+          "createdAt"
+        ],
+        "properties": {
+          "subject": {
+            "type": "string",
+            "format": "did",
+            "description": "The account vouched for. Never the author."
+          },
+          "reason": {
+            "type": "string",
+            "maxGraphemes": 256,
+            "maxLength": 2560
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "Client-declared time of the statement."
+          },
+          "signatures": {
+            "type": "ref",
+            "ref": "app.certified.signature.defs#list",
+            "description": "Inline signatures per the ATProtocol Attestation Specification; attest requires one from the author's device key (did:key, delegated from their passkey)."
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "lexicon": 1,
+  "id": "monster.attest.claim",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "any",
+      "description": "The author claims control of a website, domain, or handle on another service. A verifier places attest-proof:<record cid> where only the controller could and issues a monster.attest.verification. Record key: a base32 sha256 of the subject/target, so there is one per author per subject.",
+      "record": {
+        "type": "object",
+        "required": [
+          "target",
+          "createdAt"
+        ],
+        "properties": {
+          "target": {
+            "type": "string",
+            "maxLength": 2048,
+            "description": "https://<origin>/ for a website, dns:<domain>, github:<user>, bsky:<handle>, or another service:<handle> pair."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "Client-declared time of the statement."
+          },
+          "signatures": {
+            "type": "ref",
+            "ref": "app.certified.signature.defs#list",
+            "description": "Inline signatures per the ATProtocol Attestation Specification; attest requires one from the author's device key (did:key, delegated from their passkey)."
+          }
+        }
+      }
+    }
+  }
+}

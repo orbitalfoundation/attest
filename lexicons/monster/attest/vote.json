@@ -1,0 +1,36 @@
+{
+  "lexicon": 1,
+  "id": "monster.attest.vote",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "any",
+      "description": "An upvote of a URL, DOI or content hash. One live vote per author per subject; delete the record to retract. Record key: a base32 sha256 of the subject/target, so there is one per author per subject.",
+      "record": {
+        "type": "object",
+        "required": [
+          "subject",
+          "createdAt"
+        ],
+        "properties": {
+          "subject": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 2048,
+            "description": "What the statement is about: an https URL (normalised: lowercase scheme and host, no fragment), a doi: URI, or a sha256: content hash written as a URI (sha256:<hex>)."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "Client-declared time of the statement."
+          },
+          "signatures": {
+            "type": "ref",
+            "ref": "app.certified.signature.defs#list",
+            "description": "Inline signatures per the ATProtocol Attestation Specification; attest requires one from the author's device key (did:key, delegated from their passkey)."
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "lexicon": 1,
+  "id": "monster.attest.verification",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "description": "A verifier's statement that it checked a claim and found the proof token in place. Issued by any account, including the attest service's own; trusted as far as the verifier is.",
+      "record": {
+        "type": "object",
+        "required": [
+          "claim",
+          "target",
+          "evidence",
+          "createdAt"
+        ],
+        "properties": {
+          "claim": {
+            "type": "ref",
+            "ref": "com.atproto.repo.strongRef",
+            "description": "The claim record checked."
+          },
+          "target": {
+            "type": "string",
+            "maxLength": 2048,
+            "description": "The claim's target, repeated so the verification reads alone."
+          },
+          "evidence": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 2048,
+            "description": "Where the token was found."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "Client-declared time of the statement."
+          },
+          "signatures": {
+            "type": "ref",
+            "ref": "app.certified.signature.defs#list",
+            "description": "Inline signatures per the ATProtocol Attestation Specification; attest requires one from the author's device key (did:key, delegated from their passkey)."
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "lexicon": 1,
+  "id": "monster.attest.statement",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "description": "A signed public statement by the author, optionally about a subject.",
+      "record": {
+        "type": "object",
+        "required": [
+          "text",
+          "createdAt"
+        ],
+        "properties": {
+          "subject": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 2048,
+            "description": "Optional: what the statement is about."
+          },
+          "text": {
+            "type": "string",
+            "maxGraphemes": 4000,
+            "maxLength": 16000
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "Client-declared time of the statement."
+          },
+          "signatures": {
+            "type": "ref",
+            "ref": "app.certified.signature.defs#list",
+            "description": "Inline signatures per the ATProtocol Attestation Specification; attest requires one from the author's device key (did:key, delegated from their passkey)."
+          }
+        }
+      }
+    }
+  }
+}
