@@ -51,7 +51,23 @@ export async function makeRecord(kind, target, extra = {}) {
   const sig = await signObject(dev.privateKey, record);
   return { record, del: s.id, sig };
 }
-export async function attest(kind, target, extra) { return req("attest", await makeRecord(kind, target, extra)); }
+export async function attest(kind, target, extra) { try { return await req("attest", await makeRecord(kind, target, extra)); } catch (e) { if (/revoked|unknown delegation/.test(e.message)) clearSession(); throw e; } }
+// WebAuthn JSON helpers (shared by the service's own pages).
+export const creationOptions = (o) => ({ ...o, challenge: unb64u(o.challenge), user: { ...o.user, id: unb64u(o.user.id) }, excludeCredentials: (o.excludeCredentials || []).map((c) => ({ ...c, id: unb64u(c.id) })) });
+export const requestOptions = (o) => ({ ...o, challenge: unb64u(o.challenge), allowCredentials: (o.allowCredentials || []).map((c) => ({ ...c, id: unb64u(c.id) })) });
+export function credToJSON(c) {
+  if (typeof c.toJSON === "function") return c.toJSON();
+  const r = c.response, j = { id: c.id, rawId: b64u(c.rawId), type: c.type, clientExtensionResults: c.getClientExtensionResults(), authenticatorAttachment: c.authenticatorAttachment || undefined, response: { clientDataJSON: b64u(r.clientDataJSON) } };
+  if (r.attestationObject) { j.response.attestationObject = b64u(r.attestationObject); j.response.transports = r.getTransports?.() || []; }
+  else { j.response.authenticatorData = b64u(r.authenticatorData); j.response.signature = b64u(r.signature); if (r.userHandle) j.response.userHandle = b64u(r.userHandle); }
+  return j;
+}
+// A root action: build, have the passkey sign it (one prompt), submit. Only on the service's own origin.
+export async function rootAction(action) {
+  const { options } = await req("root.start", { action });
+  const cred = await navigator.credentials.get({ publicKey: requestOptions(options) });
+  return req("root.finish", { action, credentialId: cred.id, assertion: credToJSON(cred) });
+}
 export const read = async (targets) => (await (await fetch(need() + "/read?targets=" + encodeURIComponent(targets.join(",")))).json()).targets;
 export const by = async (did) => (await fetch(need() + "/by/" + encodeURIComponent(did))).json();
 // --- sign in: same origin → go to the login page and come back; another origin → popup that posts the session back.

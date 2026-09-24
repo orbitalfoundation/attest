@@ -4,9 +4,9 @@ import { generateRegistrationOptions, verifyRegistrationResponse, generateAuthen
 import { jwkFromCose, b64u, unb64u } from "./identity.mjs";
 export const RP_NAME = "attest";
 export const rpOf = (origin) => { try { return new URL(origin).hostname; } catch { return "localhost"; } };
-export async function registrationOptions({ origin, handle }) {
+export async function registrationOptions({ origin, handle, existing = [] }) {
   return generateRegistrationOptions({ rpName: RP_NAME, rpID: rpOf(origin), userID: new TextEncoder().encode(handle), userName: handle, attestationType: "none",
-    supportedAlgorithmIDs: [-7], authenticatorSelection: { residentKey: "required", userVerification: "preferred" } });
+    supportedAlgorithmIDs: [-7], excludeCredentials: existing.map((c) => ({ id: c.id, transports: c.transports || [] })), authenticatorSelection: { residentKey: "required", userVerification: "preferred" } });
 }
 export async function verifyRegistration({ origin, response, challenge }) {
   const r = await verifyRegistrationResponse({ response, expectedChallenge: challenge, expectedOrigin: origin, expectedRPID: rpOf(origin), requireUserVerification: false });
@@ -14,7 +14,7 @@ export async function verifyRegistration({ origin, response, challenge }) {
   const c = r.registrationInfo.credential;
   return { id: c.id, publicKey: b64u(c.publicKey), jwk: jwkFromCose(c.publicKey), counter: c.counter || 0, transports: c.transports || [] };
 }
-export const authenticationOptions = ({ origin, challenge }) => generateAuthenticationOptions({ rpID: rpOf(origin), userVerification: "preferred", allowCredentials: [], challenge: unb64u(challenge) });
+export const authenticationOptions = ({ origin, challenge, allow = [] }) => generateAuthenticationOptions({ rpID: rpOf(origin), userVerification: "preferred", allowCredentials: allow.map((c) => ({ id: c.id, transports: c.transports || [] })), challenge: unb64u(challenge) });
 export async function verifyAssertion({ origin, response, challenge, credential }) {
   const r = await verifyAuthenticationResponse({ response, expectedChallenge: challenge, expectedOrigin: origin, expectedRPID: rpOf(origin), requireUserVerification: false,
     credential: { id: credential.id, publicKey: unb64u(credential.public_key), counter: credential.counter || 0, transports: credential.transports || [] } });

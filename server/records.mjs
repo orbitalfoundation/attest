@@ -1,6 +1,6 @@
 // Domain operations: accept a delegation, accept a record, answer reads. Verification lives here; storage in store.mjs.
 import * as store from "./store.mjs";
-import { checkDelegation, checkRecord, verifyObject } from "./identity.mjs";
+import { checkDelegation, checkRecord, checkAction, verifyObject } from "./identity.mjs";
 import { KINDS, normalizeTarget } from "../packages/orbital-attest/verify.mjs";
 import { verifyAssertion } from "./passkeys.mjs";
 import { EventEmitter } from "node:events";
@@ -15,12 +15,38 @@ export async function acceptDelegation({ envelope, origin }) {
   if (!store.getDelegation(id)) store.putDelegation(id, envelope);
   return { id, root: account.did, handle: account.handle, until: envelope.delegation.until };
 }
+const pendingKeys = new Map(); // nonce -> {did, credential, at}; a new passkey waits here until an existing one signs add-key
+setInterval(() => { const cutoff = Date.now() - 10 * 60e3; for (const [k, v] of pendingKeys) if (v.at < cutoff) pendingKeys.delete(k); }, 60e3).unref();
+export const stagePendingKey = (nonce, did, credential) => pendingKeys.set(nonce, { did, credential, at: Date.now() });
+// A root action envelope: { action, credentialId, assertion }; the assertion's challenge is the action id, signed by one of the root's passkeys.
+export async function acceptAction({ envelope, origin }) {
+  const { action } = envelope; const id = await checkAction(action);
+  const credential = store.getCredential(envelope.credentialId); if (!credential || credential.did !== action.root) throw new Error("passkey does not belong to " + action.root);
+  const { counter } = await verifyAssertion({ origin, response: envelope.assertion, challenge: hexToB64u(id), credential }); store.setCounter(credential.id, counter);
+  if (action.type === "revoke") {
+    const d = store.getDelegation(action.del); if (!d || d.delegation.root !== action.root) throw new Error("no such delegation of yours");
+    if (!store.isRevoked(action.del)) store.putRevocation(id, envelope);
+    return { id, revoked: action.del };
+  }
+  if (action.type === "add-key") {
+    const p = [...pendingKeys.values()].find((v) => v.did === action.root && v.credential.id === action.credentialId); if (!p) throw new Error("no pending passkey with that id; register it again");
+    store.addCredential(action.root, p.credential); for (const [k, v] of pendingKeys) if (v === p) pendingKeys.delete(k);
+    return { id, added: action.credentialId, keys: store.keysOf(action.root).length };
+  }
+  if (action.type === "remove-key") {
+    if (action.credentialId === credential.id) throw new Error("sign with a different passkey than the one you are removing");
+    if (store.keysOf(action.root).length < 2) throw new Error("cannot remove the only passkey");
+    if (!store.removeCredential(action.root, action.credentialId)) throw new Error("no such passkey");
+    return { id, removed: action.credentialId, keys: store.keysOf(action.root).length };
+  }
+}
 const hexToB64u = (h) => Buffer.from(h, "hex").toString("base64url");
 // A record envelope: { record, del, sig }. sig is the device key's ECDSA over canonical(record).
 export async function acceptRecord({ envelope, origin }) {
   const { record, del, sig } = envelope || {};
   const id = await checkRecord(record, { KINDS, normalizeTarget });
   const d = store.getDelegation(del); if (!d) throw new Error("unknown delegation");
+  if (store.isRevoked(del)) throw new Error("delegation revoked; sign in again");
   const dg = d.delegation;
   if (dg.root !== record.by) throw new Error("delegation root is not the record's author");
   if (origin && dg.origin !== origin) throw new Error("delegation was issued for " + dg.origin + ", not " + origin);
@@ -36,5 +62,5 @@ export function read(targets) {
   const out = {}; for (const t of targets.slice(0, 100)) { try { const n = normalizeTarget(t); out[t] = { target: n, ...store.countsFor(n) }; } catch (e) { out[t] = { error: e.message }; } }
   return out;
 }
-export const by = (did) => { const a = store.getAccount(did); return { did, handle: a?.handle || null, since: a?.created || null, keys: store.keysOf(did), records: store.recordsBy(did) }; };
+export const by = (did) => { const a = store.getAccount(did); return { did, handle: a?.handle || null, since: a?.created || null, keys: store.keysOf(did).map(({ id, jwk, created, transports }) => ({ id, jwk, created, transports })), delegations: store.delegationsOf(did), records: store.recordsBy(did) }; };
 export const whois = (did) => store.handleOf(did);

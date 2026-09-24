@@ -19,6 +19,7 @@ export function open(path = process.env.ATTEST_DB || "data/attest.sqlite") {
     CREATE INDEX IF NOT EXISTS records_target ON records(target, kind, retracted);
     CREATE INDEX IF NOT EXISTS records_by ON records(by_did, at);
     CREATE UNIQUE INDEX IF NOT EXISTS records_one_upvote ON records(by_did, target) WHERE kind = 'upvote' AND retracted = 0;
+    CREATE TABLE IF NOT EXISTS revocations (del TEXT PRIMARY KEY, root TEXT NOT NULL, at TEXT NOT NULL, json TEXT NOT NULL);
   `);
   return db;
 }
@@ -33,7 +34,15 @@ export function createAccount({ did, handle, credential }) {
 export function getCredential(id) { const r = db.prepare("SELECT * FROM credentials WHERE id = ?").get(id); return r ? { ...r, jwk: JSON.parse(r.jwk), transports: JSON.parse(r.transports) } : null; }
 export const setCounter = (id, counter) => db.prepare("UPDATE credentials SET counter = ? WHERE id = ?").run(counter, id);
 export const handleOf = (did) => getAccount(did)?.handle || null;
-export const keysOf = (did) => db.prepare("SELECT id, jwk FROM credentials WHERE did = ?").all(did).map((c) => ({ id: c.id, jwk: JSON.parse(c.jwk) }));
+export const keysOf = (did) => db.prepare("SELECT id, jwk, created, transports FROM credentials WHERE did = ?").all(did).map((c) => ({ id: c.id, jwk: JSON.parse(c.jwk), created: c.created, transports: JSON.parse(c.transports) }));
+export function addCredential(did, credential) { db.prepare("INSERT INTO credentials (id, did, public_key, jwk, counter, transports, created) VALUES (?, ?, ?, ?, ?, ?, ?)").run(credential.id, did, credential.publicKey, JSON.stringify(credential.jwk), credential.counter, JSON.stringify(credential.transports), now()); }
+export const removeCredential = (did, id) => db.prepare("DELETE FROM credentials WHERE did = ? AND id = ?").run(did, id).changes;
+export const delegationsOf = (root) => db.prepare("SELECT d.id, d.device, d.origin, d.from_at, d.until_at, r.at AS revoked FROM delegations d LEFT JOIN revocations r ON r.del = d.id WHERE d.root = ? ORDER BY d.from_at DESC").all(root).map((d) => ({ id: d.id, device: d.device, origin: d.origin, from: d.from_at, until: d.until_at, revoked: d.revoked || null }));
+export const isRevoked = (del) => !!db.prepare("SELECT 1 FROM revocations WHERE del = ?").get(del);
+export function putRevocation(id, envelope) {
+  const a = envelope.action;
+  db.exec("BEGIN"); try { appendLog("revoke", id, envelope); db.prepare("INSERT OR IGNORE INTO revocations (del, root, at, json) VALUES (?, ?, ?, ?)").run(a.del, a.root, a.at, JSON.stringify(envelope)); db.exec("COMMIT"); } catch (e) { db.exec("ROLLBACK"); throw e; }
+}
 // log + delegations + records
 function appendLog(type, id, obj) { db.prepare("INSERT INTO log (type, id, json, received) VALUES (?, ?, ?, ?)").run(type, id, JSON.stringify(obj), now()); }
 export function putDelegation(id, envelope) {

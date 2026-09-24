@@ -8,6 +8,15 @@
 <p class="muted small" id="who"></p>
 <table id="t"><thead><tr><th>when</th><th>kind</th><th>target</th><th>body</th></tr></thead><tbody></tbody></table>
 <p class="muted small" id="empty"></p>
+<section id="own" hidden>
+<h2>Sessions</h2>
+<p class="small muted">Each row is a delegation your passkey signed: a device key on one site, for 30 days. Revoking one stops that device signing as you from now on; what it already signed stays in the log.</p>
+<table id="sessions"><thead><tr><th>site</th><th>device key</th><th>valid</th><th></th></tr></thead><tbody></tbody></table>
+<h2>Passkeys</h2>
+<p class="small muted">Two passkeys mean a lost phone is not a lost account. Adding one takes two prompts: the new device creates a passkey, then an existing passkey approves it.</p>
+<table id="keys"><thead><tr><th>added</th><th>id</th><th></th></tr></thead><tbody></tbody></table>
+<p><button id="addkey" class="quiet">Add a passkey on this device</button> <span id="keymsg" class="small"></span></p>
+</section>
 </main>
 <script type="module">
 import * as A from "/attest-core.js"; import "/menu.js";
@@ -21,5 +30,34 @@ else {
   const tb = document.querySelector("tbody");
   tb.innerHTML = me.records.map((r) => `<tr${r.retracted ? ' style="opacity:.45;text-decoration:line-through"' : ""}><td class="small">${new Date(r.at).toLocaleString()}</td><td>${esc(r.kind)}</td><td class="small">${/^https?:/.test(r.target) ? `<a href="${esc(r.target)}">${esc(r.target)}</a>` : esc(r.target)}${r.ref ? ` <span class="muted">→ ${r.ref.slice(0, 8)}</span>` : ""}</td><td>${esc(r.body)} <a class="muted small" href="/record/${r.id}">#${r.id.slice(0, 8)}</a></td></tr>`).join("");
   if (!me.records.length) document.getElementById("empty").textContent = "Nothing signed yet.";
+  const s = A.session();
+  if (s && s.root === did && A.server === location.origin) {
+    document.getElementById("own").hidden = false;
+    const msg = (t, cls = "") => { const el = document.getElementById("keymsg"); el.textContent = t; el.className = "small " + cls; };
+    const stamp = () => new Date().toISOString();
+    const renderSessions = () => { document.querySelector("#sessions tbody").innerHTML = me.delegations.map((d) => { const live = !d.revoked && Date.parse(d.until) > Date.now(); return `<tr${live ? "" : ' style="opacity:.5"'}><td>${esc(d.origin)}${d.id === s.id ? ' <span class="muted small">(this browser)</span>' : ""}</td><td class="small"><code>${esc(d.device.slice(8, 20))}…</code></td><td class="small">${d.revoked ? "revoked " + new Date(d.revoked).toLocaleDateString() : "until " + new Date(d.until).toLocaleDateString()}</td><td>${live ? `<button class="quiet small" data-revoke="${d.id}">revoke</button>` : ""}</td></tr>`; }).join(""); };
+    const renderKeys = () => { document.querySelector("#keys tbody").innerHTML = me.keys.map((k) => `<tr><td class="small">${new Date(k.created).toLocaleDateString()}</td><td class="small"><code>${esc(k.id.slice(0, 12))}…</code></td><td>${me.keys.length > 1 ? `<button class="quiet small" data-remove="${esc(k.id)}">remove</button>` : ""}</td></tr>`).join(""); };
+    const refresh = async () => { const m = await A.by(did); me.delegations = m.delegations; me.keys = m.keys; renderSessions(); renderKeys(); };
+    renderSessions(); renderKeys();
+    document.getElementById("own").addEventListener("click", async (e) => {
+      const rv = e.target.dataset.revoke, rm = e.target.dataset.remove; if (!rv && !rm) return; e.target.disabled = true;
+      try {
+        if (rv) { await A.rootAction({ v: 1, type: "revoke", root: did, del: rv, at: stamp() }); if (rv === s.id) A.clearSession(); msg("Session revoked.", "ok"); }
+        if (rm) { await A.rootAction({ v: 1, type: "remove-key", root: did, credentialId: rm, at: stamp() }); msg("Passkey removed.", "ok"); }
+        await refresh(); if (rv === s.id) location.reload();
+      } catch (err) { msg(err.message, "err"); e.target.disabled = false; }
+    });
+    document.getElementById("addkey").onclick = async () => {
+      const b = document.getElementById("addkey"); b.disabled = true;
+      try {
+        const { nonce, options } = await A.req("passkey.add.start", { did });
+        msg("Creating the new passkey…"); const cred = await navigator.credentials.create({ publicKey: A.creationOptions(options) });
+        const { credentialId } = await A.req("passkey.add.finish", { nonce, response: A.credToJSON(cred) });
+        msg("Now approve it with an existing passkey…");
+        const r = await A.rootAction({ v: 1, type: "add-key", root: did, credentialId, at: stamp() });
+        msg(`Added. You have ${r.keys} passkeys.`, "ok"); await refresh();
+      } catch (err) { msg(err.message, "err"); } finally { b.disabled = false; }
+    };
+  }
 }
 </script></body></html>

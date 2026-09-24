@@ -39,3 +39,15 @@ export async function checkRecord(r, { KINDS, normalizeTarget }) {
   const allowed = new Set(["v", "type", "kind", "by", "target", "at", "body", "ref"]); for (const k of Object.keys(r)) if (!allowed.has(k)) throw new Error("unexpected field " + k);
   return idOf(r);
 }
+
+// Root actions: things only the passkey may do, each signed by an assertion whose challenge is the action's id.
+export async function checkAction(a) {
+  if (!a || a.v !== 1 || !isDid(a.root)) throw new Error("not a v1 root action");
+  const at = Date.parse(a.at); if (!(at > 0) || Math.abs(at - Date.now()) > 10 * 60e3) throw new Error("action time is not near now");
+  const fields = Object.keys(a).sort().join(",");
+  if (a.type === "revoke") { if (!/^[0-9a-f]{64}$/.test(a.del || "")) throw new Error("revoke needs del"); if (fields !== "at,del,root,type,v") throw new Error("unexpected fields " + fields); }
+  else if (a.type === "add-key") { if (typeof a.credentialId !== "string" || !a.credentialId) throw new Error("add-key needs credentialId"); if (fields !== "at,credentialId,root,type,v") throw new Error("unexpected fields " + fields); }
+  else if (a.type === "remove-key") { if (typeof a.credentialId !== "string" || !a.credentialId) throw new Error("remove-key needs credentialId"); if (fields !== "at,credentialId,root,type,v") throw new Error("unexpected fields " + fields); }
+  else throw new Error("unknown action " + a.type);
+  return idOf(a);
+}

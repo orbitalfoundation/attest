@@ -35,6 +35,29 @@ const handlers = {
   async "delegate.finish"({ delegation, credentialId, assertion }, ctx) {
     return records.acceptDelegation({ envelope: { delegation, credentialId, assertion }, origin: ctx.origin });
   },
+  // Root actions (revoke a delegation, add or remove a passkey): the passkey signs the action's id.
+  async "root.start"({ action }, ctx) {
+    const { checkAction } = await import("./identity.mjs"); const id = await checkAction(action);
+    // Offer only the root's passkeys, and for remove-key never the one being removed.
+    const allow = store.keysOf(action.root).filter((k) => !(action.type === "remove-key" && k.id === action.credentialId));
+    const options = await passkeys.authenticationOptions({ origin: ctx.origin, challenge: Buffer.from(id, "hex").toString("base64url"), allow });
+    return { id, options };
+  },
+  async "root.finish"({ action, credentialId, assertion }, ctx) { return records.acceptAction({ envelope: { action, credentialId, assertion }, origin: ctx.origin }); },
+  // A second passkey: register it (excluding the ones the account has), then an existing passkey signs add-key to adopt it.
+  async "passkey.add.start"({ did }, ctx) {
+    const a = store.getAccount(did); if (!a) throw new Error("no such account");
+    const options = await passkeys.registrationOptions({ origin: ctx.origin, handle: a.handle, existing: store.keysOf(did) });
+    const nonce = randomBytes(16).toString("base64url"); pending.set(nonce, { challenge: options.challenge, handle: a.handle, did, at: Date.now() });
+    return { nonce, options };
+  },
+  async "passkey.add.finish"({ nonce, response }, ctx) {
+    const p = pending.get(nonce); if (!p || !p.did) throw new Error("registration expired; try again"); pending.delete(nonce);
+    const credential = await passkeys.verifyRegistration({ origin: ctx.origin, response, challenge: p.challenge });
+    if (store.getCredential(credential.id)) throw new Error("that passkey is already registered");
+    records.stagePendingKey(nonce, p.did, credential);
+    return { credentialId: credential.id, did: p.did };
+  },
   async attest(envelope, ctx) {
     if (!allow("ip:" + ctx.ip, 60)) throw new Error("too many writes from this address; slow down");
     if (envelope?.record?.by && !allow("did:" + envelope.record.by, 30)) throw new Error("too many writes for this identity; slow down");
