@@ -8,6 +8,7 @@ import { didFromJwk } from "./identity.mjs";
 import { allow } from "./ratelimit.mjs";
 import * as proofs from "./proofs.mjs";
 import * as pds from "./pds.mjs";
+import * as dns from "./dns.mjs";
 import { randomBytes as rb } from "node:crypto";
 import { randomBytes } from "node:crypto";
 const pending = new Map(); // nonce -> {challenge, handle, at}
@@ -31,6 +32,7 @@ const handlers = {
       // The account is a repo on our PDS. Its password is a server-side secret; the passkey is the person's key.
       const password = rb(18).toString("base64url"); const a = await pds.createAccount(p.handle, password);
       store.createAccount({ did: a.did, handle: p.handle, credential, keyDid, pdsHandle: a.handle, pdsPassword: password });
+      if (dns.enabled()) dns.bindHandle(a.handle, a.did).catch((e) => console.error("handle dns", e.message));
       return { did: a.did, handle: p.handle, repoHandle: a.handle };
     }
     store.createAccount({ did: keyDid, handle: p.handle, credential, keyDid });

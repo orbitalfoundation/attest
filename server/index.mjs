@@ -11,4 +11,5 @@ await routes(app);
 await app.ready();
 attach(app.server);
 await app.listen({ port: PORT, host: HOST });
+if (process.env.PDS_URL) (await import("./firehose.mjs")).start({ pdsUrl: process.env.PDS_URL });
 console.log(`attest listening on http://${HOST}:${PORT}`);

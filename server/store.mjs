@@ -26,7 +26,8 @@ export function open(path = process.env.ATTEST_DB || "data/attest.sqlite") {
   `);
   for (const [table, col, type] of [["accounts", "key_did", "TEXT"], ["accounts", "pds_handle", "TEXT"], ["accounts", "pds_password", "TEXT"], ["records", "uri", "TEXT"], ["records", "cid", "TEXT"], ["records", "collection", "TEXT"], ["records", "rkey", "TEXT"]])
     if (!db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`);
-  db.exec("CREATE INDEX IF NOT EXISTS records_uri ON records(uri); CREATE INDEX IF NOT EXISTS records_cid ON records(cid)");
+  db.exec("CREATE INDEX IF NOT EXISTS records_uri ON records(uri); CREATE INDEX IF NOT EXISTS records_cid ON records(cid); CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)");
+  for (const [table, col, type] of [["accounts", "status", "TEXT"]]) if (!db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`);
   return db;
 }
 const now = () => new Date().toISOString();
@@ -100,4 +101,9 @@ export function recordsBy(did, limit = 200) {
     .map((r) => ({ id: r.id, uri: r.uri || undefined, kind: r.kind, target: r.target, at: r.at, ref: r.ref || undefined, retracted: !!r.retracted, body: JSON.parse(r.json).record.body }));
 }
 export const logSince = (seq, limit = 500) => db.prepare("SELECT seq, type, id, json, received FROM log WHERE seq > ? ORDER BY seq LIMIT ?").all(seq, Math.min(limit, 2000)).map((e) => ({ seq: e.seq, type: e.type, id: e.id, received: e.received, ...JSON.parse(e.json) }));
+export const getMeta = (k) => { const r = db.prepare("SELECT value FROM meta WHERE key = ?").get(k); return r ? JSON.parse(r.value) : null; };
+export const setMeta = (k, v) => db.prepare("INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(k, JSON.stringify(v));
+export const setAccountStatus = (did, status) => db.prepare("UPDATE accounts SET status = ? WHERE did = ?").run(status, did);
+export const setRepoHandle = (did, handle) => db.prepare("UPDATE accounts SET pds_handle = ? WHERE did = ? AND (pds_handle IS NULL OR pds_handle != ?)").run(handle, did, handle);
+export const delegationForDevice = (root, device) => db.prepare("SELECT d.id FROM delegations d LEFT JOIN revocations r ON r.del = d.id WHERE d.root = ? AND d.device = ? AND r.del IS NULL ORDER BY d.from_at DESC LIMIT 1").get(root, device)?.id || null;
 export const stats = () => ({ accounts: db.prepare("SELECT COUNT(*) AS n FROM accounts").get().n, records: db.prepare("SELECT COUNT(*) AS n FROM records WHERE retracted = 0").get().n, log: db.prepare("SELECT COALESCE(MAX(seq),0) AS n FROM log").get().n });

@@ -2,6 +2,7 @@
 // device-key signature, are written into the repo, and indexed here. Verification lives here; storage in store.mjs; XRPC in pds.mjs.
 import * as store from "./store.mjs";
 import * as pds from "./pds.mjs";
+import * as dns from "./dns.mjs";
 import { checkDelegation, checkAction } from "./identity.mjs";
 import { normalizeTarget, isDid, isAccountDid, didFromJwk, inlineSign, inlineVerify, INLINE_TYPE, canonical, verifyObject, jwkFromDidKey } from "../packages/orbital-attest/verify.mjs";
 import { cidString } from "../packages/orbital-attest/cid.mjs";
@@ -31,7 +32,7 @@ export async function initServiceKey(path = (process.env.ATTEST_DB || "data/atte
   if (pds.enabled()) {
     const acct = store.getAccountByHandle(service.handle);
     if (acct?.pds_handle) service.did = acct.did;
-    else try { const password = randomBytes(18).toString("base64url"); const a = await pds.createAccount(service.handle, password); store.ensureServiceAccount(a.did, service.handle, { keyDid: service.keyDid, pdsHandle: a.handle, pdsPassword: password }); service.did = a.did; }
+    else try { const password = randomBytes(18).toString("base64url"); const a = await pds.createAccount(service.handle, password); store.ensureServiceAccount(a.did, service.handle, { keyDid: service.keyDid, pdsHandle: a.handle, pdsPassword: password }); service.did = a.did; if (dns.enabled()) dns.bindHandle(a.handle, a.did).catch((e) => console.error("handle dns", e.message)); }
     catch (e) { console.error("service repo account unavailable (" + e.message + "); verifications will be signed by the service key without a repo"); service.did = service.keyDid; store.ensureServiceAccount(service.did, service.handle, { keyDid: service.keyDid }); }
   } else service.did = service.keyDid, store.ensureServiceAccount(service.did, service.handle, { keyDid: service.keyDid });
   return service.did;
@@ -61,7 +62,7 @@ function liveDelegation(del, origin) {
   return dg;
 }
 // ---- a record from a client: { collection, rkey?, record, del }
-function indexShape(collection, record, by) {
+export function indexShape(collection, record, by) {
   const k = collection.slice(NS.length), kind = KIND_OF[k]; const at = record.createdAt;
   if (k === "vote") return { by, kind, target: record.subject, at };
   if (k === "comment") return { by, kind, target: record.subject, at, body: record.text };

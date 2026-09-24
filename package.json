@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@atproto/lexicon": "^0.7.14",
+    "@atproto/sync": "^0.4.10",
     "@fastify/http-proxy": "^11.6.2",
     "@fastify/static": "^10.1.3",
     "@ipld/dag-cbor": "^10.0.2",
