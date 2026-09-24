@@ -1,4 +1,4 @@
-// attest embed: <script type="module" src="https://attest.exe.xyz/attest.js"></script> then <div data-attest data-target="https://…" data-comments></div>.
+// attest embed: <script type="module" src="https://attest.monster/attest.js"></script> then <div data-attest data-target="https://…" data-comments></div>.
 // Without data-target the page's canonical URL is the target. Renders an upvote button with a live count, optionally comments.
 import * as A from "./attest-core.js";
 const CSS = `

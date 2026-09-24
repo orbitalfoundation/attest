@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /login
 Disallow: /me
-Sitemap: https://attest.exe.xyz/sitemap.xml
+Sitemap: https://attest.monster/sitemap.xml

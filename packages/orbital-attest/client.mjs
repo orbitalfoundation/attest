@@ -1,6 +1,6 @@
 // orbital-attest client: a per-site device key, a delegation from the person's passkey, signing, and one socket to the service.
 // Plain ES module, no build step, no dependencies (socket.io's client is loaded from the service itself).
-// Usage: import * as A from "orbital-attest"; A.configure({ server: "https://attest.exe.xyz" }).
+// Usage: import * as A from "orbital-attest"; A.configure({ server: "https://attest.monster" }).
 import { didFromJwk, canonical, idOf, signObject, normalizeTarget, b64u, unb64u, KINDS } from "./verify.mjs";
 export { didFromJwk, canonical, idOf, normalizeTarget, b64u, unb64u, KINDS };
 export let server = null;

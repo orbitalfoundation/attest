@@ -5,7 +5,10 @@ import { dirname, join } from "node:path";
 import * as records from "./records.mjs";
 import * as store from "./store.mjs";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+const CANONICAL_HOST = process.env.CANONICAL_HOST || "";
 export async function routes(app) {
+  // One origin for passkeys: when CANONICAL_HOST is set, any other host is redirected there (GET only; sockets and writes are origin-checked anyway).
+  if (CANONICAL_HOST) app.addHook("onRequest", async (req, reply) => { if (req.method === "GET" && req.hostname !== CANONICAL_HOST && !req.url.startsWith("/socket.io")) return reply.code(301).redirect("https://" + CANONICAL_HOST + req.url); });
   app.addHook("onSend", async (req, reply, payload) => { reply.header("Access-Control-Allow-Origin", "*"); return payload; });
   app.get("/read", async (req, reply) => {
     const targets = String(req.query.targets || req.query.target || "").split(",").map((s) => s.trim()).filter(Boolean);

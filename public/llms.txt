@@ -2,7 +2,7 @@
 
 > Signed, public statements about URLs and keys. One sign-up with a passkey; any web page can then collect signed upvotes, comments, vouches and statements without running accounts. Everything is verifiable from public data without calling the service.
 
-Origin: https://attest.exe.xyz (staging). Source: https://github.com/orbitalfoundation/attest (MIT).
+Origin: https://attest.monster (staging). Source: https://github.com/orbitalfoundation/attest (MIT).
 
 ## If you are an agent reading the web
 
@@ -30,14 +30,14 @@ The root's passkey signed a WebAuthn assertion whose challenge is the delegation
 3. ECDSA-verify(devKey, canonical(record), sig)
 4. optionally: WebAuthn-verify the delegation's assertion with a key from GET /by/<root>.keys; its challenge must be the delegation id bytes
 
-A JS module implementing canonical, idOf, verifyObject, didFromJwk, normalizeTarget for browsers and Node: https://attest.exe.xyz/lib/did.js
+A JS module implementing canonical, idOf, verifyObject, didFromJwk, normalizeTarget for browsers and Node: https://attest.monster/lib/did.js
 
 ## If you are building an integration
 
-Embed: <script type="module" src="https://attest.exe.xyz/attest.js"></script> and <div data-attest data-target="<url>" data-comments></div>.
-JS API: https://attest.exe.xyz/attest-core.js exports session(), signIn(), attest(kind, target, extra), read(targets), by(did), subscribe(targets), onCounts(fn), makeRecord().
+Embed: <script type="module" src="https://attest.monster/attest.js"></script> and <div data-attest data-target="<url>" data-comments></div>.
+JS API: https://attest.monster/attest-core.js exports session(), signIn(), attest(kind, target, extra), read(targets), by(did), subscribe(targets), onCounts(fn), makeRecord().
 Writes go over socket.io as emit("req", {name, payload}, ack). Names: passkey.register.start/finish, lookup, delegate.start/finish, attest, subscribe, whois, read. Rate limits: 60 writes/min per address, 30 per key.
-Full integrator page: https://attest.exe.xyz/docs. Design and threat model: https://attest.exe.xyz/technical. Why it exists: https://attest.exe.xyz/about.
+Full integrator page: https://attest.monster/docs. Design and threat model: https://attest.monster/technical. Why it exists: https://attest.monster/about.
 
 ## Principles that constrain future scoring
 
