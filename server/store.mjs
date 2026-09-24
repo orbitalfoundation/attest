@@ -34,7 +34,11 @@ const now = () => new Date().toISOString();
 // accounts and credentials
 export const getAccount = (did) => db.prepare("SELECT did, handle, created, key_did, pds_handle FROM accounts WHERE did = ?").get(did) || null;
 export const getAccountByHandle = (handle) => db.prepare("SELECT did, handle, created, key_did, pds_handle FROM accounts WHERE handle = ?").get(handle) || null;
-export function ensureServiceAccount(did, handle, { keyDid = null, pdsHandle = null, pdsPassword = null } = {}) { db.prepare("INSERT OR IGNORE INTO accounts (did, handle, created, key_did, pds_handle, pds_password) VALUES (?, ?, ?, ?, ?, ?)").run(did, handle, now(), keyDid, pdsHandle, pdsPassword); }
+export function ensureServiceAccount(did, handle, { keyDid = null, pdsHandle = null, pdsPassword = null } = {}) {
+  // A stale row with the same handle but another did (the standalone era) is replaced, so the repo credentials are never dropped.
+  const stale = db.prepare("SELECT did FROM accounts WHERE handle = ? AND did != ?").get(handle, did); if (stale) { db.prepare("UPDATE records SET by_did = ? WHERE by_did = ?").run(did, stale.did); db.prepare("DELETE FROM accounts WHERE did = ?").run(stale.did); }
+  db.prepare("INSERT INTO accounts (did, handle, created, key_did, pds_handle, pds_password) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(did) DO UPDATE SET pds_handle = COALESCE(excluded.pds_handle, accounts.pds_handle), pds_password = COALESCE(excluded.pds_password, accounts.pds_password), key_did = COALESCE(excluded.key_did, accounts.key_did)").run(did, handle, now(), keyDid, pdsHandle, pdsPassword);
+}
 export function createAccount({ did, handle, credential, keyDid = null, pdsHandle = null, pdsPassword = null }) {
   const tx = db.prepare("INSERT INTO accounts (did, handle, created, key_did, pds_handle, pds_password) VALUES (?, ?, ?, ?, ?, ?)"), c = db.prepare("INSERT INTO credentials (id, did, public_key, jwk, counter, transports, created) VALUES (?, ?, ?, ?, ?, ?, ?)");
   db.exec("BEGIN"); try { tx.run(did, handle, now(), keyDid, pdsHandle, pdsPassword); c.run(credential.id, did, credential.publicKey, JSON.stringify(credential.jwk), credential.counter, JSON.stringify(credential.transports), now()); db.exec("COMMIT"); } catch (e) { db.exec("ROLLBACK"); throw e; }
