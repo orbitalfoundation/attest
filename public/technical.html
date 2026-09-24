@@ -1,0 +1,59 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>attest technical: passkeys, delegation, AT Protocol, threat model</title><meta name="description" content="How passkeys become did:key identities, how a passkey delegates to a per-site device key, what was borrowed from AT Protocol, and the threat model as it stands.">
+<link rel="canonical" href="https://attest.exe.xyz/technical">
+<meta property="og:type" content="website"><meta property="og:site_name" content="attest"><meta property="og:title" content="attest technical: passkeys, delegation, AT Protocol, threat model"><meta property="og:description" content="How passkeys become did:key identities, how a passkey delegates to a per-site device key, what was borrowed from AT Protocol, and the threat model as it stands."><meta property="og:url" content="https://attest.exe.xyz/technical">
+<meta name="twitter:card" content="summary"><meta name="theme-color" content="#1f6f8b">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css"></head><body><main>
+<h1>technical <small>passkeys, delegation, AT Protocol, threat model</small></h1>
+
+<h2>Identity is a passkey</h2>
+<p>An account is created by WebAuthn registration with <code>residentKey: required</code> and ES256 as the only accepted algorithm, so every account key is a P-256 point. The relying-party id is this service's hostname, taken from the request origin. We store the credential id, the COSE public key, the signature counter and a handle. There is no email, no password and no recovery path yet.</p>
+<p>The public key becomes the account's identifier as a <code>did:key</code>: the multicodec prefix for P-256 (<code>0x1200</code>, varint bytes <code>80 24</code>) followed by the compressed point (33 bytes), base58btc-encoded with a <code>z</code> prefix. Such identifiers start with <code>did:key:zDna</code>. Anyone holding the JWK can recompute the DID; anyone holding the DID and the JWK can check they match. The same function runs in the browser and in Node from <code>/lib/did.js</code>.</p>
+
+<h2>Delegation to a device key</h2>
+<p>WebAuthn signatures are bound to the relying party's origin and each one prompts the user. A site on another origin cannot ask your passkey to sign, and a prompt per upvote is unusable. So the passkey signs a delegation instead.</p>
+<pre>delegation {v:1, type:"delegation", root, device, devKey:{x,y}, origin, from, until}</pre>
+<ul>
+<li><b>device</b> is a P-256 key the integrating page generated with WebCrypto, private half non-extractable, stored in that origin's IndexedDB. It never leaves the browser and never reaches us in private form. <b>devKey</b> is its public JWK and <b>device</b> must equal <code>didFromJwk(devKey)</code>.</li>
+<li><b>origin</b> is the bare origin of the page that will use the delegation. The server refuses a record whose socket handshake origin differs from it. One site cannot act as you on another; each site is its own arena, in Friedman and Resnick's sense.</li>
+<li><b>from</b> must be within ten minutes of server time; <b>until</b> is at most 90 days later. The login page issues 30.</li>
+</ul>
+<p>The delegation's id is the SHA-256 of its canonical JSON. That id, as bytes, is the WebAuthn challenge; the passkey's assertion over it is the signature on the delegation. Sign-in therefore <i>is</i> the act of delegating, and a returning user sees one prompt. The assertion (authenticatorData, clientDataJSON, signature) is stored with the delegation and appended to the log, so anyone with the root's public key can verify the delegation later, offline. The signature counter is updated and monotonic.</p>
+<p>On a page of another origin, the login page runs in a popup on our origin (so the passkey works), receives the page's device DID and public JWK in the query string, and posts the finished session back with <code>postMessage</code> to the origin in the delegation. On our own origin it is a redirect.</p>
+
+<h2>Records and the log</h2>
+<p>A record is signed by the device key (ECDSA P-256, SHA-256, raw <code>r||s</code>) over its canonical JSON; the envelope carries the delegation id. Verification walks the chain: record signature against <code>devKey</code>, delegation assertion against the passkey. Acceptance also checks: the delegation's root is the record's author, the record's time is inside the delegation window, the handshake origin equals the delegation origin, the target is in normal form, the kind's fields are exactly the allowed ones, and a retraction refers to the author's own record on the same target.</p>
+<p>Storage is SQLite (<code>node:sqlite</code>, WAL). One table, <code>log</code>, is append-only with a monotonic <code>seq</code> and holds every accepted delegation and record as received. Index tables (<code>records</code>, <code>delegations</code>, <code>accounts</code>, <code>credentials</code>) are derived and rebuildable from it. A partial unique index enforces one live upvote per key per target; retraction flips a flag rather than deleting. <code>GET /log?since=</code> pages the log, which is the whole state a mirror needs, plus the passkey public keys published by <code>/by</code>.</p>
+<p>The log is not yet a Merkle structure and there is no signed tree head. That is the Certificate Transparency shape we intend to adopt, so a mirror can prove we did not rewrite history; today a mirror can only detect it by comparison.</p>
+
+<h2>What we took from AT Protocol, and what we did not</h2>
+<table>
+<tr><th>atproto</th><th>here</th></tr>
+<tr><td>Label record: <code>src, uri, cid, val, neg, cts, exp, sig</code></td><td>Record: <code>by, target, (hash targets), kind + body, retract, at, delegation until, sig</code>. Same idea, wider targets: labels only address <code>at://</code> and <code>did:</code>; ours address any URL, DOI, ISBN, handle or hash.</td></tr>
+<tr><td>DIDs (<code>did:plc</code>, <code>did:web</code>)</td><td><code>did:key</code> for people, derived from the passkey, no directory. <code>did:web</code> is the intended form for sites. Migration to <code>did:plc</code>-style rotatable identifiers is the custody milestone.</td></tr>
+<tr><td>PDS: a signed Merkle repo per account, relayed by a firehose</td><td>A single append-only log for everyone, one HTTP endpoint to page it. A self-hosted PDS was considered for pass 1 and deferred: it would have meant PLC registration, mail and browser OAuth before anything could be clicked.</td></tr>
+<tr><td>Labelers: <code>queryLabels</code>, <code>subscribeLabels</code></td><td>Planned: emitter scores published in label format so any subscribing client can consume a root's view.</td></tr>
+<tr><td>OAuth with DPoP and PAR</td><td>Passkeys plus delegation. Lighter, and it gives per-site keys for free.</td></tr>
+</table>
+<p>Other borrowings: the NIP-73 identifier grammar for targets; EAS-style referencing (<code>ref</code>) for chaining; SIWE's idea that a login is a signed, origin-bound, time-stamped message.</p>
+
+<h2>Threat model, as it stands</h2>
+<table>
+<tr><th>threat</th><th>today</th></tr>
+<tr><td>Stolen device key (XSS on the integrating site)</td><td>Can sign as the user on that origin until the delegation expires (≤90 days). Cannot act on other origins. No revocation of a delegation yet; planned as a signed <code>revoke</code> from the root.</td></tr>
+<tr><td>Stolen delegation without the device key</td><td>Useless: the device private key is non-extractable and never transmitted.</td></tr>
+<tr><td>Replay of a record</td><td>Idempotent: the id is content-derived; a duplicate upvote is a no-op.</td></tr>
+<tr><td>Spoofed <code>Origin</code> header from a non-browser client</td><td>The origin check is a browser guarantee, not a cryptographic one. A non-browser attacker still needs the device key. Binding the origin into what the device key signs is a planned tightening.</td></tr>
+<tr><td>Sybil keys</td><td>Free to create. Counts today are raw and say so. Bounded-flow scoring from a root is the answer and is the next milestone after vouches exist.</td></tr>
+<tr><td>Whitewashing (burn and return)</td><td>By design. Newcomers start at zero; the cost is paid in time. See Friedman and Resnick.</td></tr>
+<tr><td>Lost passkey</td><td>Lost account. A second passkey and key export are the custody milestone.</td></tr>
+<tr><td>Our server lies or rewrites</td><td>Detectable by any mirror of the log; not yet provable. Signed tree heads are planned.</td></tr>
+<tr><td>Reads reveal what you look at</td><td>True for the first-party site's own reads. The planned browser client scores from a mirror or asks by hash prefix.</td></tr>
+</table>
+
+<h2>Canonical JSON</h2>
+<p>Object keys sorted lexicographically at every level; arrays in given order; <code>undefined</code> members dropped; <code>null</code> kept; no whitespace; strings and numbers as <code>JSON.stringify</code> emits them. It is deliberately smaller than RFC 8785 and identical to it for the shapes we sign.</p>
+
+<p class="small muted">Source: <a href="https://github.com/anselm/attest">github.com/anselm/attest</a>. Reading behind these choices is in the repository's <code>reference/</code> and <code>devlog/</code>.</p>
+</main>
+<script type="module" src="/menu.js"></script></body></html>

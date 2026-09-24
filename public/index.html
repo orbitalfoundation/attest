@@ -1,4 +1,10 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>attest</title><link rel="stylesheet" href="/style.css"></head><body><main>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>attest: signed statements about URLs and keys</title><meta name="description" content="One sign-up with a passkey, then any static site gets signed upvotes, comments, vouches and statements without accounts, passwords or a database. Public, verifiable, and the start of a web of trust.">
+<link rel="canonical" href="https://attest.exe.xyz/">
+<meta property="og:type" content="website"><meta property="og:site_name" content="attest"><meta property="og:title" content="attest: signed statements about URLs and keys"><meta property="og:description" content="One sign-up with a passkey, then any static site gets signed upvotes, comments, vouches and statements without accounts, passwords or a database. Public, verifiable, and the start of a web of trust."><meta property="og:url" content="https://attest.exe.xyz/">
+<meta name="twitter:card" content="summary"><meta name="theme-color" content="#1f6f8b">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"attest","applicationCategory":"DeveloperApplication","operatingSystem":"Web","url":"https://attest.exe.xyz/","description":"Signed, public statements about URLs and keys: passkey sign-in and signed votes, comments and vouches for static sites; emitter trust computed from a root you choose.","license":"https://opensource.org/licenses/MIT","codeRepository":"https://github.com/anselm/attest","author":{"@type":"Person","name":"Anselm Hook","url":"https://hook.org/"},"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script></head><body><main>
 <h1>attest <small>signed statements about URLs and keys</small></h1>
 <p>One sign-up, with a passkey your device holds. Then any site can let you upvote, comment, vouch for someone, or make a public statement, and none of those sites has to run accounts, passwords or a database. Every statement is signed by your key, is public, and can be checked by anyone without asking us.</p>
 <p class="status" id="status">…</p>
@@ -8,7 +14,9 @@
 <pre>&lt;script type="module" src="ORIGIN/attest.js"&gt;&lt;/script&gt;
 &lt;div data-attest data-target="https://example.com/article" data-comments&gt;&lt;/div&gt;</pre>
 <p class="small muted">Leave out <code>data-target</code> to attest the page's own canonical URL. Counts also come from a plain cacheable GET: <code>ORIGIN/read?targets=https://example.com/article</code>. Everything a key has signed: <code>ORIGIN/by/did:key:…</code>. The whole append-only log, for mirrors: <code>ORIGIN/log?since=0</code>.</p>
+<p class="small">Integrating? <a href="/docs">The integrator page</a> has the widget, the API, the record format and how to verify without us. <a href="/technical">Technical</a> covers passkeys, delegation, AT Protocol and the threat model. Agents: <a href="/llms.txt">/llms.txt</a>.</p>
 <p class="small muted" id="stats"></p>
+<p class="small muted">Source: <a href="https://github.com/anselm/attest">github.com/anselm/attest</a>, MIT. Donations: <code>anselm.eth</code>.</p>
 </main>
 <script type="module">
 import { session, server } from "/attest-core.js"; import "/menu.js";

@@ -1,0 +1,84 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>attest for integrators: widget, API, record format, verification</title><meta name="description" content="Put signed upvotes and comments on a static page with one script tag. The JavaScript API, HTTP reads, socket writes, the record format and how to verify a record without the service.">
+<link rel="canonical" href="https://attest.exe.xyz/docs">
+<meta property="og:type" content="website"><meta property="og:site_name" content="attest"><meta property="og:title" content="attest for integrators: widget, API, record format, verification"><meta property="og:description" content="Put signed upvotes and comments on a static page with one script tag. The JavaScript API, HTTP reads, socket writes, the record format and how to verify a record without the service."><meta property="og:url" content="https://attest.exe.xyz/docs">
+<meta name="twitter:card" content="summary"><meta name="theme-color" content="#1f6f8b">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css"></head><body><main>
+<h1>for integrators <small>one script tag, two GETs, nothing to store</small></h1>
+<p>You keep your content. attest keeps identity and the signed statements. Your page needs no server, no database and no user table. Everything below is live at <code>ORIGIN</code>.</p>
+
+<h2>1. The widget</h2>
+<pre>&lt;script type="module" src="ORIGIN/attest.js"&gt;&lt;/script&gt;
+&lt;div data-attest data-target="https://example.com/article" data-comments&gt;&lt;/div&gt;</pre>
+<table>
+<tr><th>attribute</th><th>meaning</th></tr>
+<tr><td><code>data-attest</code></td><td>mount a widget here: an upvote button with a live count</td></tr>
+<tr><td><code>data-target</code></td><td>what is being attested. Omit it and the page's <code>&lt;link rel="canonical"&gt;</code> is used, else the page URL without its fragment</td></tr>
+<tr><td><code>data-comments</code></td><td>also show signed comments and a composer</td></tr>
+</table>
+<p>Several widgets on one page are fine; they share one socket and one read. The first click on any widget starts sign-in. Colour comes from the CSS variable <code>--attest-accent</code> on any ancestor; everything else inherits your page's font and colours.</p>
+<p>Sign-in from your origin opens a small popup on <code>ORIGIN</code>. The popup returns a session to your page by <code>postMessage</code>, scoped to your origin. Your page never sees the passkey and never holds a password. If your page runs inside a sandboxed iframe or blocks popups, sign-in cannot complete.</p>
+
+<h2>2. The JavaScript API</h2>
+<p>The widget is built on a small module you can use directly for your own UI.</p>
+<pre>import * as A from "ORIGIN/attest-core.js";
+A.session()                       // {id, root, handle, until, delegation} or null
+await A.signIn()                  // popup; resolves with the session
+await A.attest("upvote", url)     // sign with this page's device key and submit
+await A.attest("comment", url, { body: "…" })
+await A.attest("retract", url, { ref: recordId })
+await A.attest("vouch", "did:key:z…")
+await A.attest("statement", url, { body: "…" })
+await A.read([url1, url2])        // counts + recent comments, keyed by target
+await A.by(did)                   // everything a key signed
+await A.subscribe([url]); A.onCounts(({ target, counts }) => …)  // live</pre>
+<p><code>A.makeRecord(kind, target, extra)</code> builds and signs without submitting, if you want to hold records and submit later.</p>
+
+<h2>3. Reads over HTTP</h2>
+<p>All GET, all public, all with <code>Access-Control-Allow-Origin: *</code>. Cacheable by a CDN (<code>s-maxage</code>); browsers revalidate.</p>
+<table>
+<tr><th>endpoint</th><th>returns</th></tr>
+<tr><td><code>GET /read?targets=a,b,c</code></td><td><code>{targets: {a: {target, upvotes, vouches, comments:[{id, by, handle, at, body}]}}}</code>. Up to 100 targets. Comma-separate; URL-encode each target.</td></tr>
+<tr><td><code>GET /by/:did</code></td><td><code>{did, handle, since, keys:[{id, jwk}], records:[{id, kind, target, at, ref, retracted, body}]}</code>. <code>keys</code> are the passkey public keys, for checking delegations yourself.</td></tr>
+<tr><td><code>GET /record/:id</code></td><td>the full signed envelope <code>{record, del, sig, id, retracted}</code></td></tr>
+<tr><td><code>GET /log?since=N&amp;limit=500</code></td><td>the append-only log from sequence N: <code>{entries:[{seq, type:"record"|"delegation", id, received, …envelope}]}</code>. Mirror by paging <code>since</code>.</td></tr>
+<tr><td><code>GET /stats</code></td><td>account, record and log counts</td></tr>
+</table>
+
+<h2>4. Writes over the socket</h2>
+<p>The client library does this for you. For your own client: one socket.io connection to <code>ORIGIN</code>, then <code>emit("req", {name, payload}, ack)</code>; the ack is <code>{ok, data}</code> or <code>{ok:false, error}</code>.</p>
+<table>
+<tr><th>name</th><th>payload → data</th></tr>
+<tr><td><code>passkey.register.start</code></td><td><code>{handle}</code> → <code>{nonce, options}</code> (WebAuthn creation options)</td></tr>
+<tr><td><code>passkey.register.finish</code></td><td><code>{nonce, response}</code> → <code>{did, handle}</code></td></tr>
+<tr><td><code>lookup</code></td><td><code>{handle}</code> → <code>{did, handle}</code></td></tr>
+<tr><td><code>delegate.start</code></td><td><code>{delegation}</code> → <code>{id, options}</code> (WebAuthn request options whose challenge is the delegation's id)</td></tr>
+<tr><td><code>delegate.finish</code></td><td><code>{delegation, credentialId, assertion}</code> → <code>{id, root, handle, until}</code></td></tr>
+<tr><td><code>attest</code></td><td><code>{record, del, sig}</code> → <code>{id, counts, duplicate?}</code></td></tr>
+<tr><td><code>subscribe</code></td><td><code>{targets}</code>; the server then emits <code>counts</code> events <code>{target, counts}</code></td></tr>
+<tr><td><code>whois</code>, <code>read</code></td><td>as the GETs</td></tr>
+</table>
+<p>Limits: 60 writes a minute per address, 30 per key. A duplicate upvote returns the existing id with <code>duplicate: true</code>. Records dated more than 10 minutes from server time are refused.</p>
+
+<h2>5. The record</h2>
+<pre>record     {v:1, type:"record", kind, by:"did:key:z…", target, at:"ISO-8601", body?, ref?}
+envelope   {record, del:"&lt;delegation id&gt;", sig:"&lt;base64url ES256 over canonical(record)&gt;"}
+id         hex sha256 of canonical(record)</pre>
+<p><b>kind</b> is one of <code>upvote</code>, <code>comment</code>, <code>vouch</code>, <code>statement</code>, <code>retract</code>. <code>comment</code> and <code>statement</code> need a <code>body</code> (under 4000 characters). <code>retract</code> needs <code>ref</code>, the id of the author's own record on the same target, and only that kind carries <code>ref</code>.</p>
+<p><b>target</b> is normalised before signing, and the server refuses a record whose target is not in normal form. Forms: a URL (scheme and host lowercased, fragment dropped, empty path becomes <code>/</code>); <code>doi:10.…</code> lowercased; <code>isbn:…</code> without hyphens; a <code>did:key:…</code>; a service handle such as <code>github:anselm</code>; <code>sha256:&lt;hex&gt;</code> for content.</p>
+<p><b>canonical JSON</b>: object keys sorted at every depth, arrays kept in order, no whitespace, <code>undefined</code> dropped. The shared module <code>ORIGIN/lib/did.js</code> exports <code>canonical</code>, <code>idOf</code>, <code>verifyObject</code>, <code>didFromJwk</code> and <code>normalizeTarget</code>, and runs unchanged in browsers and Node.</p>
+
+<h2>6. Verifying without us</h2>
+<ol>
+<li>Fetch the envelope (<code>/record/:id</code>) or take it from the log. Check <code>sha256(canonical(record)) === id</code>.</li>
+<li>Fetch the delegation by <code>del</code> from the log. Check <code>delegation.root === record.by</code>, that <code>record.at</code> lies within <code>from</code>…<code>until</code>, and that <code>didFromJwk(delegation.devKey) === delegation.device</code>.</li>
+<li>Verify <code>sig</code> as ECDSA P-256 / SHA-256, raw <code>r||s</code>, over <code>canonical(record)</code>, with <code>delegation.devKey</code>.</li>
+<li>To go one step further, verify the WebAuthn assertion stored with the delegation against the root's passkey public key (<code>/by/:did</code> → <code>keys</code>): its challenge must equal the delegation's id as base64url bytes.</li>
+</ol>
+<p>The end-to-end test in the repo does steps 1 to 3 from Node against the live service.</p>
+
+<h2>7. A static site, concretely</h2>
+<p>A page on a CDN adds the script tag and a widget. Sign-in opens the popup; the session is stored in the page's own <code>localStorage</code>, the device key in its own IndexedDB. Counts render from <code>/read</code>; the reader's own votes from <code>/by</code>. Your build does not change and your host learns nothing new. If attest is down, counts fall back to whatever your page last cached, and nothing else on the page is affected.</p>
+<p>Source and issues: <a href="https://github.com/anselm/attest">github.com/anselm/attest</a> (MIT). Machine-readable summary: <a href="/llms.txt">/llms.txt</a>. Design: <a href="/technical">technical</a>.</p>
+</main>
+<script type="module">import { server } from "/attest-core.js"; import "/menu.js"; document.querySelectorAll("pre, td, p").forEach((n) => { if (n.innerHTML.includes("ORIGIN")) n.innerHTML = n.innerHTML.replaceAll("ORIGIN", server); });</script></body></html>
