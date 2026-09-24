@@ -8,6 +8,7 @@ Origin: https://attest.monster (staging). Source: https://github.com/orbitalfoun
 
 - Batch counts for pages: GET /read?targets=<url1>,<url2>,... (URL-encode each; up to 100). Returns per target: upvotes, vouches, comments[{id, by, handle, at, body}]. Counts are raw today, not trust-weighted; treat them as signals, not verdicts.
 - Everything one key signed: GET /by/<did> (or GET /handle/<handle>). Includes passkey public keys under `keys`, delegations with `revoked`, who vouched for it (`vouchedBy`), whom it vouches for (`vouches`), and its proofs of control with verifications (`proofs`). Human page: /@<handle>.
+- A whole site: GET /domain/<host> (totals, most-attested pages, recent comments, verified domain claims). Human page: /site/<host>.
 - One signed envelope: GET /record/<id>. The whole log: GET /log?since=<seq>&limit=500 (append-only, page by seq).
 - Targets are normalised: URLs lowercase scheme and host, no fragment; doi:..., isbn:..., did:key:..., github:<handle>, sha256:<hex>.
 - Identities are did:key over P-256 passkey public keys (prefix did:key:zDna). A key has no profile; its meaning is what it signed and who vouched for it. Reputation belongs to the key, not a person; keys can be abandoned.

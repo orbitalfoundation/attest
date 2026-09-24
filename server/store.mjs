@@ -79,6 +79,14 @@ export function claimsOf(did) {
   return db.prepare("SELECT id, target, at FROM records WHERE by_did = ? AND kind = 'claim' AND retracted = 0 ORDER BY at DESC").all(did).map((c) => ({ ...c,
     verifications: db.prepare("SELECT r.id, r.by_did, r.at, r.json, a.handle FROM records r LEFT JOIN accounts a ON a.did = r.by_did WHERE r.kind = 'verify' AND r.ref = ? AND r.retracted = 0 ORDER BY r.at DESC").all(c.id).map((v) => ({ id: v.id, by: v.by_did, handle: v.handle, at: v.at, evidence: JSON.parse(v.json).record.body })) }));
 }
+export function siteSummary(host, limit = 50) {
+  const h = String(host).toLowerCase(); const like = ["https://" + h + "/%", "http://" + h + "/%"];
+  const rows = db.prepare(`SELECT target, SUM(kind = 'upvote') AS upvotes, SUM(kind = 'comment') AS comments, SUM(kind = 'vouch') AS vouches, SUM(kind = 'statement') AS statements, MAX(at) AS last, COUNT(DISTINCT by_did) AS keys FROM records WHERE retracted = 0 AND (target LIKE ? OR target LIKE ?) GROUP BY target ORDER BY upvotes DESC, comments DESC, last DESC LIMIT ?`).all(like[0], like[1], limit);
+  const totals = db.prepare(`SELECT COUNT(*) AS records, COUNT(DISTINCT by_did) AS keys, COUNT(DISTINCT target) AS targets FROM records WHERE retracted = 0 AND (target LIKE ? OR target LIKE ?)`).get(like[0], like[1]);
+  const recent = db.prepare(`SELECT r.id, r.by_did, r.at, r.target, r.json, a.handle FROM records r LEFT JOIN accounts a ON a.did = r.by_did WHERE r.retracted = 0 AND r.kind = 'comment' AND (r.target LIKE ? OR r.target LIKE ?) ORDER BY r.at DESC LIMIT 20`).all(like[0], like[1]).map((c) => ({ id: c.id, by: c.by_did, handle: c.handle, at: c.at, target: c.target, body: JSON.parse(c.json).record.body }));
+  const claims = db.prepare(`SELECT r.id, r.by_did, r.target, a.handle, (SELECT COUNT(*) FROM records v WHERE v.kind = 'verify' AND v.ref = r.id AND v.retracted = 0) AS verified FROM records r LEFT JOIN accounts a ON a.did = r.by_did WHERE r.kind = 'claim' AND r.retracted = 0 AND (r.target = ? OR r.target = ? OR r.target = ?)`).all("https://" + h + "/", "http://" + h + "/", "dns:" + h).map((c) => ({ id: c.id, by: c.by_did, handle: c.handle, target: c.target, verified: !!c.verified }));
+  return { host: h, totals, targets: rows, recent, claims };
+}
 export const countsBy = (did) => db.prepare("SELECT kind, COUNT(*) AS n FROM records WHERE by_did = ? AND retracted = 0 GROUP BY kind").all(did).reduce((o, r) => (o[r.kind] = r.n, o), {});
 export function recordsBy(did, limit = 200) {
   return db.prepare("SELECT id, kind, target, at, ref, retracted, json FROM records WHERE by_did = ? ORDER BY at DESC LIMIT ?").all(did, limit)

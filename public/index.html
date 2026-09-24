@@ -13,7 +13,7 @@
 <h2>Put it on a static site</h2>
 <pre>&lt;script type="module" src="ORIGIN/attest.js"&gt;&lt;/script&gt;
 &lt;div data-attest data-target="https://example.com/article" data-comments&gt;&lt;/div&gt;</pre>
-<p class="small muted">Leave out <code>data-target</code> to attest the page's own canonical URL. Counts also come from a plain cacheable GET: <code>ORIGIN/read?targets=https://example.com/article</code>. Everything a key has signed: <code>ORIGIN/by/did:key:…</code>. The whole append-only log, for mirrors: <code>ORIGIN/log?since=0</code>.</p>
+<p class="small muted">Leave out <code>data-target</code> to attest the page's own canonical URL. Counts also come from a plain cacheable GET: <code>ORIGIN/read?targets=https://example.com/article</code>. Everything a key has signed: <code>ORIGIN/by/did:key:…</code>. The whole append-only log, for mirrors: <code>ORIGIN/log?since=0</code>. Public standing of a whole site: <code>ORIGIN/site/example.com</code>.</p>
 <p class="small">Integrating? <a href="/docs">The integrator page</a> has the widget, the API, the record format and how to verify without us. <a href="/technical">Technical</a> covers passkeys, delegation, AT Protocol and the threat model. Agents: <a href="/llms.txt">/llms.txt</a>.</p>
 <p class="small muted" id="stats"></p>
 <p class="small muted">Source: <a href="https://github.com/orbitalfoundation/attest">github.com/orbitalfoundation/attest</a>, MIT. Donations: <code>anselm.eth</code>.</p>

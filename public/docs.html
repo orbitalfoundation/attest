@@ -43,6 +43,7 @@ await A.subscribe([url]); A.onCounts(({ target, counts }) => …)  // live</pre>
 <tr><td><code>GET /handle/:handle</code></td><td>the same, looked up by handle. <code>/@handle</code> is the human page.</td></tr>
 <tr><td><code>GET /record/:id</code></td><td>the full signed envelope <code>{record, del, sig, id, retracted}</code></td></tr>
 <tr><td><code>GET /log?since=N&amp;limit=500</code></td><td>the append-only log from sequence N: <code>{entries:[{seq, type:"record"|"delegation", id, received, …envelope}]}</code>. Mirror by paging <code>since</code>.</td></tr>
+<tr><td><code>GET /domain/:host</code></td><td>public standing of a site: totals, most-attested pages with counts, recent comments, verified domain claims. <code>/site/:host</code> is the human page.</td></tr>
 <tr><td><code>GET /stats</code></td><td>account, record and log counts</td></tr>
 </table>
 
