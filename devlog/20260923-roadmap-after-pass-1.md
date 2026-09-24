@@ -124,3 +124,17 @@ What stays different on purpose: subjects. atproto records address
 `at://` and `did:`; our whole point is URLs, DOIs and content hashes.
 Vouches and follows can live on the protocol; statements about the
 open web cannot yet, and that is where a separate log earns its keep.
+
+## Addendum: Hypercerts (second reader, 2026-09-23)
+
+Re-read Hypercerts: now on AT Protocol, MIT lexicons, live with a
+funded round. It uses a shared `app.certified.*` namespace whose
+`signature.proof` implements badge.blue, plus badge awards, follows,
+evaluations with a bounded score and acknowledgements (accept or
+reject a link). Together with Tangled's follow and vouch, that is an
+emerging common vocabulary. Consequence: the write-out in the previous
+addendum now has target shapes; the mapping is in
+`reference/20260923-prior-art-additions.md`. Acknowledgement (a subject
+accepting or rejecting a link made about it) is a primitive we lack
+and should consider for institutional vouches of bylines: the byline
+acknowledges the masthead's claim.
