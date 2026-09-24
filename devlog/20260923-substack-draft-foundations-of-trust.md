@@ -93,3 +93,9 @@ Heckler, 2026-09-23: 772 words, 9 paragraphs, burstiness 0.7, mean
 sentence 14.4 words, no paragraph-level tells; the usual fingerprint
 drift from his corpus (cos 0.863), which is the part only his rewrite
 fixes.
+
+Published by Anselm the same night, after his rewrite, as "Foundations
+of Trust: Attest.monster":
+https://anselm.substack.com/p/foundations-of-trust-attestmonster
+The About page's "Why" section links it. The hero image is
+`public/hero.png`.
