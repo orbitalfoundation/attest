@@ -1,6 +1,6 @@
 name = "attest"
 horizon = "2027"
-repo = "anselm/attest"
+repo = "orbitalfoundation/attest"
 code = "local"
 deploy = "exe:attest"
 status = "active"        # active | parked (struck through on the dashboard) | archived (hidden)

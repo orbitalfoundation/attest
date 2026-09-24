@@ -1,0 +1,16 @@
+{
+  "name": "orbital-attest",
+  "version": "0.1.0",
+  "description": "Client and verifier for attest: signed statements about URLs and keys, passkey sign-in with per-site delegated device keys.",
+  "license": "MIT",
+  "type": "module",
+  "repository": { "type": "git", "url": "git+https://github.com/orbitalfoundation/attest.git", "directory": "packages/orbital-attest" },
+  "homepage": "https://attest.exe.xyz/docs",
+  "exports": {
+    ".": "./client.mjs",
+    "./verify": "./verify.mjs"
+  },
+  "files": ["client.mjs", "verify.mjs", "README.md"],
+  "sideEffects": false,
+  "keywords": ["attestation", "passkey", "webauthn", "did", "web-of-trust", "reputation", "signed"]
+}

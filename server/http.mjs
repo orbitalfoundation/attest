@@ -16,6 +16,9 @@ export async function routes(app) {
   app.get("/record/:id", async (req, reply) => { const r = store.getRecord(req.params.id); if (!r) return reply.code(404).send({ error: "no such record" }); reply.header("Cache-Control", "public, max-age=3600"); return r; });
   app.get("/log", async (req, reply) => { reply.header("Cache-Control", "public, max-age=5"); return { entries: store.logSince(Number(req.query.since || 0), Number(req.query.limit || 500)) }; });
   app.get("/stats", async () => store.stats());
-  app.get("/lib/did.js", (req, reply) => reply.type("text/javascript").header("Cache-Control", "public, max-age=300").sendFile("did.mjs", join(root, "shared")));
+  const pkg = join(root, "packages", "orbital-attest");
+  app.get("/lib/did.js", (req, reply) => reply.type("text/javascript").header("Cache-Control", "public, max-age=300").sendFile("verify.mjs", pkg));
+  app.get("/lib/verify.mjs", (req, reply) => reply.type("text/javascript").header("Cache-Control", "public, max-age=300").sendFile("verify.mjs", pkg));
+  app.get("/lib/client.mjs", (req, reply) => reply.type("text/javascript").header("Cache-Control", "public, max-age=300").sendFile("client.mjs", pkg));
   await app.register(fastifyStatic, { root: join(root, "public"), prefix: "/", extensions: ["html"], cacheControl: true, maxAge: "5m" });
 }

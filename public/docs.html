@@ -20,7 +20,7 @@
 <p>Sign-in from your origin opens a small popup on <code>ORIGIN</code>. The popup returns a session to your page by <code>postMessage</code>, scoped to your origin. Your page never sees the passkey and never holds a password. If your page runs inside a sandboxed iframe or blocks popups, sign-in cannot complete.</p>
 
 <h2>2. The JavaScript API</h2>
-<p>The widget is built on a small module you can use directly for your own UI.</p>
+<p>The widget is built on a small module you can use directly for your own UI. The same module is the npm package <code>orbital-attest</code> (not yet published; it lives in <code>packages/orbital-attest</code> in the repo): <code>import * as A from "orbital-attest"</code> then <code>A.configure({ server: "ORIGIN" })</code>. The served copy below is pre-configured for this origin. The verifier alone is <code>orbital-attest/verify</code>, with no dependencies.</p>
 <pre>import * as A from "ORIGIN/attest-core.js";
 A.session()                       // {id, root, handle, until, delegation} or null
 await A.signIn()                  // popup; resolves with the session
@@ -79,6 +79,6 @@ id         hex sha256 of canonical(record)</pre>
 
 <h2>7. A static site, concretely</h2>
 <p>A page on a CDN adds the script tag and a widget. Sign-in opens the popup; the session is stored in the page's own <code>localStorage</code>, the device key in its own IndexedDB. Counts render from <code>/read</code>; the reader's own votes from <code>/by</code>. Your build does not change and your host learns nothing new. If attest is down, counts fall back to whatever your page last cached, and nothing else on the page is affected.</p>
-<p>Source and issues: <a href="https://github.com/anselm/attest">github.com/anselm/attest</a> (MIT). Machine-readable summary: <a href="/llms.txt">/llms.txt</a>. Design: <a href="/technical">technical</a>.</p>
+<p>Source and issues: <a href="https://github.com/orbitalfoundation/attest">github.com/orbitalfoundation/attest</a> (MIT). Machine-readable summary: <a href="/llms.txt">/llms.txt</a>. Design: <a href="/technical">technical</a>.</p>
 </main>
 <script type="module">import { server } from "/attest-core.js"; import "/menu.js"; document.querySelectorAll("pre, td, p").forEach((n) => { if (n.innerHTML.includes("ORIGIN")) n.innerHTML = n.innerHTML.replaceAll("ORIGIN", server); });</script></body></html>

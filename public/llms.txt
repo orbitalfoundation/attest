@@ -2,7 +2,7 @@
 
 > Signed, public statements about URLs and keys. One sign-up with a passkey; any web page can then collect signed upvotes, comments, vouches and statements without running accounts. Everything is verifiable from public data without calling the service.
 
-Origin: https://attest.exe.xyz (staging). Source: https://github.com/anselm/attest (MIT).
+Origin: https://attest.exe.xyz (staging). Source: https://github.com/orbitalfoundation/attest (MIT).
 
 ## If you are an agent reading the web
 

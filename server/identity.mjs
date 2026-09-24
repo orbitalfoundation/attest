@@ -1,6 +1,6 @@
 // Server-side identity: COSE public keys from passkeys → JWK → did:key; delegation and record verification.
 import { decodeCredentialPublicKey, cose, isoBase64URL } from "@simplewebauthn/server/helpers";
-import { didFromJwk, isDid, canonical, idOf, verifyObject, unb64u, b64u } from "../shared/did.mjs";
+import { didFromJwk, isDid, canonical, idOf, verifyObject, unb64u, b64u } from "../packages/orbital-attest/verify.mjs";
 export { didFromJwk, isDid, canonical, idOf, verifyObject, b64u, unb64u };
 // A passkey's COSE public key (from registration) as a JWK; ES256 only.
 export function jwkFromCose(coseBytes) {

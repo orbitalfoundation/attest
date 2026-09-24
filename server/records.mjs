@@ -1,7 +1,7 @@
 // Domain operations: accept a delegation, accept a record, answer reads. Verification lives here; storage in store.mjs.
 import * as store from "./store.mjs";
 import { checkDelegation, checkRecord, verifyObject } from "./identity.mjs";
-import { KINDS, normalizeTarget } from "../shared/did.mjs";
+import { KINDS, normalizeTarget } from "../packages/orbital-attest/verify.mjs";
 import { verifyAssertion } from "./passkeys.mjs";
 import { EventEmitter } from "node:events";
 export const events = new EventEmitter(); // "counts" {target, counts}
