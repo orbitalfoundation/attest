@@ -31,6 +31,10 @@
 <tr><td>Reads</td><td><code>/read?targets=…</code> for counts and recent comments, <code>/by/&lt;did&gt;</code> for everything a key signed, <code>/record/&lt;id&gt;</code> for one envelope, <code>/log?since=…</code> for mirrors.</td></tr>
 <tr><td>Live</td><td>One socket per page; counts push to everyone watching the same target.</td></tr>
 <tr><td>Checking</td><td>A record's id is the SHA-256 of its canonical JSON. Its signature verifies against the device key in the delegation; the delegation verifies against the passkey's public key, which <code>/by</code> publishes. No call to us is needed for either.</td></tr>
+<tr><td>Custody</td><td>Revoke any session (delegation) from your own page; add a second passkey from a new device, approved by an existing one; remove one with another's signature. Each is a passkey-signed action in the log.</td></tr>
+<tr><td>Profiles and vouches</td><td>Every handle has a page: who vouched for it, whom it vouches for, its proofs, its statements. "I know this person" costs you visibly; one live vouch per pair; no self-vouch.</td></tr>
+<tr><td>Proof of control</td><td>Claim a website, a domain (DNS TXT), a GitHub user or a Bluesky handle; place a token; the service checks and signs a verification with the evidence URL. The service has a key of its own for this, published at <code>/service</code>.</td></tr>
+<tr><td>Sites</td><td><code>/site/example.com</code>: a domain's live records, most-attested pages, recent comments, and who has proven control of it. Public by construction.</td></tr>
 <tr><td>Limits</td><td>Per-address and per-key rate limits on writes. Reads carry cache headers for CDNs.</td></tr>
 </table>
 
@@ -69,8 +73,8 @@
 <p>In order. Each step is usable on its own.</p>
 <h3>1. A first tenant</h3>
 <p>A static news site replaces its placeholder votes with the widget, drops its plans for a users table, and keeps no server.</p>
-<h3>2. Vouches and proofs</h3>
-<p><b>Vouch</b>: "I know this key's owner", one key about another. Vouching costs the voucher: each key has finite capacity to give, and a vouch for a key that is later abandoned or shown false counts against the voucher's own record. <b>Proof of control</b>, the Keybase move: a key claims a handle or a domain, posts a signed token there, and any other key can sign that it checked. Domains are free, since a passkey account can be bound to a domain the way AT Protocol binds handles. <b>Authorship</b>: a key claims a content hash, timestamped in the log. That proves precedence and attribution, that this key stood behind these bytes first, and it complements C2PA, which proves which camera or editor a file came out of.</p>
+<h3>2. Authorship, statements, and the graph filling in</h3>
+<p><b>Authorship</b>: a key claims a content hash, timestamped in the log. That proves precedence and attribution, that this key stood behind these bytes first, and it complements C2PA, which proves which camera or editor a file came out of. <b>Statements</b> as a public signed feed per key. <b>Vouch for everyone I follow</b>, one click, from a Bluesky follow list, each vouch still signed and still counted against your capacity. Comments anchored to a passage of a page.</p>
 <h3>3. Institutions</h3>
 <p>A masthead holds a key, signs its articles, and separately attests "this byline is a person in our employ". The author's own key is optional. A source writing under threat gets a pseudonymous key vouched for by an institution, as a first-class case.</p>
 <h3>4. Scoring as a labeler</h3>
@@ -79,8 +83,8 @@
 <p>A claim with a resolution date. Statements that support or challenge it. A resolution that stands unless challenged within a window. A Brier score per key, feeding its standing. A key that is often right earns more than a key that is often vouched for.</p>
 <h3>6. Clients</h3>
 <p>A browser extension that scores what you are reading, on any site, from your own root, and never sends the service the URLs you visit: it reads from a mirrored log or asks by hash prefix. A batch endpoint for retrieval agents, which need to weight sources today and degrade in public when they cite slop. The first mass consumer of the graph may well be a model.</p>
-<h3>7. Custody</h3>
-<p>A second passkey on the same account. Key export. Migration of an account to another host, so this service going away does not take identities with it. A mirror run by someone else.</p>
+<h3>7. Custody, the rest</h3>
+<p>Key export. A signed tree head over the log so a mirror can prove history was not rewritten. Migration of an account to another host, so this service going away does not take identities with it. A mirror run by someone else.</p>
 
 <h2 id="ways-in">Ways in</h2>
 <p>This project is useful in more than one way, and not all of them involve using it.</p>
