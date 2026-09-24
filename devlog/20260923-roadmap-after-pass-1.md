@@ -91,3 +91,36 @@ context into the device signature) now has a precedent and a v2 record
 shape to carry it; add low-S normalisation; define a CID form of the
 record id for atproto references. socialweb.computer is the first named
 consumer for the milestone 5 labeler.
+
+## Addendum: the lexicon argument (reader comment, 2026-09-23)
+
+The reader: the benefit of storing attestations as records on the
+protocol is "borrowing meaning from the lexicons across use cases";
+Tangled has follows and vouches "which signal different levels of
+trust while being understandable to the basic user", and John reused
+Tangled vouches as the initial trust graph for sharing CI compute.
+Search confirms Tangled lexicons `sh.tangled.graph.follow` and
+`sh.tangled.graph.vouch` exist (tangled-mcp architecture notes).
+
+Session's read: this is the strongest argument for the PDS path and it
+is right. Two consequences, neither requiring us to move onto a PDS
+today:
+
+1. **Read in.** Treat `sh.tangled.graph.vouch`, `sh.tangled.graph.follow`
+   and `app.bsky.graph.follow` as edge types with their own weights in
+   the flow computation (vouch strong, follow weak), imported from the
+   public firehose or API and attributed to the atproto DID that a key
+   has proven control of (we have `bsky:` proofs already). This
+   replaces roadmap item 12, which would have converted follows into
+   vouches and lost the distinction the reader values.
+2. **Write out.** For a key with a proven atproto identity, mirror its
+   vouches as `sh.tangled.graph.vouch` records (or a lexicon of ours)
+   into its own PDS, so tools like socialweb.computer read them without
+   knowing attest exists. Needs atproto OAuth write access, which is
+   the piece deferred at pass 1; it is now the most valuable single
+   thing to add after scoring.
+
+What stays different on purpose: subjects. atproto records address
+`at://` and `did:`; our whole point is URLs, DOIs and content hashes.
+Vouches and follows can live on the protocol; statements about the
+open web cannot yet, and that is where a separate log earns its keep.
