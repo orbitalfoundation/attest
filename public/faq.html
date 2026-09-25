@@ -1,0 +1,59 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>attest FAQ</title>
+<meta name="description" content="Honest answers: what attest is, whether it needs to exist, who holds your key, what happens if it shuts down."><link rel="canonical" href="https://attest.monster/faq">
+<meta property="og:type" content="website"><meta property="og:site_name" content="attest"><meta property="og:title" content="attest FAQ"><meta property="og:description" content="Honest answers: what attest is, whether it needs to exist, who holds your key, what happens if it shuts down."><meta property="og:url" content="https://attest.monster/faq"><meta property="og:image" content="https://attest.monster/og.png"><meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css"></head><body><main>
+<h1>FAQ <small>asked by real readers</small></h1>
+
+<h2>Does this need to exist? What does it do that nothing else does?</h2>
+<p>The question we get most, and a fair one. Much of the machinery already exists: AT Protocol gives identity, signed repositories and a firehose; <a href="https://badge.blue/">badge.blue</a> and <a href="https://hypercerts.org/">Hypercerts</a> give a shared way to sign records; Tangled has vouches. We folded onto that stack a day after launch rather than compete with it (see <a href="/changes">changes</a>). What attest adds is narrow, and we think it is real:</p>
+<ol>
+<li><b>Statements about the open web.</b> Records on AT Protocol are mostly about other records and accounts. attest's records are about URLs, DOIs and file hashes: this article, this paper, this photograph. That is where most of what reaches us actually lives.</li>
+<li><b>A key you hold, on every record.</b> Your passkey signs a permission for a device key, and that key signs every record inline. The record carries your own signature, not only the server's, so it can be checked with your key alone.</li>
+<li><b>Sign-in and attestations as a drop-in.</b> One script tag gives a static site or a small project sign-up, votes, comments and vouches, with no accounts, passwords or database of its own. That is the reason it was built: every one of the founder's projects was re-implementing auth.</li>
+<li><b>Scores relative to you.</b> When scoring lands, every answer is "trusted by people you trust", computed from a starting key you choose, never a platform number called "trustworthy".</li>
+</ol>
+<p>Could it just not exist? Yes, if Bluesky, Tangled or the Hypercerts community adds a shared lexicon for URL and hash subjects and an index that scores from a root. If that happens we would rather join them than duplicate them, and we say so on the <a href="/about">About</a> page. Until then, this is one working version of the idea, in public, with its reasoning written down.</p>
+
+<h2>Do I need a Bluesky account?</h2>
+<p>No. Signing up creates a passkey and an AT Protocol account on our own data server, with a handle like <code>you.attest.monster</code>. Linking an existing Bluesky account instead is on the <a href="/roadmap">roadmap</a>.</p>
+
+<h2>Who holds my key?</h2>
+<p>Your device does. The passkey is created and kept by your phone or computer, and synced by Apple or Google if you use their passkey sync. We store only its public half. The repository account behind it has a server-side password you never see; that part is held by us, the way any AT Protocol host holds it, which is why every record also carries your own signature.</p>
+
+<h2>What if I lose my phone?</h2>
+<p>Add a second passkey from another device now, on your own page. With one passkey, a lost device is a lost account. Key export is planned.</p>
+
+<h2>What if attest shuts down?</h2>
+<p>Your identity is a <code>did:plc</code> in a public directory, not a row in our database. Your records are in an AT Protocol repository that relays copy. The key that controls the accounts made here is backed up off our server, and the data is copied nightly, so the service can move to another host. The records you signed stay verifiable by anyone with your key, with or without us.</p>
+
+<h2>Is this a blockchain? A token?</h2>
+<p>No to both. It runs on signed records in public repositories on ordinary servers, and there is nothing to buy.</p>
+
+<h2>Is everything public?</h2>
+<p>Yes. That is deliberate: a trust graph only works if anyone can check it. Anything derived from it, counts and scores included, is public too. Do not sign what you would not say in public.</p>
+
+<h2>Can I delete something?</h2>
+<p>You can retract it, which deletes it from your repository and from our counts. Copies that relays or other services already took may persist; that is true of all public posting on AT Protocol.</p>
+
+<h2>Is there a score yet?</h2>
+<p>Not yet. Counts are raw today and say so. Scoring from a root you choose is the next large piece on the <a href="/roadmap">roadmap</a>, and it waits until there are real vouches to score.</p>
+
+<h2>What stops someone making a thousand fake accounts?</h2>
+<p>Nothing stops them making the accounts. What stops them mattering is that trust flows from a key you chose through vouches, with a limit at each step, so a cluster nobody you trust has vouched for has no reach from where you stand. Newcomers start at zero on purpose.</p>
+
+<h2>Can I throw away an identity and start again?</h2>
+<p>Yes. Reputation belongs to a key, not a person. Starting again means starting at zero, and earning standing back takes time. That cost is what makes everyone else's standing mean something.</p>
+
+<h2>Can I use it on my site or app?</h2>
+<p>Yes: the <a href="/docs">integrator page</a> has the script tag, the API and the record format. It is early and may change; the <a href="/changes">changes</a> page records every change that matters.</p>
+
+<h2>Is it open source? Who runs it? What does it cost?</h2>
+<p>MIT licensed, at <a href="https://github.com/orbitalfoundation/attest">github.com/orbitalfoundation/attest</a>. Run by Anselm Hook under the Orbital Foundation, built with Claude. Free. Donations to <code>anselm.eth</code>.</p>
+
+<h2>Why "monster"?</h2>
+<p>The domain was available and the mascot wanted to exist. It holds a cat's cradle, after Vonnegut: the idea that a thing can be defined entirely by its relationships.</p>
+
+<h2>How early is this?</h2>
+<p>Very. It was built in two days and rebuilt on AT Protocol on the second. Test data has been wiped twice and may be again before anyone relies on it. Breaking it now, and telling us, is one of the most useful things you can do.</p>
+</main>
+<script type="module" src="/menu.js"></script></body></html>

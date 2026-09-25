@@ -1,0 +1,67 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>attest roadmap</title>
+<meta name="description" content="What is built, what comes next, what comes later, and what we are still researching."><link rel="canonical" href="https://attest.monster/roadmap">
+<meta property="og:type" content="website"><meta property="og:site_name" content="attest"><meta property="og:title" content="attest roadmap"><meta property="og:description" content="What is built, what comes next, what comes later, and what we are still researching."><meta property="og:url" content="https://attest.monster/roadmap"><meta property="og:image" content="https://attest.monster/og.png"><meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css"></head><body><main>
+<h1>roadmap <small>built, next, later, still reading</small></h1>
+<p>A living page. Dated reasoning behind each item is in the repository's <a href="https://github.com/orbitalfoundation/attest/tree/main/devlog">devlog</a>; what actually shipped is on <a href="/changes">changes</a>.</p>
+
+<h2>Built</h2>
+<ul>
+<li>Passkey sign-up and sign-in; a per-site device key delegated by the passkey; revoke a session; second passkey.</li>
+<li>An AT Protocol account per person on our own data server, <code>did:plc</code>, handle bound by DNS.</li>
+<li>Records in the person's repository: vote, comment, statement, vouch, claim, verification, in our <code>monster.attest.*</code> lexicons, each with the person's inline signature.</li>
+<li>An index that follows the repository stream and verifies every record it counts.</li>
+<li>Profiles, vouching, proof of control over a site, domain, GitHub or Bluesky account, per-site pages, a drop-in widget, a JavaScript package, plain public reads.</li>
+</ul>
+
+<h2>Next</h2>
+<ul>
+<li><b>Link an existing Bluesky account</b> and write records into its repository instead of ours.</li>
+<li><b>Read Tangled vouches and Bluesky follows in</b> as two strengths of trust edge.</li>
+<li><b>Hide records of deleted or deactivated accounts</b> from counts.</li>
+<li><b>An accuracy pass</b> over every reader-facing page after the pivot.</li>
+<li><b>Publish the lexicons</b> so AT Protocol tools can resolve them, and propose the URL-subject shape to the shared <code>app.certified</code> vocabulary.</li>
+</ul>
+
+<h2>Later</h2>
+
+<h3>A subjective score on any post, relative to you</h3>
+<p>Ask for any URL, any post, any record: how is this regarded by the people I trust, and the people they trust? The answer is a small scored graph with you at the centre, computed by flow from your key through vouches with a capacity limit at each step, with the paths shown so you can see why. The same page viewed by two people gives two honest answers. This is the feature the rest of the project exists to make possible.</p>
+
+<h3>Voting</h3>
+<p>Many votes do not need secrecy: a club choosing a date, a neighbourhood ranking street repairs, a community endorsing a proposal. Those can be done now with public signed records, one per key, with trust weighting to discount accounts nobody vouches for. We want to support several flavours: yes or no, ranked, approval, quadratic.</p>
+<p>Secret ballots are a separate and much richer problem, and we will not pretend otherwise. A good digital election needs privacy, so nobody can see or buy your vote, and also retroactive proof, so you can later confirm your own vote was cast as you intended and counted. Those pull against each other, and the known solutions involve zero-knowledge and verifiable-shuffle cryptography we have not built. It is worth tackling eventually. Paper voting is slow and expensive enough that we vote rarely and on large bundles of questions; cheap, trustworthy digital voting would let people vote more often on smaller things, and would scale. That is a later chapter, and it will get its own research note before any code.</p>
+
+<h3>Place-based attestations</h3>
+<p>"If you are at this place at this time, something happens": a reward, a check-in, a proof of attendance, a witness to an event. These are usually built on blockchains; Anselm has drafted an Ethereum proposal for location-bound contracts. Public attestations can do much of it without a chain: a key reports where it is, and the claims are scored for plausibility. The cheapest defence against spoofing is physics. A key cannot be in Vancouver at noon and Lisbon at five past, so impossible jumps are discounted by a maximum travel speed, or by keeping a "ghost" that must walk the route. The body flies but the soul walks. Witnesses nearby vouching for each other add more.</p>
+
+<h3>And the rest</h3>
+<ul>
+<li>Authorship claims on content hashes, and a "check this file" page.</li>
+<li>Scores published as an AT Protocol labeler, so any subscribing client sees a root's view.</li>
+<li>Claims with resolution dates and a track record per key (Brier score).</li>
+<li>Institutions vouching for bylines, with the byline acknowledging it; pseudonymous authors vouched for by an institution.</li>
+<li>A browser extension that scores what you read, from your own root, without telling us what you read.</li>
+<li>An endpoint for AI agents that need to weight sources.</li>
+<li>Key export; an npm release of the client; the first sites to use it.</li>
+</ul>
+
+<h2>Still reading</h2>
+<p>Projects readers have pointed us at, or that we found, not yet studied closely enough to say how we relate:</p>
+<ul>
+<li><a href="https://nstar.social">NorthStar Social</a> (nstar.social): announced as a decentralized, local-first social network, beta in spring 2026. Its pages do not yet say which protocol or how it handles trust.</li>
+<li><a href="https://socialweb.computer/">socialweb.computer</a>: how its vouch and denounce policies are expressed, and whether it can read our records.</li>
+<li><a href="https://tangled.org">Tangled</a>: how a vouch names its subject, before we mirror ours to it.</li>
+<li>The <code>app.certified</code> lexicons: who stewards them, and how to propose an addition.</li>
+<li><a href="https://github.com/twitter/communitynotes">Community Notes</a>'s bridging method, for supports and challenges once volume exists.</li>
+</ul>
+<p>Open questions:</p>
+<ul>
+<li>How strong should a follow be relative to a vouch, and how fast should an edge age?</li>
+<li>Who may resolve a claim, and how is a resolver trusted?</li>
+<li>Can reads stay private without a mirror on every device?</li>
+<li>Whether a passkey could ever control an identity directly. AT Protocol rotation keys need raw signatures, which passkeys do not produce today.</li>
+</ul>
+<p>Know a project we should read? Tell us; the <a href="/about#ways-in">ways in</a> say how.</p>
+</main>
+<script type="module" src="/menu.js"></script></body></html>

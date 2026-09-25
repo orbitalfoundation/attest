@@ -4,6 +4,9 @@
 <h1>changes <small>a public revision log</small></h1>
 <p>Newest first. Decisions and reversals are recorded here as they happen, including the ones that make earlier pages wrong; those pages get corrected, and the correction is logged too. The full working notes are the dated entries in <a href="https://github.com/orbitalfoundation/attest/tree/main/devlog">devlog/</a> in the repository.</p>
 
+<h2>2026-09-25 · FAQ and roadmap</h2>
+<p>An <a href="/faq">FAQ</a>, led by the question readers ask most: does this need to exist at all. A public <a href="/roadmap">roadmap</a> with scores relative to you on any post, voting (and why secret ballots are a separate problem), place-based attestations, and projects we are still reading. The About page's old "what comes next" was replaced by a pointer to it.</p>
+
 <h2>2026-09-24 · The index follows the firehose; handles resolve by DNS</h2>
 <p>The service no longer trusts only what it wrote. It subscribes to its data server's repository stream, verifies each record's inline signature against the repository it sits in, and indexes it; an unsigned record in one of our collections is ignored, and a deleted record is retracted. A record written into a repository by any other client now counts exactly as one written through our widget. That is the property the fold was for.</p>
 <p>Handles bind to identities by DNS: each account gets a <code>_atproto.&lt;handle&gt;</code> TXT record with its DID, the AT Protocol way, so Bluesky's resolver already answers for <code>attest.attest.monster</code>. The wildcard certificate for handle hostnames is still not issued by the host's edge; with DNS binding it is no longer needed for resolution.</p>

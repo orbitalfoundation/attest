@@ -6,6 +6,7 @@
 <link rel="stylesheet" href="/style.css">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"attest","applicationCategory":"DeveloperApplication","operatingSystem":"Web","url":"https://attest.monster/","description":"Signed, public statements about URLs and keys: passkey sign-in and signed votes, comments and vouches for static sites; emitter trust computed from a root you choose.","license":"https://opensource.org/licenses/MIT","codeRepository":"https://github.com/orbitalfoundation/attest","author":{"@type":"Person","name":"Anselm Hook","url":"https://hook.org/"},"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script></head><body><main>
 <h1><img src="/mascot.svg" alt="" width="44" height="44" style="vertical-align:-10px;margin-right:.35rem">attest <small>signed statements about URLs and keys</small></h1>
+<p class="muted" style="font-style:italic;margin-top:.2rem">Give me a lever long enough and a fulcrum on which to place it, and I shall move the world. <span class="small">(Archimedes)</span></p>
 <p>One sign-up, with a passkey your device holds. Then any site can let you upvote, comment, vouch for someone, or make a public statement, and none of those sites has to run accounts, passwords or a database. Every statement is signed by your key, is public, and can be checked by anyone without asking us.</p>
 <p class="status" id="status">…</p>
 <h2>Try it</h2>
@@ -14,7 +15,7 @@
 <pre>&lt;script type="module" src="ORIGIN/attest.js"&gt;&lt;/script&gt;
 &lt;div data-attest data-target="https://example.com/article" data-comments&gt;&lt;/div&gt;</pre>
 <p class="small muted">Leave out <code>data-target</code> to attest the page's own canonical URL. Counts also come from a plain cacheable GET: <code>ORIGIN/read?targets=https://example.com/article</code>. Everything a key has signed: <code>ORIGIN/by/did:key:…</code>. The whole append-only log, for mirrors: <code>ORIGIN/log?since=0</code>. Public standing of a whole site: <code>ORIGIN/site/example.com</code>.</p>
-<p class="small">Integrating? <a href="/docs">The integrator page</a> has the widget, the API, the record format and how to verify without us. <a href="/technical">Technical</a> covers passkeys, delegation, AT Protocol and the threat model. Agents: <a href="/llms.txt">/llms.txt</a>. What changed and why, including reversals: <a href="/changes">changes</a>.</p>
+<p class="small">Integrating? <a href="/docs">The integrator page</a> has the widget, the API, the record format and how to verify without us. <a href="/technical">Technical</a> covers passkeys, delegation, AT Protocol and the threat model. Agents: <a href="/llms.txt">/llms.txt</a>. What changed and why, including reversals: <a href="/changes">changes</a>. Questions: <a href="/faq">FAQ</a>. What is planned and what we are still reading: <a href="/roadmap">roadmap</a>.</p>
 <p class="small muted" id="stats"></p>
 <p class="small muted">Source: <a href="https://github.com/orbitalfoundation/attest">github.com/orbitalfoundation/attest</a>, MIT. Donations: <code>anselm.eth</code>.</p>
 </main>
