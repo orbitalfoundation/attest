@@ -18,10 +18,12 @@
 <p class="small">Integrating? <a href="/docs">The integrator page</a> has the widget, the API, the record format and how to verify without us. <a href="/technical">Technical</a> covers passkeys, delegation, AT Protocol and the threat model. Agents: <a href="/llms.txt">/llms.txt</a>. What changed and why, including reversals: <a href="/changes">changes</a>. Questions: <a href="/faq">FAQ</a>. What is planned and what we are still reading: <a href="/roadmap">roadmap</a>.</p>
 <p class="small muted" id="stats"></p>
 <p class="small muted">Source: <a href="https://github.com/orbitalfoundation/attest">github.com/orbitalfoundation/attest</a>, MIT. Donations: <code>anselm.eth</code>.</p>
+<p class="small muted" id="version">version: unknown</p>
 </main>
 <script type="module">
 import { session, server } from "/attest-core.js"; import "/menu.js";
 document.querySelectorAll("pre, p.small").forEach((n) => n.innerHTML = n.innerHTML.replaceAll("ORIGIN", server));
 const s = session(); document.getElementById("status").innerHTML = s ? `Signed in as <b>@${s.handle}</b>, delegation valid until ${new Date(s.until).toLocaleDateString()}.` : `Not signed in. <a href="/login?return=/">Sign in or create an account</a>.`;
+fetch("/version.json", { cache: "no-store" }).then((r) => r.json()).then((v) => { const sha = String(v.sha || "").replace(/-dirty$/, ""); const day = String(v.at || "").slice(0, 10); document.getElementById("version").innerHTML = `version ${day} · <a href="https://github.com/orbitalfoundation/attest/commit/${sha}"><code>${v.sha}</code></a> · released continuously, see <a href="/changes">changes</a>`; }).catch(() => {});
 fetch("/stats").then((r) => r.json()).then((j) => document.getElementById("stats").textContent = `${j.accounts} accounts · ${j.records} live records · ${j.log} log entries`);
 </script></body></html>
