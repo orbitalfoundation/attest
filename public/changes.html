@@ -4,6 +4,11 @@
 <h1>changes <small>a public revision log</small></h1>
 <p>Newest first. Decisions and reversals are recorded here as they happen, including the ones that make earlier pages wrong; those pages get corrected, and the correction is logged too. The full working notes are the dated entries in <a href="https://github.com/orbitalfoundation/attest/tree/main/devlog">devlog/</a> in the repository.</p>
 
+<h2>2026-09-26 · Trust edges from elsewhere; deleted accounts drop out; lexicons published</h2>
+<p><b>Read-in.</b> When someone proves a Bluesky handle, attest now links that identity and imports the trust edges it has already declared on AT Protocol: Tangled vouches and denouncements, Tangled follows, and Bluesky follows, kept as separate kinds so a scorer can weigh a vouch above a follow. Profiles show which other members vouch for or follow a person elsewhere. Denouncements are kept as evidence and, as with everything negative here, will not propagate. Imports refresh every six hours. Tested on real accounts: one Tangled developer's repository gave 20 vouches, 3 Tangled follows and 607 Bluesky follows in two seconds.</p>
+<p><b>Deleted and deactivated accounts</b> drop out of every count as soon as their data server announces it on the firehose.</p>
+<p><b>Lexicons published.</b> The six <code>monster.attest.*</code> schemas are now records in the service's own repository, with <code>_lexicon.attest.monster</code> pointing at it, so AT Protocol tools can resolve them by name.</p>
+
 <h2>2026-09-25 · FAQ and roadmap</h2>
 <p>An <a href="/faq">FAQ</a>, led by the question readers ask most: does this need to exist at all. A public <a href="/roadmap">roadmap</a> with scores relative to you on any post, voting (and why secret ballots are a separate problem), place-based attestations, and projects we are still reading. The About page's old "what comes next" was replaced by a pointer to it.</p>
 
