@@ -3,6 +3,7 @@
 import * as store from "./store.mjs";
 import * as records from "./records.mjs";
 import { resolveTxt } from "node:dns/promises";
+import * as graph from "./graph.mjs";
 const UA = "attest-proof-check/0.1 (+https://attest.monster/docs)";
 const lastCheck = new Map();
 async function text(url, max = 512 * 1024) {
@@ -49,5 +50,7 @@ export async function check(ref) {
   const t = lastCheck.get(claimId) || 0; if (Date.now() - t < 30e3) throw new Error("checked less than 30 s ago; wait"); lastCheck.set(claimId, Date.now());
   const { evidence } = await locate(c.record.target, tokenFor(claimId));
   const v = await records.serviceVerification({ claimUri: c.uri, claimCid: c.cid || claimId, target: c.record.target, evidence });
-  return { verified: true, evidence, verification: v.uri, by: records.serviceDid() };
+  let linked = null;
+  if (c.record.target.startsWith("bsky:")) try { linked = await graph.linkAndImport(c.record.by, c.record.target.slice(5), v.uri); } catch (e) { linked = { error: e.message }; }
+  return { verified: true, evidence, verification: v.uri, by: records.serviceDid(), linked };
 }

@@ -15,3 +15,10 @@ export async function bindHandle(handle, did) {
   await cf("POST", "/dns_records", { type: "TXT", name, content, ttl: 300 }); return { name, content };
 }
 export async function unbindHandle(handle) { const name = "_atproto." + handle; for (const r of await cf("GET", `/dns_records?type=TXT&name=${encodeURIComponent(name)}`)) await cf("DELETE", `/dns_records/${r.id}`); }
+export async function bindLexicon(authority, did) {
+  const name = "_lexicon." + authority, content = "did=" + did;
+  const existing = await cf("GET", `/dns_records?type=TXT&name=${encodeURIComponent(name)}`);
+  if (existing.some((r) => r.content.replace(/^"|"$/g, "") === content)) return { name, content, existed: true };
+  for (const r of existing) await cf("DELETE", `/dns_records/${r.id}`);
+  await cf("POST", "/dns_records", { type: "TXT", name, content, ttl: 300 }); return { name, content };
+}

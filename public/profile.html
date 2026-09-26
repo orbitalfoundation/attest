@@ -5,6 +5,8 @@
 <p id="vouchrow"></p>
 <h2>Vouched for by <span id="nvb" class="muted"></span></h2>
 <ul id="vouchedby" class="small"></ul>
+<h2>Elsewhere on AT Protocol</h2>
+<ul id="elsewhere" class="small"></ul>
 <h2>Proofs of control</h2>
 <ul id="proofs" class="small"></ul>
 <h2>Vouches for <span id="nv" class="muted"></span></h2>
@@ -27,6 +29,11 @@ $("vouchedby").innerHTML = me.vouchedBy.map((v) => `<li><a href="/@${esc(v.handl
 $("vouches").innerHTML = me.vouches.map((v) => `<li><a href="/@${esc(v.handle)}">@${esc(v.handle || A.short(v.target))}</a> <span class="muted">${new Date(v.at).toLocaleDateString()}</span></li>`).join("") || "<li class='muted'>nobody yet</li>";
 $("proofs").innerHTML = me.proofs.map((p) => `<li>${link(p.target)} ${p.verifications.length ? `<span class="ok">✓ verified</span> by ${p.verifications.map((v) => `<a href="/@${esc(v.handle)}">@${esc(v.handle || A.short(v.by))}</a> (<a href="${esc(v.evidence)}">evidence</a>)`).join(", ")}` : `<span class="muted">claimed, unverified</span>`}</li>`).join("") || "<li class='muted'>none</li>";
 document.querySelector("#t tbody").innerHTML = me.records.filter((x) => (x.kind === "statement" || x.kind === "comment") && !x.retracted).map((x) => `<tr><td class="small muted">${new Date(x.at).toLocaleDateString()}</td><td>${esc(x.body)}<div class="small muted">${x.kind} on ${link(x.target)}</div></td></tr>`).join("") || "<tr><td class='muted'>none yet</td></tr>";
+const kindLabel = { "tangled.vouch": "vouches for on Tangled", "tangled.denounce": "denounces on Tangled", "tangled.follow": "follows on Tangled", "bsky.follow": "follows on Bluesky" };
+const inLabel = { "tangled.vouch": "vouches on Tangled", "tangled.denounce": "denounces on Tangled", "tangled.follow": "follows on Tangled", "bsky.follow": "follows on Bluesky" };
+$("elsewhere").innerHTML = (me.elsewhere.map((l) => `<li><a href="https://bsky.app/profile/${esc(l.handle)}">@${esc(l.handle)}</a> <span class="ok">✓ proven</span> · ${Object.entries(l.out).map(([k, n]) => `${n} ${esc((kindLabel[k] || k).replace(/^(vouches for|denounces|follows)/, (m) => m))}`).join(" · ") || "no graph records"}</li>`).join("")
+  + me.trustIn.map((e) => `<li><a href="/@${esc(e.handle)}">@${esc(e.handle)}</a> ${esc(inLabel[e.kind] || e.kind)} this person${e.reason ? `: “${esc(e.reason)}”` : ""}</li>`).join("")
+  + me.trustOut.map((e) => `<li>${esc((kindLabel[e.kind] || e.kind))} <a href="/@${esc(e.handle)}">@${esc(e.handle)}</a></li>`).join("")) || "<li class='muted'>no linked identity yet; prove a Bluesky handle from your own page to bring in your Tangled vouches and follows</li>";
 $("counts").textContent = Object.entries(me.counts).map(([k, n]) => `${n} ${k}${n === 1 ? "" : "s"}`).join(" · ");
 // vouch button: only on the service's own origin, only for someone else
 const s = A.session();

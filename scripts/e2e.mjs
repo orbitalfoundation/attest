@@ -104,6 +104,13 @@ const { inlineVerify } = await import("../packages/orbital-attest/verify.mjs");
 ok(rec.uri?.startsWith("at://" + did + "/monster.attest.comment/") && rec.cid === comment.id, "comment lives in the account's repo: " + rec.uri);
 const iv = await inlineVerify(rec.repoRecord, did); ok(iv[0]?.ok === true, "inline device-key signature verifies against the repo did, from public data alone");
 ok(del.delegation.root === did && del.delegation.device === iv[0].key.split("#")[0] && me.keys.length >= 1, "delegation binds that device key to the account; passkey public key published");
-if (process.env.PDS_URL && process.env.PDS_ADMIN_PASSWORD) { const pds = await import("../server/pds.mjs"); for (const d of [did1, did]) { try { await pds.deleteAccount(d); } catch {} } const d2 = (await (await fetch(`${base}/handle/${handle}b`)).json()).did; try { await pds.deleteAccount(d2); } catch {} console.log("  · test repo accounts deleted from the PDS"); }
+if (process.env.PDS_URL && process.env.PDS_ADMIN_PASSWORD) {
+  const pds = await import("../server/pds.mjs"); const demo = comment.target; const before = (await (await fetch(`${base}/read?targets=${encodeURIComponent(demo)}`)).json()).targets[demo].comments.length;
+  for (const d of [did1, did]) { try { await pds.deleteAccount(d); } catch {} } const d2 = (await (await fetch(`${base}/handle/${handle}b`)).json()).did; try { await pds.deleteAccount(d2); } catch {}
+  console.log("  · test repo accounts deleted from the PDS"); await sleep(4000);
+  const after = (await (await fetch(`${base}/read?targets=${encodeURIComponent(demo)}`)).json()).targets[demo].comments.length;
+  ok(before >= 1 && after === before - 1, `deleted account's comment drops out of counts via the firehose (${before} → ${after})`);
+  const st = (await (await fetch(`${base}/by/${encodeURIComponent(did1)}`)).json()).status; ok(st && st !== "active", "account status recorded from the firehose: " + st);
+}
 console.log(fails ? `${fails} FAILED` : "all passed");
 ws.close(); chrome.kill(); process.exit(fails ? 1 : 0);

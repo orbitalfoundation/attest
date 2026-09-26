@@ -50,7 +50,7 @@ else {
     document.getElementById("own").addEventListener("click", async (e) => {
       const show = e.target.dataset.show, chk = e.target.dataset.check, rc = e.target.dataset.retractclaim;
       if (show) { const i = await A.req("proof.instructions", { claim: show }); pmsg(esc(i.instructions)); return; }
-      if (chk) { e.target.disabled = true; try { const r = await A.req("proof.check", { claim: chk }); pmsg("Verified: " + esc(r.evidence), "ok"); me.proofs = (await A.by(did)).proofs; renderProofs(); } catch (err) { pmsg(esc(err.message), "err"); e.target.disabled = false; } return; }
+      if (chk) { e.target.disabled = true; try { const r = await A.req("proof.check", { claim: chk }); pmsg("Verified: " + esc(r.evidence) + (r.linked?.counts ? ` · linked ${esc(r.linked.handle)}; imported ${Object.entries(r.linked.counts).map(([k, n]) => n + " " + esc(k)).join(", ")}` : r.linked?.error ? " · link failed: " + esc(r.linked.error) : ""), "ok"); me.proofs = (await A.by(did)).proofs; renderProofs(); } catch (err) { pmsg(esc(err.message), "err"); e.target.disabled = false; } return; }
       if (rc) { try { await A.attest("retract", e.target.dataset.target, { ref: rc }); me.proofs = (await A.by(did)).proofs; renderProofs(); } catch (err) { pmsg(esc(err.message), "err"); } return; }
       const rv = e.target.dataset.revoke, rm = e.target.dataset.remove; if (!rv && !rm) return; e.target.disabled = true;
       try {

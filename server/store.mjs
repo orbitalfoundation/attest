@@ -26,13 +26,13 @@ export function open(path = process.env.ATTEST_DB || "data/attest.sqlite") {
   `);
   for (const [table, col, type] of [["accounts", "key_did", "TEXT"], ["accounts", "pds_handle", "TEXT"], ["accounts", "pds_password", "TEXT"], ["records", "uri", "TEXT"], ["records", "cid", "TEXT"], ["records", "collection", "TEXT"], ["records", "rkey", "TEXT"]])
     if (!db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`);
-  db.exec("CREATE INDEX IF NOT EXISTS records_uri ON records(uri); CREATE INDEX IF NOT EXISTS records_cid ON records(cid); CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)");
+  db.exec("CREATE INDEX IF NOT EXISTS records_uri ON records(uri); CREATE INDEX IF NOT EXISTS records_cid ON records(cid); CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT); CREATE TABLE IF NOT EXISTS identity_links (attest_did TEXT NOT NULL, external_did TEXT NOT NULL, handle TEXT, via TEXT, at TEXT NOT NULL, PRIMARY KEY (attest_did, external_did)); CREATE TABLE IF NOT EXISTS edges (uri TEXT PRIMARY KEY, src TEXT NOT NULL, dst TEXT NOT NULL, kind TEXT NOT NULL, at TEXT, reason TEXT, imported TEXT NOT NULL); CREATE INDEX IF NOT EXISTS edges_src ON edges(src, kind); CREATE INDEX IF NOT EXISTS edges_dst ON edges(dst, kind);");
   for (const [table, col, type] of [["accounts", "status", "TEXT"]]) if (!db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`);
   return db;
 }
 const now = () => new Date().toISOString();
 // accounts and credentials
-export const getAccount = (did) => db.prepare("SELECT did, handle, created, key_did, pds_handle FROM accounts WHERE did = ?").get(did) || null;
+export const getAccount = (did) => db.prepare("SELECT did, handle, created, key_did, pds_handle, status FROM accounts WHERE did = ?").get(did) || null;
 export const getAccountByHandle = (handle) => db.prepare("SELECT did, handle, created, key_did, pds_handle FROM accounts WHERE handle = ?").get(handle) || null;
 export function ensureServiceAccount(did, handle, { keyDid = null, pdsHandle = null, pdsPassword = null } = {}) {
   // A stale row with the same handle but another did (the standalone era) is replaced, so the repo credentials are never dropped.
@@ -79,13 +79,13 @@ export function getRecord(id) { const r = db.prepare("SELECT json, retracted FRO
 export const findLive = (by, target, kind) => db.prepare("SELECT id FROM records WHERE by_did = ? AND target = ? AND kind = ? AND retracted = 0").get(by, target, kind)?.id || null;
 export const findUpvote = (by, target) => db.prepare("SELECT id FROM records WHERE by_did = ? AND target = ? AND kind = 'upvote' AND retracted = 0").get(by, target)?.id || null;
 export function countsFor(target) {
-  const up = db.prepare("SELECT COUNT(*) AS n FROM records WHERE target = ? AND kind = 'upvote' AND retracted = 0").get(target).n;
-  const comments = db.prepare("SELECT r.id, r.by_did, r.at, r.json, a.handle FROM records r LEFT JOIN accounts a ON a.did = r.by_did WHERE r.target = ? AND r.kind = 'comment' AND r.retracted = 0 ORDER BY r.at DESC LIMIT 50").all(target)
+  const up = db.prepare("SELECT COUNT(*) AS n FROM records WHERE target = ? AND kind = 'upvote' AND retracted = 0 AND by_did NOT IN (SELECT did FROM accounts WHERE status IS NOT NULL AND status != 'active')").get(target).n;
+  const comments = db.prepare("SELECT r.id, r.by_did, r.at, r.json, a.handle FROM records r LEFT JOIN accounts a ON a.did = r.by_did WHERE r.target = ? AND r.kind = 'comment' AND r.retracted = 0 AND r.by_did NOT IN (SELECT did FROM accounts WHERE status IS NOT NULL AND status != 'active') ORDER BY r.at DESC LIMIT 50").all(target)
     .map((c) => ({ id: c.id, by: c.by_did, handle: c.handle, at: c.at, body: JSON.parse(c.json).record.body }));
-  const vouches = db.prepare("SELECT COUNT(*) AS n FROM records WHERE target = ? AND kind = 'vouch' AND retracted = 0").get(target).n;
+  const vouches = db.prepare("SELECT COUNT(*) AS n FROM records WHERE target = ? AND kind = 'vouch' AND retracted = 0 AND by_did NOT IN (SELECT did FROM accounts WHERE status IS NOT NULL AND status != 'active')").get(target).n;
   return { upvotes: up, vouches, comments };
 }
-export const vouchesFor = (did) => db.prepare("SELECT r.id, r.by_did, r.at, a.handle FROM records r LEFT JOIN accounts a ON a.did = r.by_did WHERE r.target = ? AND r.kind = 'vouch' AND r.retracted = 0 ORDER BY r.at DESC").all(did).map((r) => ({ id: r.id, by: r.by_did, handle: r.handle, at: r.at }));
+export const vouchesFor = (did) => db.prepare("SELECT r.id, r.by_did, r.at, a.handle FROM records r LEFT JOIN accounts a ON a.did = r.by_did WHERE r.target = ? AND r.kind = 'vouch' AND r.retracted = 0 AND r.by_did NOT IN (SELECT did FROM accounts WHERE status IS NOT NULL AND status != 'active') ORDER BY r.at DESC").all(did).map((r) => ({ id: r.id, by: r.by_did, handle: r.handle, at: r.at }));
 export const vouchesBy = (did) => db.prepare("SELECT r.id, r.uri, r.target, r.at, a.handle FROM records r LEFT JOIN accounts a ON a.did = r.target WHERE r.by_did = ? AND r.kind = 'vouch' AND r.retracted = 0 ORDER BY r.at DESC").all(did).map((r) => ({ id: r.id, uri: r.uri, target: r.target, handle: r.handle, at: r.at }));
 export function claimsOf(did) {
   return db.prepare("SELECT id, uri, cid, target, at FROM records WHERE by_did = ? AND kind = 'claim' AND retracted = 0 ORDER BY at DESC").all(did).map((c) => ({ ...c,
@@ -93,9 +93,9 @@ export function claimsOf(did) {
 }
 export function siteSummary(host, limit = 50) {
   const h = String(host).toLowerCase(); const like = ["https://" + h + "/%", "http://" + h + "/%"];
-  const rows = db.prepare(`SELECT target, SUM(kind = 'upvote') AS upvotes, SUM(kind = 'comment') AS comments, SUM(kind = 'vouch') AS vouches, SUM(kind = 'statement') AS statements, MAX(at) AS last, COUNT(DISTINCT by_did) AS keys FROM records WHERE retracted = 0 AND (target LIKE ? OR target LIKE ?) GROUP BY target ORDER BY upvotes DESC, comments DESC, last DESC LIMIT ?`).all(like[0], like[1], limit);
-  const totals = db.prepare(`SELECT COUNT(*) AS records, COUNT(DISTINCT by_did) AS keys, COUNT(DISTINCT target) AS targets FROM records WHERE retracted = 0 AND (target LIKE ? OR target LIKE ?)`).get(like[0], like[1]);
-  const recent = db.prepare(`SELECT r.id, r.by_did, r.at, r.target, r.json, a.handle FROM records r LEFT JOIN accounts a ON a.did = r.by_did WHERE r.retracted = 0 AND r.kind = 'comment' AND (r.target LIKE ? OR r.target LIKE ?) ORDER BY r.at DESC LIMIT 20`).all(like[0], like[1]).map((c) => ({ id: c.id, by: c.by_did, handle: c.handle, at: c.at, target: c.target, body: JSON.parse(c.json).record.body }));
+  const rows = db.prepare(`SELECT target, SUM(kind = 'upvote') AS upvotes, SUM(kind = 'comment') AS comments, SUM(kind = 'vouch') AS vouches, SUM(kind = 'statement') AS statements, MAX(at) AS last, COUNT(DISTINCT by_did) AS keys FROM records WHERE retracted = 0 AND by_did NOT IN (SELECT did FROM accounts WHERE status IS NOT NULL AND status != 'active') AND (target LIKE ? OR target LIKE ?) GROUP BY target ORDER BY upvotes DESC, comments DESC, last DESC LIMIT ?`).all(like[0], like[1], limit);
+  const totals = db.prepare(`SELECT COUNT(*) AS records, COUNT(DISTINCT by_did) AS keys, COUNT(DISTINCT target) AS targets FROM records WHERE retracted = 0 AND by_did NOT IN (SELECT did FROM accounts WHERE status IS NOT NULL AND status != 'active') AND (target LIKE ? OR target LIKE ?)`).get(like[0], like[1]);
+  const recent = db.prepare(`SELECT r.id, r.by_did, r.at, r.target, r.json, a.handle FROM records r LEFT JOIN accounts a ON a.did = r.by_did WHERE r.retracted = 0 AND r.by_did NOT IN (SELECT did FROM accounts WHERE status IS NOT NULL AND status != 'active') AND r.kind = 'comment' AND (r.target LIKE ? OR r.target LIKE ?) ORDER BY r.at DESC LIMIT 20`).all(like[0], like[1]).map((c) => ({ id: c.id, by: c.by_did, handle: c.handle, at: c.at, target: c.target, body: JSON.parse(c.json).record.body }));
   const claims = db.prepare(`SELECT r.id, r.by_did, r.target, a.handle, (SELECT COUNT(*) FROM records v WHERE v.kind = 'verify' AND v.ref = r.id AND v.retracted = 0) AS verified FROM records r LEFT JOIN accounts a ON a.did = r.by_did WHERE r.kind = 'claim' AND r.retracted = 0 AND (r.target = ? OR r.target = ? OR r.target = ?)`).all("https://" + h + "/", "http://" + h + "/", "dns:" + h).map((c) => ({ id: c.id, by: c.by_did, handle: c.handle, target: c.target, verified: !!c.verified }));
   return { host: h, totals, targets: rows, recent, claims };
 }
@@ -105,9 +105,21 @@ export function recordsBy(did, limit = 200) {
     .map((r) => ({ id: r.id, uri: r.uri || undefined, kind: r.kind, target: r.target, at: r.at, ref: r.ref || undefined, retracted: !!r.retracted, body: JSON.parse(r.json).record.body }));
 }
 export const logSince = (seq, limit = 500) => db.prepare("SELECT seq, type, id, json, received FROM log WHERE seq > ? ORDER BY seq LIMIT ?").all(seq, Math.min(limit, 2000)).map((e) => ({ seq: e.seq, type: e.type, id: e.id, received: e.received, ...JSON.parse(e.json) }));
+// ---- imported graph (Tangled vouches and follows, Bluesky follows) from linked atproto identities
+export const linkIdentity = (attestDid, externalDid, handle, via) => db.prepare("INSERT INTO identity_links (attest_did, external_did, handle, via, at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(attest_did, external_did) DO UPDATE SET handle = excluded.handle, via = excluded.via").run(attestDid, externalDid, handle, via, now());
+export const linksOf = (attestDid) => db.prepare("SELECT external_did AS did, handle, via, at FROM identity_links WHERE attest_did = ?").all(attestDid);
+export const allLinks = () => db.prepare("SELECT attest_did, external_did, handle FROM identity_links").all();
+export function replaceEdges(src, rows) {
+  db.exec("BEGIN"); try { db.prepare("DELETE FROM edges WHERE src = ?").run(src); const ins = db.prepare("INSERT OR REPLACE INTO edges (uri, src, dst, kind, at, reason, imported) VALUES (?, ?, ?, ?, ?, ?, ?)"); for (const r of rows) ins.run(r.uri, src, r.dst, r.kind, r.at || null, r.reason || null, now()); db.exec("COMMIT"); } catch (e) { db.exec("ROLLBACK"); throw e; }
+}
+export const edgeCountsFrom = (src) => db.prepare("SELECT kind, COUNT(*) AS n FROM edges WHERE src = ? GROUP BY kind").all(src).reduce((o, r) => (o[r.kind] = r.n, o), {});
+// Edges between attest members, through linked identities (or a member's own repo did): who, of the people here, vouches for or follows whom elsewhere.
+const memberOf = `SELECT attest_did AS m, external_did AS d FROM identity_links UNION SELECT did AS m, did AS d FROM accounts`;
+export const memberEdgesTo = (attestDid) => db.prepare(`SELECT e.kind, e.at, e.reason, e.uri, s.m AS from_member, a.handle FROM edges e JOIN (${memberOf}) s ON s.d = e.src JOIN (${memberOf}) t ON t.d = e.dst JOIN accounts a ON a.did = s.m WHERE t.m = ? AND s.m != ? ORDER BY e.kind`).all(attestDid, attestDid);
+export const memberEdgesFrom = (attestDid) => db.prepare(`SELECT e.kind, e.at, e.uri, t.m AS to_member, a.handle FROM edges e JOIN (${memberOf}) s ON s.d = e.src JOIN (${memberOf}) t ON t.d = e.dst JOIN accounts a ON a.did = t.m WHERE s.m = ? AND t.m != ? ORDER BY e.kind`).all(attestDid, attestDid);
 export const getMeta = (k) => { const r = db.prepare("SELECT value FROM meta WHERE key = ?").get(k); return r ? JSON.parse(r.value) : null; };
 export const setMeta = (k, v) => db.prepare("INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(k, JSON.stringify(v));
 export const setAccountStatus = (did, status) => db.prepare("UPDATE accounts SET status = ? WHERE did = ?").run(status, did);
 export const setRepoHandle = (did, handle) => db.prepare("UPDATE accounts SET pds_handle = ? WHERE did = ? AND (pds_handle IS NULL OR pds_handle != ?)").run(handle, did, handle);
 export const delegationForDevice = (root, device) => db.prepare("SELECT d.id FROM delegations d LEFT JOIN revocations r ON r.del = d.id WHERE d.root = ? AND d.device = ? AND r.del IS NULL ORDER BY d.from_at DESC LIMIT 1").get(root, device)?.id || null;
-export const stats = () => ({ accounts: db.prepare("SELECT COUNT(*) AS n FROM accounts").get().n, records: db.prepare("SELECT COUNT(*) AS n FROM records WHERE retracted = 0").get().n, log: db.prepare("SELECT COALESCE(MAX(seq),0) AS n FROM log").get().n });
+export const stats = () => ({ accounts: db.prepare("SELECT COUNT(*) AS n FROM accounts WHERE status IS NULL OR status = 'active'").get().n, records: db.prepare("SELECT COUNT(*) AS n FROM records WHERE retracted = 0 AND by_did NOT IN (SELECT did FROM accounts WHERE status IS NOT NULL AND status != 'active')").get().n, log: db.prepare("SELECT COALESCE(MAX(seq),0) AS n FROM log").get().n });

@@ -12,4 +12,5 @@ await app.ready();
 attach(app.server);
 await app.listen({ port: PORT, host: HOST });
 if (process.env.PDS_URL) (await import("./firehose.mjs")).start({ pdsUrl: process.env.PDS_URL });
+if (process.env.GRAPH_IMPORT !== "off") (await import("./graph.mjs")).start();
 console.log(`attest listening on http://${HOST}:${PORT}`);
