@@ -15,27 +15,24 @@
 <h2>What it is</h2>
 <p>A public bag of signed statements about URLs and about keys, and a service that lets any web page use it without running accounts.</p>
 <ul>
-<li>You sign up once, with a passkey. Your phone or laptop holds the private key. We hold a handle and a public key, nothing else.</li>
+<li>You sign up once, with a passkey. Your phone or laptop holds the private key. You also get an AT Protocol account and a handle under attest.monster.</li>
 <li>Any site can put an upvote, a comment box, a vouch or a public statement on a page with one script tag. The site keeps no users, no passwords, no database. Static pages on a CDN work.</li>
-<li>Every statement is signed by your key, timestamped, and appended to a log anyone can mirror. Anyone can check a statement against the log and your public key without asking us.</li>
-<li>Counts are a plain cacheable GET. What a key has attested is a plain GET. The whole log is a plain GET.</li>
+<li>Every statement is signed by your key and stored in your own AT Protocol repository, which relays copy. Anyone can check a statement with your key without asking us.</li>
+<li>Counts are a plain cacheable GET. What a person has attested is a plain GET. The records themselves can be read from their repositories by any AT Protocol tool.</li>
 </ul>
 <p>Your identity is the key. You can prove a key is yours by naming it somewhere public, and you can also throw it away. A key that behaves badly can be abandoned, and its owner can start over from zero. Reputation belongs to the key. Mistakes are escapable, at the cost of the years it takes to earn standing again.</p>
 
 <h2>What is built today</h2>
 <table>
 <tr><th>piece</th><th>how</th></tr>
-<tr><td>Sign-up and sign-in</td><td>Passkeys (WebAuthn, ES256). The passkey's public key becomes a <code>did:key</code>. No email, no password, no recovery questions.</td></tr>
-<tr><td>Silent signing</td><td>On sign-in your passkey signs a 30-day delegation to a device key that lives in the site's own browser storage and never leaves it. Upvotes are then signed locally with no prompt. Each site gets its own device key, so a site cannot act as you on another site.</td></tr>
-<tr><td>Records</td><td>upvote, comment, vouch, statement, retract. Targets: a URL, a DOI, an ISBN, a key, a service handle, a content hash. One upvote per key per target; retraction is its own signed record.</td></tr>
-<tr><td>Reads</td><td><code>/read?targets=…</code> for counts and recent comments, <code>/by/&lt;did&gt;</code> for everything a key signed, <code>/record/&lt;id&gt;</code> for one envelope, <code>/log?since=…</code> for mirrors.</td></tr>
-<tr><td>Live</td><td>One socket per page; counts push to everyone watching the same target.</td></tr>
-<tr><td>Checking</td><td>A record's id is the SHA-256 of its canonical JSON. Its signature verifies against the device key in the delegation; the delegation verifies against the passkey's public key, which <code>/by</code> publishes. No call to us is needed for either.</td></tr>
-<tr><td>Custody</td><td>Revoke any session (delegation) from your own page; add a second passkey from a new device, approved by an existing one; remove one with another's signature. Each is a passkey-signed action in the log.</td></tr>
-<tr><td>Profiles and vouches</td><td>Every handle has a page: who vouched for it, whom it vouches for, its proofs, its statements. "I know this person" costs you visibly; one live vouch per pair; no self-vouch.</td></tr>
-<tr><td>Proof of control</td><td>Claim a website, a domain (DNS TXT), a GitHub user or a Bluesky handle; place a token; the service checks and signs a verification with the evidence URL. The service has a key of its own for this, published at <code>/service</code>.</td></tr>
-<tr><td>Sites</td><td><code>/site/example.com</code>: a domain's live records, most-attested pages, recent comments, and who has proven control of it. Public by construction.</td></tr>
-<tr><td>Limits</td><td>Per-address and per-key rate limits on writes. Reads carry cache headers for CDNs.</td></tr>
+<tr><td>Sign-up and sign-in</td><td>A passkey (WebAuthn, ES256) plus an AT Protocol account on our data server: a <code>did:plc</code> and a handle under attest.monster, bound by DNS.</td></tr>
+<tr><td>Silent signing</td><td>On sign-in your passkey signs a 30-day delegation to a device key that lives in the site's own browser storage. Records are then signed on your device with no prompt. Each site gets its own device key.</td></tr>
+<tr><td>Records</td><td>vote, comment, statement, vouch, claim, verification, as <code>monster.attest.*</code> records in your repository, each with your inline signature. Subjects: a URL, a DOI, a content hash, or another account. Retracting deletes the record.</td></tr>
+<tr><td>Index</td><td>Follows the repository firehose, verifies every record it counts, drops deleted accounts. <code>/read</code>, <code>/by/&lt;did&gt;</code>, <code>/handle/&lt;name&gt;</code>, <code>/site/&lt;host&gt;</code>.</td></tr>
+<tr><td>Custody</td><td>Revoke any session; add a second passkey from a new device, approved by an existing one; remove one with another's signature.</td></tr>
+<tr><td>Profiles, vouches, proofs</td><td>A page per handle; "I know this person" with its cost shown; proof of control over a website, domain, GitHub user or Bluesky handle, verified by the service.</td></tr>
+<tr><td>Trust from elsewhere</td><td>Prove a Bluesky handle and your Tangled vouches and follows and your Bluesky follows come in as trust edges of different strengths.</td></tr>
+<tr><td>Limits</td><td>Per-address and per-session rate limits on writes. Reads carry cache headers for CDNs. No cookies.</td></tr>
 </table>
 
 <h2>Why</h2>
@@ -71,7 +68,7 @@
 <p class="small muted">The full catalogue, 50 entries with the URL read and the date, is in the repository under <code>reference/</code>.</p>
 
 <h2>What comes next</h2>
-<p>The <a href="/roadmap">roadmap</a> has what is built, what is next, and the longer list: scores relative to you on any post, voting, place-based attestations, and the projects we are still reading. Since this page was written, attest moved onto AT Protocol; the <a href="/changes">changes</a> page explains why, and this page will be corrected in the accuracy pass.</p>
+<p>The <a href="/roadmap">roadmap</a> has what is built, what is next, and the longer list: scores relative to you on any post, voting, place-based attestations, and the projects we are still reading. attest moved onto AT Protocol a day after launch; the <a href="/changes">changes</a> page explains why.</p>
 
 <h2 id="ways-in">Ways in</h2>
 <p>This project is useful in more than one way, and not all of them involve using it.</p>
@@ -82,7 +79,7 @@
 <li><b>Build on it.</b> Put the script tag on a page and stop running accounts, passwords and a comments database. Outsource your sign-in and your attestations, keep your content.</li>
 <li><b>Use it.</b> Sign up, upvote, vouch for people you know. Every signed statement is one more string in the cradle.</li>
 <li><b>Read it.</b> The log is public and the score is deliberately not part of the service. Compute your own root's view, study the graph, feed it to a retrieval agent. Competing scorers over the same records are the design, not a fork.</li>
-<li><b>Run one.</b> Mirror the log, or host an instance. The promise that identities and statements outlive this service holds only if someone else holds a copy.</li>
+<li><b>Run one.</b> Host an instance, or index the records yourself from the firehose. The promise that identities and statements outlive this service is stronger for every copy someone else holds.</li>
 <li><b>Fund it.</b> Donations go to <code>anselm.eth</code>. There is no company behind this, no token, and nothing for sale.</li>
 <li><b>Improve it.</b> Contribute <a href="https://github.com/orbitalfoundation/attest">on GitHub</a>, or point us at the similar effort you are already part of. We would rather join than duplicate.</li>
 </ul>

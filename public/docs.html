@@ -26,8 +26,8 @@ A.session()                       // {id, root, handle, until, delegation} or nu
 await A.signIn()                  // popup; resolves with the session
 await A.attest("upvote", url)     // sign with this page's device key and submit
 await A.attest("comment", url, { body: "…" })
-await A.attest("retract", url, { ref: recordId })
-await A.attest("vouch", "did:key:z…")
+await A.attest("retract", url, { ref: recordUri })   // or A.retract(recordUri)
+await A.attest("vouch", "did:plc:…")
 await A.attest("statement", url, { body: "…" })
 await A.read([url1, url2])        // counts + recent comments, keyed by target
 await A.by(did)                   // everything a key signed
@@ -42,7 +42,7 @@ await A.subscribe([url]); A.onCounts(({ target, counts }) => …)  // live</pre>
 <tr><td><code>GET /by/:did</code></td><td><code>{did, handle, since, keys:[{id, jwk, created}], delegations:[{id, device, origin, from, until, revoked}], counts, vouchedBy:[{by, handle, at}], vouches:[{target, handle, at}], proofs:[{id, target, verifications:[{by, handle, evidence}]}], records:[…]}</code>. <code>keys</code> are the passkey public keys, for checking delegations yourself.</td></tr>
 <tr><td><code>GET /handle/:handle</code></td><td>the same, looked up by handle. <code>/@handle</code> is the human page.</td></tr>
 <tr><td><code>GET /record?uri=at://…</code> or <code>GET /record/:cid</code></td><td>the indexed record: the repo record under <code>repoRecord</code>, its <code>uri</code>, <code>cid</code>, the delegation id, and whether it was retracted</td></tr>
-<tr><td><code>GET /log?since=N&amp;limit=500</code></td><td>the append-only log from sequence N: <code>{entries:[{seq, type:"record"|"delegation", id, received, …envelope}]}</code>. Mirror by paging <code>since</code>.</td></tr>
+<tr><td><code>GET /log?since=N&amp;limit=500</code></td><td>the service's own log: delegations, revocations and passkey changes with their passkey assertions, which are not repository records. Records themselves are read from repositories or the firehose.</td></tr>
 <tr><td><code>GET /domain/:host</code></td><td>public standing of a site: totals, most-attested pages with counts, recent comments, verified domain claims. <code>/site/:host</code> is the human page.</td></tr>
 <tr><td><code>GET /stats</code></td><td>account, record and log counts</td></tr>
 </table>

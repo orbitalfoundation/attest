@@ -1,52 +1,44 @@
 # attest
 
-> Signed, public statements about URLs and keys. One sign-up with a passkey; any web page can then collect signed upvotes, comments, vouches and statements without running accounts. Everything is verifiable from public data without calling the service.
+> Signed, public statements about URLs, DOIs, content hashes and people, on AT Protocol. One sign-up with a passkey; any web page can then collect signed votes, comments, vouches and statements without running accounts. Every record carries its author's own signature and lives in their AT Protocol repository.
 
-Origin: https://attest.monster (staging). Source: https://github.com/orbitalfoundation/attest (MIT).
+Origin: https://attest.monster. Source: https://github.com/orbitalfoundation/attest (MIT). Changes: https://attest.monster/changes. Roadmap: https://attest.monster/roadmap. FAQ: https://attest.monster/faq.
 
 ## If you are an agent reading the web
 
-- Batch counts for pages: GET /read?targets=<url1>,<url2>,... (URL-encode each; up to 100). Returns per target: upvotes, vouches, comments[{id, by, handle, at, body}]. Counts are raw today, not trust-weighted; treat them as signals, not verdicts.
-- Everything one key signed: GET /by/<did> (or GET /handle/<handle>). Includes passkey public keys under `keys`, delegations with `revoked`, who vouched for it (`vouchedBy`), whom it vouches for (`vouches`), and its proofs of control with verifications (`proofs`). Human page: /@<handle>.
-- A whole site: GET /domain/<host> (totals, most-attested pages, recent comments, verified domain claims). Human page: /site/<host>.
-- One signed envelope: GET /record/<id>. The whole log: GET /log?since=<seq>&limit=500 (append-only, page by seq).
-- Targets are normalised: URLs lowercase scheme and host, no fragment; doi:..., isbn:..., did:key:..., github:<handle>, sha256:<hex>.
-- Identities are did:key over P-256 passkey public keys (prefix did:key:zDna). A key has no profile; its meaning is what it signed and who vouched for it. Reputation belongs to the key, not a person; keys can be abandoned.
+- Batch counts for pages: GET /read?targets=<url1>,<url2>,... (URL-encode each; up to 100). Returns per target: upvotes, vouches, comments[{id, by, handle, at, body}]. Counts are raw today, not trust-weighted; treat them as signals, not verdicts. Deleted or deactivated accounts are excluded.
+- Everything one person signed: GET /by/<did> or GET /handle/<handle>. Includes passkey public keys (`keys`), delegations with `revoked`, vouches in and out, proofs of control with verifications, linked identities (`elsewhere`) and trust edges imported from Tangled and Bluesky (`trustIn`, `trustOut`). Human page: /@<handle>.
+- A whole site: GET /domain/<host>. Human page: /site/<host>.
+- One record: GET /record?uri=at://... or GET /record/<cid>.
+- Identities are did:plc accounts with handles <name>.attest.monster, controlled by a passkey the person holds. Reputation belongs to the account and can be abandoned; newcomers start at zero.
 
-## Record format
+## Records
 
-record   {v:1, type:"record", kind, by:"did:key:z...", target, at:"ISO-8601", body?, ref?}
-kind     upvote | comment | vouch | statement | claim | retract | verify
-         vouch targets a did:key (never your own); claim targets a handle/URL you control; retract carries ref = your own record id;
-         verify is issued by a verifier (the service key, GET /service, or any key) with ref = claim id and body = evidence URL.
-         Service-signed envelopes are {record, sig, key} with no delegation.
-envelope {record, del:"<delegation id>", sig:"<base64url ECDSA P-256/SHA-256 raw r||s over canonical(record)>"}
-id       hex sha256(canonical(record))
-canonical JSON: keys sorted at every depth, no whitespace, undefined dropped.
-
-delegation {v:1, type:"delegation", root, device, devKey:{x,y}, origin, from, until}
-revoke     {v:1, type:"revoke", root, del, at} signed by the root passkey; later records under that delegation are refused
-The root's passkey signed a WebAuthn assertion whose challenge is the delegation's id (sha256 of its canonical JSON); the assertion is stored in the log entry. The device key signs records; the delegation binds it to one root and one site origin for at most 90 days.
+Lexicons (resolvable via _lexicon.attest.monster): monster.attest.vote | comment | statement | vouch | claim | verification.
+record     {$type, subject|target, text?, reason?, anchor?, createdAt, signatures:[inline]}
+subject    a normalised URL (lowercase scheme and host, no fragment), doi:..., or sha256:<hex>; for vouch, an account DID
+target     for claim: https://<origin>/, dns:<domain>, github:<user>, bsky:<handle>
+inline     {$type:"app.certified.signature.defs#inline", key:"did:key:z...#z...", signature:{$bytes}}
+signed     36-byte CIDv1 (dag-cbor, sha-256) of the record with `signatures` removed and $sig={$type,key,repository:<repo did>} inserted; ECDSA P-256, raw r||s, low-S
+retract    deletes the repo record
 
 ## Verify a record without the service
 
-1. sha256(canonical(record)) == id
-2. delegation = log entry with id == envelope.del; delegation.root == record.by; from <= record.at <= until; didFromJwk(delegation.devKey) == delegation.device
-3. ECDSA-verify(devKey, canonical(record), sig)
-4. optionally: WebAuthn-verify the delegation's assertion with a key from GET /by/<root>.keys; its challenge must be the delegation id bytes
-
-A JS module implementing canonical, idOf, verifyObject, didFromJwk, normalizeTarget for browsers and Node: https://attest.monster/lib/did.js
+1. Fetch it from the author's repository (com.atproto.repo.getRecord on the PDS in their DID document) or from a relay.
+2. Rebuild $sig {$type, key, repository}, drop `signatures`, DAG-CBOR encode, take the CIDv1 bytes.
+3. ECDSA-verify with the P-256 key inside the did:key. JS: `inlineVerify(record, repoDid)` from https://attest.monster/lib/verify.mjs.
+4. To bind that device key to the person: the delegation (GET /log) names it and carries the passkey's WebAuthn assertion over the delegation's sha256; passkey public keys are in GET /by/<did>.keys.
 
 ## If you are building an integration
 
 Embed: <script type="module" src="https://attest.monster/attest.js"></script> and <div data-attest data-target="<url>" data-comments></div>.
-JS API: https://attest.monster/attest-core.js exports session(), signIn(), attest(kind, target, extra), read(targets), by(did), subscribe(targets), onCounts(fn), makeRecord().
-Writes go over socket.io as emit("req", {name, payload}, ack). Names: passkey.register.start/finish, lookup, delegate.start/finish, attest, subscribe, whois, read. Rate limits: 60 writes/min per address, 30 per key.
-Full integrator page: https://attest.monster/docs. Design and threat model: https://attest.monster/technical. Why it exists: https://attest.monster/about.
+JS API: https://attest.monster/attest-core.js exports session(), signIn(), attest(kind, target, extra), retract(uri), read(targets), by(did), subscribe(targets), onCounts(fn), makeRecord().
+Writes go over socket.io as emit("req", {name, payload}, ack): passkey.register.*, lookup, delegate.*, attest, retract, root.*, passkey.add.*, proof.*, subscribe, whois, read. Every write is signed by the device key; there is no server session and no cookie.
+Integrator page: https://attest.monster/docs. Design and threat model: https://attest.monster/technical.
 
 ## Principles that constrain future scoring
 
-- Emitters are scored, not items. Scores will always be relative to a root the asker names ("trusted as seen from R"), never a global "trustworthy".
-- Negative statements never propagate; a key's standing falls only through its own resolved record.
-- Statements are public by construction; there are no private metrics.
+- Emitters are scored, not items. Scores will be relative to a root the asker names ("trusted as seen from R"), never a global "trustworthy".
+- Edges have kinds and weights: an attest vouch > a Tangled vouch > follows. Denouncements are evidence and never propagate.
+- Everything is public by construction; there are no private metrics.
 - Slow trust: standing rises at a bounded rate. Newcomers start at zero (Friedman and Resnick, 2001).

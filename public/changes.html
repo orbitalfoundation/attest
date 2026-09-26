@@ -4,6 +4,9 @@
 <h1>changes <small>a public revision log</small></h1>
 <p>Newest first. Decisions and reversals are recorded here as they happen, including the ones that make earlier pages wrong; those pages get corrected, and the correction is logged too. The full working notes are the dated entries in <a href="https://github.com/orbitalfoundation/attest/tree/main/devlog">devlog/</a> in the repository.</p>
 
+<h2>2026-09-26 · Accuracy pass</h2>
+<p>The About, technical, integrator, home and sign-in pages and llms.txt were rewritten where they still described the design before the move to AT Protocol: a single append-only log, records identified by a hash of their JSON, accounts identified by the passkey alone. They now describe what runs: an AT Protocol account per person, records in their repository with an inline signature, an index that follows the firehose. The technical page's threat model gained two honest rows: the service holds the repository signing and rotation keys for accounts it hosts, which is why every record also carries the author's own signature; and what happens if the service stops.</p>
+
 <h2>2026-09-26 · Trust edges from elsewhere; deleted accounts drop out; lexicons published</h2>
 <p><b>Read-in.</b> When someone proves a Bluesky handle, attest now links that identity and imports the trust edges it has already declared on AT Protocol: Tangled vouches and denouncements, Tangled follows, and Bluesky follows, kept as separate kinds so a scorer can weigh a vouch above a follow. Profiles show which other members vouch for or follow a person elsewhere. Denouncements are kept as evidence and, as with everything negative here, will not propagate. Imports refresh every six hours. Tested on real accounts: one Tangled developer's repository gave 20 vouches, 3 Tangled follows and 607 Bluesky follows in two seconds.</p>
 <p><b>Deleted and deactivated accounts</b> drop out of every count as soon as their data server announces it on the firehose.</p>
