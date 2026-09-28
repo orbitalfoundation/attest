@@ -22,7 +22,12 @@ const q = new URLSearchParams(location.search), $ = (id) => document.getElementB
 const msg = (t, cls = "") => { $("msg").innerHTML = t; $("msg").className = "small " + cls; };
 // Phones share the link in `url`, or only in `text` (sometimes with the title in front of it).
 let raw = q.get("url") || ""; if (!raw) { const m = (q.get("text") || "").match(/https?:\/\/\S+/); if (m) raw = m[0]; }
-let subject; try { subject = A.normalizeTarget(raw); } catch { msg("Nothing to save: this window needs a page address.", "err"); throw new Error("no url"); }
+let subject; try { subject = A.normalizeTarget(raw); } catch {
+  // No address given: offer a paste box, for phones where sharing or bookmarklets are awkward.
+  document.querySelector(".card").innerHTML = `<label class="small muted" for="paste">page address</label><input id="paste" placeholder="paste a link" inputmode="url" autocapitalize="none"><p style="margin-top:.6rem"><button id="go">Continue</button></p>`;
+  const go = () => { const v = document.getElementById("paste").value.trim(); if (v) location.href = "/save?url=" + encodeURIComponent(/^https?:/i.test(v) ? v : "https://" + v); };
+  document.getElementById("go").onclick = go; document.getElementById("paste").onkeydown = (e) => { if (e.key === "Enter") go(); };
+  throw new Error("no url"); }
 $("url").textContent = subject; $("title").value = q.get("title") || (q.get("text") || "").replace(/https?:\/\/\S+/, "").trim();
 const s = A.session();
 if (!s) { location.href = "/login?return=" + encodeURIComponent(location.pathname + location.search); throw new Error("sign in"); }
@@ -36,7 +41,8 @@ const renderSuggest = () => { const have = A.normalizeTags($("tags").value); con
   $("suggest").innerHTML = cand.map((t) => `<a href="#" data-t="${esc(t)}" style="margin-right:.5rem">${esc(t)}</a>`).join(""); $("tagcount").textContent = have.length ? `(${have.length}/12)` : ""; };
 $("suggest").onclick = (e) => { const t = e.target.dataset.t; if (!t) return; e.preventDefault(); $("tags").value = ($("tags").value.trim() + " " + t).trim(); renderSuggest(); };
 $("tags").oninput = renderSuggest; renderSuggest();
-const done = () => { if (window.opener || window.name === "attest") setTimeout(() => window.close(), 900); };
+const back = q.get("back") === "1" && /^https?:/i.test(raw) ? raw : null;
+const done = () => { if (window.opener || window.name === "attest") setTimeout(() => window.close(), 900); else if (back) { $("msg").innerHTML += ` · <a href="${esc(back)}">back to the page</a>`; setTimeout(() => { location.href = back; }, 1500); } };
 $("save").onclick = async () => { $("save").disabled = true; try {
   const r = await A.attest("bookmark", subject, { title: $("title").value.trim(), tags: $("tags").value, note: $("note").value.trim() });
   if ($("vote").checked && !voteUri) voteUri = (await A.attest("upvote", subject)).uri;
