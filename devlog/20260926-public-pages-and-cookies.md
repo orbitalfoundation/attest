@@ -113,3 +113,28 @@ scores, which also answers cold start and fits place-based work;
 `/@name` answering with the DID for software, aligning with their
 agent-name syntax. Their relationships are private P2P; ours stay
 public. IIW #43 (Nov 3–5) is the venue to show it.
+
+## 2026-09-28: principles and todos, after Anselm's reply to the DTG deck
+
+Anselm: his trust graph never ended at immediate connections; trust
+is transitive, second- and third-order edges score lower, in a
+contextual graph; nodes can be communities; "a person *is* a
+community" of agents acting as proxies for their will, and those
+agents should be first-class rather than hiding under one private
+key; mutual vouches weigh more; he does not want to distinguish
+humans from digital persons, because proof-of-personhood schemes
+need biometrics, which he finds risky ("one can make various
+attestations about emitters that they are flesh and blood humans");
+private relationship credentials are interesting ("sometimes people
+want to keep secrets"). The session had wrongly implied attest was
+peer-only; the planned scoring was always transitive.
+
+Roadmap (public) now opens with those principles and orders the work:
+mutual vouches → agent accounts (mutual delegation, claude-code
+first) → communities (accounts, mutual membership, vouch and be
+vouched) → scores v1 (transitive flow from a person or community
+root, capacity bound, distance decay, weighted edge kinds, tag
+context, paths shown) → bookmark import → Bluesky linking → inbound
+edges → URL-subject proposal. Open: private relationships, community
+governance (Ostrom 5 and 6), decay parameters. FAQ gained "Do you
+check that I am human?".
