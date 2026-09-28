@@ -159,3 +159,19 @@ why, builders below on a translucent panel. `/docs` is now a hub;
 integrator guide at `/builders`; menu cut to save / FAQ / about / docs
 / your page. Script: `scripts/gen-backdrops.mjs`; helper
 `scripts/shot-scroll.mjs` for phone screenshots below the fold.
+
+## 2026-09-28: Why a monster
+
+Anselm shared a Claude-written review of his social thesis (drawn from
+his essays, journal, PRDs and the June 2026 sousveillance drafts) and
+asked for a readable extract on a deeper-motivations page: "we need
+monsters to fight monsters", with humanity, life and AI working
+together on existential challenges. `/why` distils its preface and the
+parts that bear on attest: delegation upward, centers attract
+predators, reef not empire, the design rules (do not deputize trust,
+power legible to people, fix rules before power, rotate, assume the
+founders will not stay good), the ground underneath (stakeholders that
+cannot file a support ticket), what it means for attest, and what is
+not proven. Kept non-partisan (no named parties or companies), no file
+paths, his phrases as the page's own voice; footer marks it as a
+drafted reading published for his revision.
