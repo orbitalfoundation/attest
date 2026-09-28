@@ -4,6 +4,9 @@
 <h1>changes <small>a public revision log</small></h1>
 <p>Newest first. Decisions and reversals are recorded here as they happen, including the ones that make earlier pages wrong; those pages get corrected, and the correction is logged too. The full working notes are the dated entries in <a href="https://github.com/orbitalfoundation/attest/tree/main/devlog">devlog/</a> in the repository.</p>
 
+<h2>2026-09-28 · Handles and public addresses</h2>
+<p>Handle rules tightened before real sign-ups: 4 to 20 characters, lowercase letters, digits and single hyphens, starting with a letter, because a handle becomes a hostname. Role names, the site's own page names and a few brands are reserved; page and route names are reserved automatically when the server starts, so a new page can never collide with a person. A deleted account's handle is held for a year. People's pages now live at the root, <code>attest.monster/name</code>, beside the site's pages, with <code>/@name</code> and <code>/u/name</code> as aliases and a link to the same account on Bluesky.</p>
+
 <h2>2026-09-26 · Accuracy pass</h2>
 <p>The About, technical, integrator, home and sign-in pages and llms.txt were rewritten where they still described the design before the move to AT Protocol: a single append-only log, records identified by a hash of their JSON, accounts identified by the passkey alone. They now describe what runs: an AT Protocol account per person, records in their repository with an inline signature, an index that follows the firehose. The technical page's threat model gained two honest rows: the service holds the repository signing and rotation keys for accounts it hosts, which is why every record also carries the author's own signature; and what happens if the service stops.</p>
 

@@ -55,3 +55,21 @@ delegations, revocations and passkey changes.
 Link an existing Bluesky account for writing (OAuth, cookie check);
 propose the URL-subject shape to `app.certified`; inbound trust edges
 from non-members via a backlink index; scoring from a root.
+
+## 2026-09-28: handles and the crumpled namespace
+
+- Anselm: reserve common names, disallow short ones, "I am kind of a
+  fan of crumpled namespaces" (/anselm beside /settings, /login).
+- `server/handles.mjs`: 4–20 chars, `^[a-z][a-z0-9]*(-[a-z0-9]+)*$`
+  (the old rule allowed 2 chars, dots and underscores; underscores are
+  not legal hostnames and dots nest subdomains). A reserved list of
+  roles, infrastructure, our pages, brands and other networks; plus
+  every page file and route segment reserved automatically at startup
+  (caught `index`, `llms`, `tls-check`, `robots-pds`). Deleted
+  accounts' handles held 365 days (`released_handles`); the account row
+  is renamed so the index keeps its records under the DID.
+- Profiles at `/<handle>` via the not-found handler (pages always
+  win), canonical; `/@name` and `/u/name` aliases. Bluesky's app view
+  already shows our accounts at bsky.app/profile/<name>.attest.monster.
+- Live accounts at the time: `attest` (service) and `anselm`; both
+  names are also on the reserved list. e2e 39 checks.

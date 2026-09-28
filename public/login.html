@@ -8,7 +8,7 @@
 <p id="for" class="muted"></p>
 <div class="card">
   <label class="small muted" for="handle">your handle</label>
-  <input id="handle" placeholder="lowercase, 2 to 32 characters" autocomplete="username webauthn" spellcheck="false">
+  <input id="handle" placeholder="4 to 20 letters, digits or hyphens" autocomplete="username webauthn" spellcheck="false">
   <div style="display:flex;gap:.5rem;margin-top:.75rem;flex-wrap:wrap"><button id="signin">Sign in with passkey</button><button id="register" class="quiet">Create account</button></div>
   <p id="msg" class="small" style="margin:.75rem 0 0"></p>
 </div>
@@ -51,6 +51,7 @@ const busy = (on) => { $("signin").disabled = on; $("register").disabled = on; }
 $("signin").onclick = async () => { busy(true); try { const handle = $("handle").value.trim().toLowerCase(); if (!handle) throw new Error("enter your handle"); const { did } = await A.req("lookup", { handle }); await delegate(did, handle); } catch (e) { msg(e.message, "err"); } finally { busy(false); } };
 $("register").onclick = async () => { busy(true); try {
   const handle = $("handle").value.trim().toLowerCase(); if (!handle) throw new Error("choose a handle");
+  const hc = await A.req("handle.check", { handle }); if (!hc.ok) throw new Error(hc.error);
   const { nonce, options } = await A.req("passkey.register.start", { handle });
   msg("Your device creates a passkey…");
   const cred = await navigator.credentials.create({ publicKey: creationOptions(options) });

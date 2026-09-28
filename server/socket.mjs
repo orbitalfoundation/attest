@@ -9,6 +9,7 @@ import { allow } from "./ratelimit.mjs";
 import * as proofs from "./proofs.mjs";
 import * as pds from "./pds.mjs";
 import * as dns from "./dns.mjs";
+import * as handles from "./handles.mjs";
 import { randomBytes as rb } from "node:crypto";
 import { randomBytes } from "node:crypto";
 const pending = new Map(); // nonce -> {challenge, handle, at}
@@ -16,8 +17,7 @@ setInterval(() => { const cutoff = Date.now() - 5 * 60e3; for (const [k, v] of p
 const HANDLE = /^[a-z0-9][a-z0-9._-]{1,31}$/;
 const handlers = {
   async "passkey.register.start"({ handle }, ctx) {
-    handle = String(handle || "").trim().toLowerCase(); if (!HANDLE.test(handle)) throw new Error("handle: 2-32 chars, a-z 0-9 . _ -");
-    if (store.getAccountByHandle(handle)) throw new Error("that handle is taken");
+    const c = handles.check(handle); if (!c.ok) throw new Error(c.error); handle = c.handle;
     const options = await passkeys.registrationOptions({ origin: ctx.origin, handle });
     const nonce = randomBytes(16).toString("base64url"); pending.set(nonce, { challenge: options.challenge, handle, at: Date.now() });
     return { nonce, options };
@@ -80,6 +80,7 @@ const handlers = {
   async whois({ did }) { return { did, handle: records.whois(did) }; },
   async "proof.instructions"({ claim }) { const c = proofs.claimRecord(claim); return { token: proofs.tokenFor(c.id), instructions: proofs.instructions(c.record.target, c.id) }; },
   async "proof.check"({ claim }, ctx) { if (!allow("proof:" + ctx.ip, 10)) throw new Error("too many checks; slow down"); return proofs.check(claim); },
+  async "handle.check"({ handle }) { return handles.check(handle); },
   async lookup({ handle }) { const a = store.getAccountByHandle(String(handle || "").trim().toLowerCase()); if (!a) throw new Error("no account with that handle"); return { did: a.did, handle: a.handle }; },
   async read({ targets }) { return records.read(targets || []); },
 };

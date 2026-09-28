@@ -5,6 +5,8 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import * as records from "./records.mjs";
 import * as store from "./store.mjs";
+import * as handles from "./handles.mjs";
+import { readdirSync } from "node:fs";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CANONICAL_HOST = process.env.CANONICAL_HOST || "";
 const PDS_URL = process.env.PDS_URL || ""; // when set, atproto paths are proxied to the PDS behind this origin (websockets included)
@@ -20,6 +22,7 @@ export async function routes(app) {
   });
   app.get("/handle/:handle", async (req, reply) => { const r = records.byHandle(req.params.handle); if (!r) return reply.code(404).send({ error: "no such handle" }); reply.header("Cache-Control", "public, max-age=0, s-maxage=5"); return r; });
   app.get("/@:handle", (req, reply) => reply.type("text/html").sendFile("profile.html", join(root, "public")));
+  app.get("/u/:handle", (req, reply) => reply.redirect("/" + encodeURIComponent(req.params.handle), 301));
   app.get("/domain/:host", async (req, reply) => { if (!/^[a-z0-9.-]+\.[a-z]{2,}$|^localhost(:\d+)?$/i.test(req.params.host)) return reply.code(400).send({ error: "host" }); reply.header("Cache-Control", "public, max-age=0, s-maxage=30"); return store.siteSummary(req.params.host); });
   app.get("/site/:host", (req, reply) => reply.type("text/html").sendFile("site.html", join(root, "public")));
   app.get("/service", async () => ({ ...records.serviceInfo(), note: "The service's own repo and signing key; it writes verification records after checking a proof. Trust it as far as you trust this service." }));
@@ -32,4 +35,12 @@ export async function routes(app) {
   app.get("/lib/did.js", (req, reply) => reply.type("text/javascript").header("Cache-Control", "public, max-age=300").sendFile("verify.mjs", pkg));
   for (const f of ["verify.mjs", "client.mjs", "cid.mjs"]) app.get("/lib/" + f, (req, reply) => reply.type("text/javascript").header("Cache-Control", "public, max-age=300").sendFile(f, pkg));
   await app.register(fastifyStatic, { root: join(root, "public"), prefix: "/", extensions: ["html"], cacheControl: true, maxAge: "5m" });
+  // Crumpled namespace: /<handle> is a person's page, unless a page of ours has that name (pages are reserved as handles at startup).
+  const pages = readdirSync(join(root, "public"));
+  app.addHook("onReady", async () => { const segs = new Set(pages); for (const r of app.printRoutes({ commonPrefix: false }).split("\n")) { const m = r.match(/\/([a-z0-9@._-]+)/i); if (m) segs.add(m[1]); } const added = handles.reserveRoots(segs); if (added.length) console.log("reserved page names as handles:", added.join(" ")); });
+  app.setNotFoundHandler((req, reply) => {
+    const m = req.method === "GET" && req.url.match(/^\/([a-z][a-z0-9-]{3,19})\/?(?:\?.*)?$/);
+    if (m && store.getAccountByHandle(m[1])) return reply.type("text/html").sendFile("profile.html", join(root, "public"));
+    reply.code(404).type("text/plain").send("not found");
+  });
 }

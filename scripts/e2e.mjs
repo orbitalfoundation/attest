@@ -67,7 +67,7 @@ ok(await waitFor(`document.getElementById('keymsg').textContent.startsWith('Pass
 console.log("profile, vouch from a second account, proof of control");
 const site = process.env.SITE || "http://localhost:8101", siteDir = process.env.SITE_DIR || "";
 const did1 = await evaluate(`JSON.parse(localStorage.getItem('attest:session')).root`);
-await go("/@" + handle, 2000);
+await go("/" + handle, 2000);
 ok(await evaluate(`document.getElementById('h').textContent === '@' + ${JSON.stringify(handle)} && document.body.innerText.includes('This is you')`), "own profile page renders");
 // claim the test site and put the token where the verifier looks
 await go("/me", 2500);
@@ -82,9 +82,9 @@ await sleep(31000); // the verifier refuses to re-check the same claim within 30
 await go("/me", 2500); await evaluate(`document.querySelector('#proofs [data-check]').click(); true`);
 ok(await waitFor(`document.getElementById('pmsg').textContent.startsWith('Verified')`, 15000), "proof verified once the token is in /.well-known/attest.txt: " + await evaluate(`document.getElementById('pmsg').textContent`));
 // a second account vouches for the first
-const handle2 = handle + "b"; await evaluate(`localStorage.removeItem('attest:session'); true`); await go("/login?return=/@" + handle);
+const handle2 = handle + "b"; await evaluate(`localStorage.removeItem('attest:session'); true`); await go("/login?return=/" + handle);
 await evaluate(`document.getElementById('handle').value = ${JSON.stringify(handle2)}; document.getElementById('register').click(); true`);
-ok(await waitFor(`location.pathname === '/@' + ${JSON.stringify(handle)}`, 15000), "second account registered and landed on the first's profile");
+ok(await waitFor(`location.pathname === '/' + ${JSON.stringify(handle)}`, 15000), "second account registered and landed on the first's profile at /" + handle);
 await sleep(1500); await evaluate(`document.getElementById('vouch').click(); true`);
 ok(await waitFor(`document.getElementById('vouch').textContent.startsWith('✓') && document.getElementById('nvb').textContent === '1'`), "vouch recorded; profile shows 1 voucher");
 const p1 = await (await fetch(`${base}/by/${encodeURIComponent(did1)}`)).json();
@@ -93,6 +93,11 @@ const selfVouch = await evaluate(`(async () => { const A = await import('/attest
 ok(/yourself/.test(selfVouch), "self-vouch refused: " + selfVouch);
 await evaluate(`localStorage.removeItem('attest:session'); true`); await go("/login?return=/me");
 await evaluate(`document.getElementById('handle').value = ${JSON.stringify(handle)}; document.getElementById('signin').click(); true`); ok(await waitFor(`location.pathname === '/me'`), "back as the first account");
+console.log("crumpled namespace");
+ok((await fetch(`${base}/${handle}`)).status === 200 && (await fetch(`${base}/about`)).status === 200, "/" + handle + " is a profile and /about is still the about page");
+ok((await fetch(`${base}/@${handle}`)).status === 200 && (await fetch(`${base}/u/${handle}`, { redirect: "manual" })).status === 301, "/@name and /u/name still work");
+ok((await fetch(`${base}/nosuchperson`)).status === 404, "unknown name is 404");
+const hcAbout = await evaluate(`(async () => { const A = await import('/attest-core.js'); return JSON.stringify(await A.req('handle.check', { handle: 'roadmap' })); })()`); ok(/reserved/.test(hcAbout), "a page name cannot be taken as a handle: " + hcAbout);
 console.log("bad record is refused");
 const refused = await evaluate(`(async () => { const A = await import('/attest-core.js'); const env = await A.makeRecord('upvote', 'https://example.org/x'); env.record.subject = 'https://example.org/tampered'; try { await A.req('attest', env); return 'accepted'; } catch (e) { return e.message; } })()`);
 ok(/does not verify/.test(refused), "tampered record refused: " + refused);
