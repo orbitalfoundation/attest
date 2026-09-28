@@ -20,6 +20,6 @@ const d = await r.json(); document.title = "attest · " + d.host; $("h").textCon
 $("totals").textContent = `${d.totals.records} live records on ${d.totals.targets} pages from ${d.totals.keys} keys`;
 $("claims").innerHTML = d.claims.length ? d.claims.map((c) => `${c.verified ? '<span class="ok">✓</span>' : '<span class="muted">unverified claim:</span>'} <a href="/${esc(c.handle)}">@${esc(c.handle || A.short(c.by))}</a> ${c.verified ? "controls this domain" : ""}`).join("<br>") : "";
 document.querySelector("#t tbody").innerHTML = d.targets.map((t) => `<tr><td><a href="${esc(t.target)}">${esc(path(t.target))}</a></td><td>${t.upvotes}</td><td>${t.comments}</td><td>${t.keys}</td><td class="small muted">${new Date(t.last).toLocaleDateString()}</td></tr>`).join("");
-if (!d.targets.length) $("empty").innerHTML = `Nothing attested on ${esc(d.host)} yet. Add the <a href="/docs">widget</a>.`;
+if (!d.targets.length) $("empty").innerHTML = `Nothing attested on ${esc(d.host)} yet. Add the <a href="/builders">widget</a>.`;
 $("recent").innerHTML = d.recent.map((c) => `<li><a href="/${esc(c.handle)}">@${esc(c.handle || A.short(c.by))}</a> on <a href="${esc(c.target)}">${esc(path(c.target))}</a>: ${esc(c.body)} <span class="muted">${new Date(c.at).toLocaleDateString()}</span></li>`).join("") || "<li class='muted'>none</li>";
 </script></body></html>

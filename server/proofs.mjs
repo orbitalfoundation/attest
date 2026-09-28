@@ -4,7 +4,7 @@ import * as store from "./store.mjs";
 import * as records from "./records.mjs";
 import { resolveTxt } from "node:dns/promises";
 import * as graph from "./graph.mjs";
-const UA = "attest-proof-check/0.1 (+https://attest.monster/docs)";
+const UA = "attest-proof-check/0.1 (+https://attest.monster/builders)";
 const lastCheck = new Map();
 async function text(url, max = 512 * 1024) {
   const r = await fetch(url, { headers: { "user-agent": UA, accept: "text/plain, text/html, application/json;q=0.9, */*;q=0.5" }, redirect: "follow", signal: AbortSignal.timeout(8000) });

@@ -34,7 +34,7 @@ retract    deletes the repo record
 Embed: <script type="module" src="https://attest.monster/attest.js"></script> and <div data-attest data-target="<url>" data-comments></div>.
 JS API: https://attest.monster/attest-core.js exports session(), signIn(), attest(kind, target, extra), retract(uri), read(targets), by(did), subscribe(targets), onCounts(fn), makeRecord().
 Writes go over socket.io as emit("req", {name, payload}, ack): passkey.register.*, lookup, delegate.*, attest, retract, root.*, passkey.add.*, proof.*, subscribe, whois, read. Every write is signed by the device key; there is no server session and no cookie.
-Integrator page: https://attest.monster/docs. Design and threat model: https://attest.monster/technical.
+Integrator page: https://attest.monster/builders. Design and threat model: https://attest.monster/technical.
 
 ## Principles that constrain future scoring
 

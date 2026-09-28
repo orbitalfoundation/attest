@@ -1,32 +1,68 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>attest: signed statements about URLs and keys</title><meta name="description" content="One sign-up with a passkey, then any static site gets signed upvotes, comments, vouches and statements without accounts, passwords or a database. Public, verifiable, and the start of a web of trust.">
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>attest · trust, passed hand to hand</title><meta name="description" content="Save what you read, vouch for what you stand behind, and see the web through the eyes of people you trust. Signed with your phone, kept in your own record.">
 <link rel="canonical" href="https://attest.monster/">
 <meta property="og:type" content="website"><meta property="og:site_name" content="attest"><meta property="og:title" content="attest: signed statements about URLs and keys"><meta property="og:description" content="One sign-up with a passkey, then any static site gets signed upvotes, comments, vouches and statements without accounts, passwords or a database. Public, verifiable, and the start of a web of trust."><meta property="og:url" content="https://attest.monster/">
 <meta property="og:image" content="https://attest.monster/og.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://attest.monster/og.png"><meta name="theme-color" content="#1f6f8b">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="stylesheet" href="/style.css">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"attest","applicationCategory":"DeveloperApplication","operatingSystem":"Web","url":"https://attest.monster/","description":"Signed, public statements about URLs and keys: passkey sign-in and signed votes, comments and vouches for static sites; emitter trust computed from a root you choose.","license":"https://opensource.org/licenses/MIT","codeRepository":"https://github.com/orbitalfoundation/attest","author":{"@type":"Person","name":"Anselm Hook","url":"https://hook.org/"},"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script></head><body><main>
-<h1><img src="/mascot.svg" alt="" width="44" height="44" style="vertical-align:-10px;margin-right:.35rem">attest <small>signed statements about URLs and keys</small></h1>
-<p class="muted" style="font-style:italic;margin-top:.2rem">Give me a lever long enough and a fulcrum on which to place it, and I shall move the world. <span class="small">(Archimedes)</span></p>
-<p>One sign-up, with a passkey your device holds. Then any site can let you upvote, comment, vouch for someone, or make a public statement, and none of those sites has to run accounts, passwords or a database. Every statement is signed by your key, stored in your own AT Protocol repository, public, and checkable by anyone without asking us.</p>
-<p class="status" id="status">…</p>
-<h2>Save from anywhere</h2>
-<p>A <a href="/tools">bookmarklet, and "Share → attest" on phones</a>, to save any page with tags and a note, and vouch for it if you want. Your bookmarks live in your own repository, signed by you. Browse by word at <a href="/tag/attest">/tag/…</a>.</p>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"attest","applicationCategory":"DeveloperApplication","operatingSystem":"Web","url":"https://attest.monster/","description":"Signed, public statements about URLs and keys: passkey sign-in and signed votes, comments and vouches for static sites; emitter trust computed from a root you choose.","license":"https://opensource.org/licenses/MIT","codeRepository":"https://github.com/orbitalfoundation/attest","author":{"@type":"Person","name":"Anselm Hook","url":"https://hook.org/"},"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script>
+<style>
+.hero{position:relative;min-height:100svh;display:flex;align-items:flex-end;color:#fff;overflow:hidden;background:#0c2a33}
+.hero video,.hero img.poster{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+.hero::after{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(to top,rgba(6,18,22,.92) 0%,rgba(6,18,22,.55) 45%,rgba(6,18,22,.15) 100%)}
+.hero .in{position:relative;z-index:2;max-width:44rem;margin:0 auto;padding:6rem 1.1rem 3.2rem;width:100%}
+.hero .brand{display:flex;align-items:center;gap:.5rem;font-weight:700;letter-spacing:.02em;margin-bottom:1.4rem}
+.hero h1{font-size:clamp(2.1rem,7vw,3.4rem);line-height:1.05;margin:0 0 1rem;letter-spacing:-.02em}
+.hero p.lead{font-size:1.12rem;line-height:1.5;max-width:34rem;opacity:.95;margin:0 0 1.6rem}
+.hero .cta{display:flex;gap:.7rem;flex-wrap:wrap}
+.hero .cta a{padding:.7rem 1.3rem;border-radius:999px;text-decoration:none;font-weight:600}
+.hero .cta a.go{background:var(--accent);color:#fff}.hero .cta a.how{border:1px solid rgba(255,255,255,.6);color:#fff}
+.hero .credit{position:absolute;right:.8rem;bottom:.6rem;z-index:2;font-size:.72rem;opacity:.6;color:#fff}
+.hero .quote{font-style:italic;opacity:.75;font-size:.92rem;margin-top:2rem;max-width:30rem}
+.steps{display:grid;gap:1.4rem;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));margin:1rem 0 1.5rem}
+.steps div b{display:block;font-size:1.08rem;margin-bottom:.3rem}.steps div .n{color:var(--accent);font-weight:700;margin-right:.35rem}
+@media (prefers-reduced-motion: reduce){.hero video{display:none}}
+</style></head><body>
+<section class="hero">
+<img class="poster" id="poster" alt="" src="/video/hands.jpg">
+<video id="bg" muted autoplay loop playsinline preload="none" aria-hidden="true"></video>
+<div class="in">
+<div class="brand"><img src="/mascot.svg" alt="" width="34" height="34">attest</div>
+<h1>Trust, passed hand to hand.</h1>
+<p class="lead">Save what you read. Vouch for what you stand behind. See the web through the eyes of the people you trust, and the people they trust. Your record is yours, signed with your phone.</p>
+<div class="cta"><a class="go" id="start" href="/login?return=/tools">Start</a><a class="how" href="#how">How it works</a></div>
+<p class="quote">Give me a lever long enough and a fulcrum on which to place it, and I shall move the world. <span style="font-style:normal">(Archimedes)</span></p>
+</div>
+<span class="credit" id="credit">illustration generated with Seedream and Wan</span>
+</section>
+<main>
+<h2 id="how">How it works</h2>
+<div class="steps">
+<div><b><span class="n">1</span>Sign in with your phone</b>Your face or fingerprint unlock is your key. No password, no email, nothing to remember.</div>
+<div><b><span class="n">2</span>Save and vouch as you read</b>Tag any page from any site, with a button in your browser or your phone's share menu. Say which ones you stand behind.</div>
+<div><b><span class="n">3</span>See through trusted eyes</b>See what the people you trust saved, vouched for and said, on their own pages and under each tag.</div>
+</div>
+<p id="status" class="small muted"></p>
 
-<h2>Try it</h2>
-<p>The <a href="/demo">demo page</a> has live upvote and comment widgets. <a href="/me">What I attested</a> lists everything your key has signed. <a href="/about">About</a> explains why this exists and where it is going.</p>
-<h2>Put it on a static site</h2>
-<pre>&lt;script type="module" src="ORIGIN/attest.js"&gt;&lt;/script&gt;
-&lt;div data-attest data-target="https://example.com/article" data-comments&gt;&lt;/div&gt;</pre>
-<p class="small muted">Leave out <code>data-target</code> to attest the page's own canonical URL. Counts also come from a plain cacheable GET: <code>ORIGIN/read?targets=https://example.com/article</code>. Everything a key has signed: <code>ORIGIN/by/did:key:…</code>. The records themselves live in AT Protocol repositories, readable by any AT Protocol tool. Public standing of a whole site: <code>ORIGIN/site/example.com</code>.</p>
-<p class="small">Integrating? <a href="/docs">The integrator page</a> has the widget, the API, the record format and how to verify without us. <a href="/technical">Technical</a> covers passkeys, delegation, AT Protocol and the threat model. Agents: <a href="/llms.txt">/llms.txt</a>. What changed and why, including reversals: <a href="/changes">changes</a>. Questions: <a href="/faq">FAQ</a>. What is planned and what we are still reading: <a href="/roadmap">roadmap</a>.</p>
-<p class="small muted" id="stats"></p>
-<p class="small muted">Source: <a href="https://github.com/orbitalfoundation/attest">github.com/orbitalfoundation/attest</a>, MIT. Donations: <code>anselm.eth</code>.</p>
+<h2>Why</h2>
+<p>Much of what reaches us is pushed by people we would never trust if we could see who they were. We end up judging each post by its content, squinting at a photograph to decide whether it is real. attest lets you look at the envelope instead: who sent this, who stands behind them, and how that has turned out before. It is built for people who want to find each other, and act together, on the things that matter, including the living world we share.</p>
+<p>Everything you do here is a public statement signed by your own key and kept in your own record on an open network, so it cannot disappear with a company. <a href="/about">More about attest</a> · <a href="https://anselm.substack.com/p/foundations-of-trust-attestmonster">the essay</a> · <a href="/faq">questions</a></p>
+
+<h2>For builders</h2>
+<p>One script tag gives any site sign-in, votes, comments and vouches, with no accounts or database of its own. <a href="/builders">Build with attest</a> · <a href="/docs">all docs</a></p>
+
+<p class="small muted" style="margin-top:2.5rem">Source: <a href="https://github.com/orbitalfoundation/attest">github.com/orbitalfoundation/attest</a>, MIT. Donations: <code>anselm.eth</code>.</p>
 <p class="small muted" id="version">version: unknown</p>
 </main>
 <script type="module">
-import { session, server } from "/attest-core.js"; import "/menu.js";
-document.querySelectorAll("pre, p.small").forEach((n) => n.innerHTML = n.innerHTML.replaceAll("ORIGIN", server));
-const s = session(); document.getElementById("status").innerHTML = s ? `Signed in as <b>@${s.handle}</b>, delegation valid until ${new Date(s.until).toLocaleDateString()}.` : `Not signed in. <a href="/login?return=/">Sign in or create an account</a>.`;
+import { session } from "/attest-core.js"; import "/menu.js";
+const s = session();
+if (s) { document.getElementById("start").textContent = "Your page"; document.getElementById("start").href = "/" + s.handle; document.getElementById("status").innerHTML = `Signed in as <a href="/${s.handle}">@${s.handle}</a>. <a href="/tools">Save from anywhere</a>.`; }
+// One backdrop per visit; the still shows first and stays for reduced motion or slow connections.
+fetch("/video/index.json", { cache: "no-store" }).then((r) => r.json()).then(({ clips }) => {
+  if (!clips?.length) return; const c = clips[Math.floor(Math.random() * clips.length)];
+  document.getElementById("poster").src = c.poster; if (c.credit) document.getElementById("credit").textContent = c.credit;
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches || navigator.connection?.saveData) return;
+  if (!c.src) return; const v = document.getElementById("bg"); v.poster = c.poster; v.src = c.src; v.play().catch(() => {});
+}).catch(() => {});
 fetch("/version.json", { cache: "no-store" }).then((r) => r.json()).then((v) => { const sha = String(v.sha || "").replace(/-dirty$/, ""); const day = String(v.at || "").slice(0, 10); document.getElementById("version").innerHTML = `version ${day} · <a href="https://github.com/orbitalfoundation/attest/commit/${sha}"><code>${v.sha}</code></a> · released continuously, see <a href="/changes">changes</a>`; }).catch(() => {});
-fetch("/stats").then((r) => r.json()).then((j) => document.getElementById("stats").textContent = `${j.accounts} accounts · ${j.records} live records · ${j.log} log entries`);
 </script></body></html>

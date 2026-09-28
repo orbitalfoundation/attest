@@ -1,91 +1,31 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>attest for integrators: widget, API, record format, verification</title><meta name="description" content="Put signed upvotes and comments on a static page with one script tag. The JavaScript API, HTTP reads, socket writes, the record format and how to verify a record without the service.">
-<link rel="canonical" href="https://attest.monster/docs">
-<meta property="og:type" content="website"><meta property="og:site_name" content="attest"><meta property="og:title" content="attest for integrators: widget, API, record format, verification"><meta property="og:description" content="Put signed upvotes and comments on a static page with one script tag. The JavaScript API, HTTP reads, socket writes, the record format and how to verify a record without the service."><meta property="og:url" content="https://attest.monster/docs">
-<meta property="og:image" content="https://attest.monster/og.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://attest.monster/og.png"><meta name="theme-color" content="#1f6f8b">
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css"></head><body><main>
-<h1>for integrators <small>one script tag, two GETs, nothing to store</small></h1>
-<p>You keep your content. attest keeps identity and the signed statements. Your page needs no server, no database and no user table. Everything below is live at <code>ORIGIN</code>.</p>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>attest · docs</title>
+<meta name="description" content="Everything about attest in one place: for people, for builders, for AI agents, and the project's own record."><link rel="canonical" href="https://attest.monster/docs">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css">
+<style>.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:.8rem}.grid a.card{display:block;margin:0;text-decoration:none;color:inherit}.grid a.card b{color:var(--accent)}.grid a.card span{display:block;color:var(--muted);font-size:.92rem;margin-top:.2rem}</style></head><body><main>
+<h1>docs <small>everything in one place</small></h1>
 
-<h2>1. The widget</h2>
-<pre>&lt;script type="module" src="ORIGIN/attest.js"&gt;&lt;/script&gt;
-&lt;div data-attest data-target="https://example.com/article" data-comments&gt;&lt;/div&gt;</pre>
-<table>
-<tr><th>attribute</th><th>meaning</th></tr>
-<tr><td><code>data-attest</code></td><td>mount a widget here: an upvote button with a live count</td></tr>
-<tr><td><code>data-target</code></td><td>what is being attested. Omit it and the page's <code>&lt;link rel="canonical"&gt;</code> is used, else the page URL without its fragment</td></tr>
-<tr><td><code>data-comments</code></td><td>also show signed comments and a composer</td></tr>
-</table>
-<p>Several widgets on one page are fine; they share one socket and one read. The first click on any widget starts sign-in. Colour comes from the CSS variable <code>--attest-accent</code> on any ancestor; everything else inherits your page's font and colours.</p>
-<p>Sign-in from your origin opens a small popup on <code>ORIGIN</code>. The popup returns a session to your page by <code>postMessage</code>, scoped to your origin. Your page never sees the passkey and never holds a password. If your page runs inside a sandboxed iframe or blocks popups, sign-in cannot complete.</p>
+<h2>For people</h2>
+<div class="grid">
+<a class="card" href="/about"><b>About</b><span>Why attest exists, what it does, and what it will not do.</span></a>
+<a class="card" href="/faq"><b>FAQ</b><span>Honest answers, starting with whether this needs to exist.</span></a>
+<a class="card" href="/tools"><b>Save from anywhere</b><span>The bookmarklet, and saving from your phone.</span></a>
+<a class="card" href="/history"><b>History</b><span>The people and ideas this stands on.</span></a>
+<a class="card" href="https://anselm.substack.com/p/foundations-of-trust-attestmonster"><b>The essay</b><span>Foundations of Trust, on Substack.</span></a>
+</div>
 
-<h2>2. The JavaScript API</h2>
-<p>The widget is built on a small module you can use directly for your own UI. The same module is the npm package <code>orbital-attest</code> (not yet published; it lives in <code>packages/orbital-attest</code> in the repo): <code>import * as A from "orbital-attest"</code> then <code>A.configure({ server: "ORIGIN" })</code>. The served copy below is pre-configured for this origin. The verifier alone is <code>orbital-attest/verify</code>, with no dependencies.</p>
-<pre>import * as A from "ORIGIN/attest-core.js";
-A.session()                       // {id, root, handle, until, delegation} or null
-await A.signIn()                  // popup; resolves with the session
-await A.attest("upvote", url)     // sign with this page's device key and submit
-await A.attest("comment", url, { body: "…" })
-await A.attest("retract", url, { ref: recordUri })   // or A.retract(recordUri)
-await A.attest("vouch", "did:plc:…")
-await A.attest("statement", url, { body: "…" })
-await A.read([url1, url2])        // counts + recent comments, keyed by target
-await A.by(did)                   // everything a key signed
-await A.subscribe([url]); A.onCounts(({ target, counts }) => …)  // live</pre>
-<p><code>A.makeRecord(kind, target, extra)</code> builds and signs without submitting, if you want to hold records and submit later.</p>
+<h2>For builders</h2>
+<div class="grid">
+<a class="card" href="/builders"><b>Build with attest</b><span>One script tag, the API, the record format, verifying without us.</span></a>
+<a class="card" href="/technical"><b>How it works</b><span>Passkeys, delegation, AT Protocol, the threat model.</span></a>
+<a class="card" href="https://github.com/orbitalfoundation/attest"><b>Source</b><span>MIT licensed, on GitHub.</span></a>
+<a class="card" href="/llms.txt"><b>For AI agents</b><span>A plain-text summary for software that reads the web.</span></a>
+</div>
 
-<h2>3. Reads over HTTP</h2>
-<p>All GET, all public, all with <code>Access-Control-Allow-Origin: *</code>. Cacheable by a CDN (<code>s-maxage</code>); browsers revalidate.</p>
-<table>
-<tr><th>endpoint</th><th>returns</th></tr>
-<tr><td><code>GET /read?targets=a,b,c</code></td><td><code>{targets: {a: {target, upvotes, vouches, comments:[{id, by, handle, at, body}]}}}</code>. Up to 100 targets. Comma-separate; URL-encode each target.</td></tr>
-<tr><td><code>GET /by/:did</code></td><td><code>{did, handle, since, keys:[{id, jwk, created}], delegations:[{id, device, origin, from, until, revoked}], counts, vouchedBy:[{by, handle, at}], vouches:[{target, handle, at}], proofs:[{id, target, verifications:[{by, handle, evidence}]}], records:[…]}</code>. <code>keys</code> are the passkey public keys, for checking delegations yourself.</td></tr>
-<tr><td><code>GET /handle/:handle</code></td><td>the same, looked up by handle. <code>/@handle</code> is the human page.</td></tr>
-<tr><td><code>GET /record?uri=at://…</code> or <code>GET /record/:cid</code></td><td>the indexed record: the repo record under <code>repoRecord</code>, its <code>uri</code>, <code>cid</code>, the delegation id, and whether it was retracted</td></tr>
-<tr><td><code>GET /log?since=N&amp;limit=500</code></td><td>the service's own log: delegations, revocations and passkey changes with their passkey assertions, which are not repository records. Records themselves are read from repositories or the firehose.</td></tr>
-<tr><td><code>GET /domain/:host</code></td><td>public standing of a site: totals, most-attested pages with counts, recent comments, verified domain claims. <code>/site/:host</code> is the human page.</td></tr>
-<tr><td><code>GET /stats</code></td><td>account, record and log counts</td></tr>
-</table>
-
-<h2>4. Writes over the socket</h2>
-<p>The client library does this for you. For your own client: one socket.io connection to <code>ORIGIN</code>, then <code>emit("req", {name, payload}, ack)</code>; the ack is <code>{ok, data}</code> or <code>{ok:false, error}</code>.</p>
-<table>
-<tr><th>name</th><th>payload → data</th></tr>
-<tr><td><code>passkey.register.start</code></td><td><code>{handle}</code> → <code>{nonce, options}</code> (WebAuthn creation options)</td></tr>
-<tr><td><code>passkey.register.finish</code></td><td><code>{nonce, response}</code> → <code>{did, handle}</code></td></tr>
-<tr><td><code>lookup</code></td><td><code>{handle}</code> → <code>{did, handle}</code></td></tr>
-<tr><td><code>delegate.start</code></td><td><code>{delegation}</code> → <code>{id, options}</code> (WebAuthn request options whose challenge is the delegation's id)</td></tr>
-<tr><td><code>delegate.finish</code></td><td><code>{delegation, credentialId, assertion}</code> → <code>{id, root, handle, until}</code></td></tr>
-<tr><td><code>attest</code></td><td><code>{collection, rkey?, record, del}</code> → <code>{uri, id (cid), counts, duplicate?}</code>. Refused with "delegation revoked" once the root has revoked that delegation.</td></tr>
-<tr><td><code>retract</code></td><td><code>{uri, at, del, sig}</code> → deletes the repo record; <code>sig</code> is the device key over <code>{type:"retract", uri, at}</code></td></tr>
-<tr><td><code>root.start</code>, <code>root.finish</code></td><td>actions only the passkey may sign, on the service origin: <code>{v:1, type:"revoke", root, del, at}</code>, <code>{type:"add-key", credentialId}</code>, <code>{type:"remove-key", credentialId}</code>. Same shape as sign-in: the action's id is the WebAuthn challenge.</td></tr>
-<tr><td><code>passkey.add.start/finish</code></td><td>register a second passkey for an account; it is adopted when an existing passkey signs <code>add-key</code></td></tr>
-<tr><td><code>proof.instructions</code>, <code>proof.check</code></td><td><code>{claim}</code> → where to put the token <code>attest-proof:&lt;claim id&gt;</code>; then the service fetches and, if found, signs a <code>verify</code> record. Website: the URL itself or <code>/.well-known/attest.txt</code>; DNS: TXT at <code>_attest.&lt;domain&gt;</code>; GitHub: a public gist; Bluesky: the bio.</td></tr>
-<tr><td><code>subscribe</code></td><td><code>{targets}</code>; the server then emits <code>counts</code> events <code>{target, counts}</code></td></tr>
-<tr><td><code>whois</code>, <code>read</code></td><td>as the GETs</td></tr>
-</table>
-<p>Limits: 60 writes a minute per address, 30 per key. A duplicate upvote returns the existing id with <code>duplicate: true</code>. Records dated more than 10 minutes from server time are refused.</p>
-
-<h2>5. The record</h2>
-<p>Since the fold (see <a href="/changes">changes</a>), a record is an AT Protocol record in the person's own repository, in one of our lexicons, carrying the person's inline signature. The service writes it into the repo and indexes it; anyone can read it back from the repo without us.</p>
-<pre>collection   monster.attest.vote | comment | statement | vouch | claim   (verification is issued by verifiers)
-record       {$type: collection, subject|target, text?, createdAt, signatures: [inline]}
-inline       {$type: "app.certified.signature.defs#inline", key: "did:key:z…#z…", signature: {$bytes}}
-signed       the 36-byte CIDv1 (dag-cbor, sha-256) of the record with `signatures` removed and
-             $sig = {$type, key, repository: &lt;the repo did&gt;} inserted; ECDSA P-256, raw r||s, low-S
-uri, cid     at://did:plc:…/monster.attest.vote/&lt;rkey&gt; and the record's CID, both returned on write</pre>
-<p><b>subject</b> (vote, comment, statement) is a normalised URL, a <code>doi:</code> URI or a <code>sha256:</code> URI. <b>target</b> (claim) is <code>https://origin/</code>, <code>dns:domain</code>, <code>github:user</code> or <code>bsky:handle</code>. A vouch's subject is an account DID, never your own. Vote, vouch and claim use a deterministic record key derived from the subject, so there is one live record per author per subject; comments and statements get a time-ordered key. Retraction deletes the repo record; the client signs <code>{type:"retract", uri, at}</code> with the device key to authorise it.</p>
-<p>The lexicons are in the repository under <code>lexicons/monster/attest/</code> and validate with the AT Protocol lexicon tooling. The shared inline-signature shape is <code>app.certified.signature.defs#inline</code>, the same one Hypercerts and badge.blue use, so their verifiers can check our records.</p>
-<h2>6. Verifying without us</h2>
-<ol>
-<li>Fetch the record from the repo: <code>com.atproto.repo.getRecord</code> on the PDS named in the DID document of <code>did:plc:…</code>, or from any relay. Or take it from our index at <code>/record?uri=at://…</code>.</li>
-<li>Take the inline entry's <code>key</code>. Rebuild <code>$sig = {$type, key, repository: &lt;repo did&gt;}</code>, remove <code>signatures</code>, encode as DAG-CBOR, compute the CIDv1 bytes.</li>
-<li>Verify the raw ECDSA P-256 signature over those 36 bytes with the public key inside the <code>did:key</code>. <code>orbital-attest/verify</code> exports <code>inlineVerify(record, repoDid)</code>, which does exactly this in browsers and Node.</li>
-<li>To bind that device key to the person: the delegation in our log names it and carries the passkey assertion over the delegation's hash; the passkey public key is at <code>/by/&lt;did&gt;</code> → <code>keys</code>.</li>
-</ol>
-<p>The end-to-end test in the repo does steps 1 to 3 from Node against the live service.</p>
-<h2>7. A static site, concretely</h2>
-<p>A page on a CDN adds the script tag and a widget. Sign-in opens the popup; the session is stored in the page's own <code>localStorage</code>, the device key in its own IndexedDB. Counts render from <code>/read</code>; the reader's own votes from <code>/by</code>. Your build does not change and your host learns nothing new. If attest is down, counts fall back to whatever your page last cached, and nothing else on the page is affected.</p>
-<p>Source and issues: <a href="https://github.com/orbitalfoundation/attest">github.com/orbitalfoundation/attest</a> (MIT). Machine-readable summary: <a href="/llms.txt">/llms.txt</a>. Design: <a href="/technical">technical</a>.</p>
+<h2>The project</h2>
+<div class="grid">
+<a class="card" href="/roadmap"><b>Roadmap</b><span>Principles, what is next, what we are still reading.</span></a>
+<a class="card" href="/changes"><b>Changes</b><span>Every change that matters, including reversals.</span></a>
+<a class="card" href="/demo"><b>Demo</b><span>Live widgets to try.</span></a>
+</div>
 </main>
-<script type="module">import { server } from "/attest-core.js"; import "/menu.js"; document.querySelectorAll("pre, td, p").forEach((n) => { if (n.innerHTML.includes("ORIGIN")) n.innerHTML = n.innerHTML.replaceAll("ORIGIN", server); });</script></body></html>
+<script type="module" src="/menu.js"></script></body></html>

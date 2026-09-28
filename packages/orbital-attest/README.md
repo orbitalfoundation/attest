@@ -17,4 +17,4 @@ import { canonical, idOf, verifyObject, didFromJwk } from "orbital-attest/verify
 const ok = (await idOf(env.record)) === id && await verifyObject(delegation.devKey, env.record, env.sig);
 ```
 
-The integrator page has the whole API, the record format and the verification steps: https://attest.monster/docs. Source and issues: https://github.com/orbitalfoundation/attest (MIT).
+The integrator page has the whole API, the record format and the verification steps: https://attest.monster/builders. Source and issues: https://github.com/orbitalfoundation/attest (MIT).

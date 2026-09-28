@@ -5,7 +5,7 @@
   "license": "MIT",
   "type": "module",
   "repository": { "type": "git", "url": "git+https://github.com/orbitalfoundation/attest.git", "directory": "packages/orbital-attest" },
-  "homepage": "https://attest.monster/docs",
+  "homepage": "https://attest.monster/builders",
   "exports": {
     ".": "./client.mjs",
     "./verify": "./verify.mjs"
