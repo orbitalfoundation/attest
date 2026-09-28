@@ -5,28 +5,28 @@
    "poster": "/video/hands.jpg",
    "src": null,
    "alt": "hands of different ages and origins holding a glowing web of string",
-   "credit": "illustration generated with Seedream and Wan"
+   "credit": "illustration generated with Seedream and Seedance"
   },
   {
    "name": "forest",
    "poster": "/video/forest.jpg",
-   "src": null,
+   "src": "/video/forest.mp4",
    "alt": "roots and fungal threads glowing between trees under a forest floor",
-   "credit": "illustration generated with Seedream and Wan"
+   "credit": "illustration generated with Seedream and Seedance"
   },
   {
    "name": "tending",
    "poster": "/video/tending.jpg",
-   "src": null,
+   "src": "/video/tending.mp4",
    "alt": "many hands planting and tending the earth, linked by a glowing thread",
-   "credit": "illustration generated with Seedream and Wan"
+   "credit": "illustration generated with Seedream and Seedance"
   },
   {
    "name": "river",
    "poster": "/video/river.jpg",
-   "src": null,
+   "src": "/video/river.mp4",
    "alt": "a river crossing borders, villages along it joined by glowing threads",
-   "credit": "illustration generated with Seedream and Wan"
+   "credit": "illustration generated with Seedream and Seedance"
   }
  ]
 }

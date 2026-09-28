@@ -13,7 +13,7 @@ export const THEMES = {
   river: { still: `Aerial painted view of a great river and its tributaries winding through mountains and plains across faint painted national border lines, small warm lights of villages along the banks joined to one another by fine glowing teal threads that cross the borders. ${STYLE}`, motion: "the river water flows and glints, the glowing threads between villages brighten one after another across the borders, slow aerial drift" },
 };
 async function call(path, body) { const r = await fetch(`${API}/${path}`, { method: "POST", headers: { ...auth, "content-type": "application/json" }, body: JSON.stringify(body) }); const j = await r.json(); const id = j.data?.id; if (!id) throw new Error(path + " submit failed: " + JSON.stringify(j).slice(0, 300)); return id; }
-async function wait(id) { for (let i = 0; i < 150; i++) { await sleep(6000); const p = await (await fetch(`${API}/prediction/${id}`, { headers: auth })).json(); if (p.data?.status === "completed") return p.data.outputs[0]; if (p.data?.status === "failed") throw new Error("failed: " + String(p.data.error || "").slice(0, 300)); } throw new Error("timeout"); }
+async function wait(id, label = "") { let last = ""; for (let i = 0; i < 200; i++) { await sleep(6000); const p = await (await fetch(`${API}/prediction/${id}`, { headers: auth })).json(); const st = p.data?.status || JSON.stringify(p).slice(0, 120); if (st !== last) { console.log(label, id, "status", st, `${i * 6}s`); last = st; } if (st === "completed" || st === "succeeded") return p.data.outputs[0]; if (st === "failed") throw new Error("failed: " + String(p.data.error || "").slice(0, 300)); } throw new Error("timeout, last status " + last); }
 const save = async (url, path) => writeFileSync(path, Buffer.from(await (await fetch(url)).arrayBuffer()));
 const which = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(THEMES);
 for (const name of which) {
@@ -24,7 +24,7 @@ for (const name of which) {
     if (!existsSync(still)) { stillUrl = await wait(await call("generateImage", { model: IMAGE, prompt: t.still, size: process.env.IMAGE_SIZE || "2560*1440" })); await save(stillUrl, still); console.log(name, "still", still); }
     if (process.env.STILLS_ONLY) continue;
     if (!stillUrl) { const form = new FormData(); form.append("file", new Blob([(await import("node:fs")).readFileSync(still)], { type: "image/jpeg" }), "s.jpg"); stillUrl = (await (await fetch(`${API}/uploadMedia`, { method: "POST", headers: auth, body: form })).json()).data?.download_url; }
-    const videoUrl = await wait(await call("generateVideo", { model: VIDEO, prompt: t.motion, image: stillUrl, ...(process.env.VIDEO_EXTRA ? JSON.parse(process.env.VIDEO_EXTRA) : {}) }));
+    const videoUrl = await wait(await call("generateVideo", { model: VIDEO, prompt: t.motion, image: stillUrl, ...(process.env.VIDEO_EXTRA ? JSON.parse(process.env.VIDEO_EXTRA) : {}) }), name + " video");
     await save(videoUrl, clip); console.log(name, "clip", clip);
   } catch (e) { console.log(name, "ERROR", e.message); }
 }

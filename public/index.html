@@ -6,25 +6,31 @@
 <link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="stylesheet" href="/style.css">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"attest","applicationCategory":"DeveloperApplication","operatingSystem":"Web","url":"https://attest.monster/","description":"Signed, public statements about URLs and keys: passkey sign-in and signed votes, comments and vouches for static sites; emitter trust computed from a root you choose.","license":"https://opensource.org/licenses/MIT","codeRepository":"https://github.com/orbitalfoundation/attest","author":{"@type":"Person","name":"Anselm Hook","url":"https://hook.org/"},"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script>
 <style>
-.hero{position:relative;min-height:100svh;display:flex;align-items:flex-end;color:#fff;overflow:hidden;background:#0c2a33}
-.hero video,.hero img.poster{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
-.hero::after{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(to top,rgba(6,18,22,.92) 0%,rgba(6,18,22,.55) 45%,rgba(6,18,22,.15) 100%)}
-.hero .in{position:relative;z-index:2;max-width:44rem;margin:0 auto;padding:6rem 1.1rem 3.2rem;width:100%}
-.hero .brand{display:flex;align-items:center;gap:.5rem;font-weight:700;letter-spacing:.02em;margin-bottom:1.4rem}
-.hero h1{font-size:clamp(2.1rem,7vw,3.4rem);line-height:1.05;margin:0 0 1rem;letter-spacing:-.02em}
-.hero p.lead{font-size:1.12rem;line-height:1.5;max-width:34rem;opacity:.95;margin:0 0 1.6rem}
+body{background:#0c2a33}
+.bg{position:fixed;inset:0;z-index:0;background:#0c2a33}
+.bg video,.bg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.bg::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(6,18,22,.35) 0%,rgba(6,18,22,.72) 100%)}
+.page{position:relative;z-index:1;color:#fff}
+.hero{min-height:100svh;display:flex;align-items:center}
+.hero .in{max-width:44rem;margin:0 auto;padding:5rem 1.1rem 4rem;width:100%;text-shadow:0 1px 18px rgba(0,0,0,.45)}
+.hero .brand{display:flex;align-items:center;gap:.5rem;font-weight:700;letter-spacing:.02em;margin-bottom:1.2rem}
+.hero h1{font-size:clamp(2.2rem,7.5vw,3.6rem);line-height:1.05;margin:0 0 1rem;letter-spacing:-.02em}
+.hero p.lead{font-size:1.14rem;line-height:1.5;max-width:34rem;margin:0 0 1.6rem}
 .hero .cta{display:flex;gap:.7rem;flex-wrap:wrap}
-.hero .cta a{padding:.7rem 1.3rem;border-radius:999px;text-decoration:none;font-weight:600}
-.hero .cta a.go{background:var(--accent);color:#fff}.hero .cta a.how{border:1px solid rgba(255,255,255,.6);color:#fff}
-.hero .credit{position:absolute;right:.8rem;bottom:.6rem;z-index:2;font-size:.72rem;opacity:.6;color:#fff}
-.hero .quote{font-style:italic;opacity:.75;font-size:.92rem;margin-top:2rem;max-width:30rem}
+.hero .cta a{padding:.7rem 1.3rem;border-radius:999px;text-decoration:none;font-weight:600;text-shadow:none}
+.hero .cta a.go{background:var(--accent);color:#fff}.hero .cta a.how{border:1px solid rgba(255,255,255,.7);color:#fff;background:rgba(0,0,0,.2)}
+.hero .quote{font-style:italic;opacity:.85;font-size:.92rem;margin-top:2.2rem;max-width:30rem}
+.panel{background:rgba(9,22,27,.86);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.panel main{padding-top:2.5rem}
+.panel a{color:#7fd3ea}.panel .muted{color:#a9b7bd}
 .steps{display:grid;gap:1.4rem;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));margin:1rem 0 1.5rem}
-.steps div b{display:block;font-size:1.08rem;margin-bottom:.3rem}.steps div .n{color:var(--accent);font-weight:700;margin-right:.35rem}
-@media (prefers-reduced-motion: reduce){.hero video{display:none}}
+.steps div b{display:block;font-size:1.08rem;margin-bottom:.3rem}.steps div .n{color:#7fd3ea;font-weight:700;margin-right:.35rem}
+.hero{position:relative}.credit{position:absolute;right:.8rem;bottom:.6rem;z-index:2;font-size:.72rem;opacity:.65;color:#fff}
+@media (prefers-reduced-motion: reduce){.bg video{display:none}}
 </style></head><body>
+<div class="bg" aria-hidden="true"><img id="poster" alt="" src="/video/forest.jpg"><video id="bg" muted autoplay loop playsinline preload="auto"></video></div>
+<div class="page">
 <section class="hero">
-<img class="poster" id="poster" alt="" src="/video/hands.jpg">
-<video id="bg" muted autoplay loop playsinline preload="none" aria-hidden="true"></video>
 <div class="in">
 <div class="brand"><img src="/mascot.svg" alt="" width="34" height="34">attest</div>
 <h1>Trust, passed hand to hand.</h1>
@@ -32,9 +38,9 @@
 <div class="cta"><a class="go" id="start" href="/login?return=/tools">Start</a><a class="how" href="#how">How it works</a></div>
 <p class="quote">Give me a lever long enough and a fulcrum on which to place it, and I shall move the world. <span style="font-style:normal">(Archimedes)</span></p>
 </div>
-<span class="credit" id="credit">illustration generated with Seedream and Wan</span>
+<span class="credit" id="credit">illustration generated with Seedream and Seedance</span>
 </section>
-<main>
+<div class="panel"><main>
 <h2 id="how">How it works</h2>
 <div class="steps">
 <div><b><span class="n">1</span>Sign in with your phone</b>Your face or fingerprint unlock is your key. No password, no email, nothing to remember.</div>
@@ -52,7 +58,8 @@
 
 <p class="small muted" style="margin-top:2.5rem">Source: <a href="https://github.com/orbitalfoundation/attest">github.com/orbitalfoundation/attest</a>, MIT. Donations: <code>anselm.eth</code>.</p>
 <p class="small muted" id="version">version: unknown</p>
-</main>
+</main></div>
+</div>
 <script type="module">
 import { session } from "/attest-core.js"; import "/menu.js";
 const s = session();
@@ -60,7 +67,7 @@ if (s) { document.getElementById("start").textContent = "Your page"; document.ge
 // One backdrop per visit; the still shows first and stays for reduced motion or slow connections.
 fetch("/video/index.json", { cache: "no-store" }).then((r) => r.json()).then(({ clips }) => {
   if (!clips?.length) return; const c = clips[Math.floor(Math.random() * clips.length)];
-  document.getElementById("poster").src = c.poster; if (c.credit) document.getElementById("credit").textContent = c.credit;
+  document.getElementById("poster").src = c.poster; document.getElementById("poster").alt = c.alt || ""; if (c.credit) document.getElementById("credit").textContent = c.credit;
   if (matchMedia("(prefers-reduced-motion: reduce)").matches || navigator.connection?.saveData) return;
   if (!c.src) return; const v = document.getElementById("bg"); v.poster = c.poster; v.src = c.src; v.play().catch(() => {});
 }).catch(() => {});
