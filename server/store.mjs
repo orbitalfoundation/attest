@@ -26,7 +26,7 @@ export function open(path = process.env.ATTEST_DB || "data/attest.sqlite") {
   `);
   for (const [table, col, type] of [["accounts", "key_did", "TEXT"], ["accounts", "pds_handle", "TEXT"], ["accounts", "pds_password", "TEXT"], ["records", "uri", "TEXT"], ["records", "cid", "TEXT"], ["records", "collection", "TEXT"], ["records", "rkey", "TEXT"]])
     if (!db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`);
-  db.exec("CREATE INDEX IF NOT EXISTS records_uri ON records(uri); CREATE INDEX IF NOT EXISTS records_cid ON records(cid); CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT); CREATE TABLE IF NOT EXISTS released_handles (handle TEXT PRIMARY KEY, did TEXT, at TEXT NOT NULL); CREATE TABLE IF NOT EXISTS identity_links (attest_did TEXT NOT NULL, external_did TEXT NOT NULL, handle TEXT, via TEXT, at TEXT NOT NULL, PRIMARY KEY (attest_did, external_did)); CREATE TABLE IF NOT EXISTS edges (uri TEXT PRIMARY KEY, src TEXT NOT NULL, dst TEXT NOT NULL, kind TEXT NOT NULL, at TEXT, reason TEXT, imported TEXT NOT NULL); CREATE INDEX IF NOT EXISTS edges_src ON edges(src, kind); CREATE INDEX IF NOT EXISTS edges_dst ON edges(dst, kind);");
+  db.exec("CREATE INDEX IF NOT EXISTS records_uri ON records(uri); CREATE INDEX IF NOT EXISTS records_cid ON records(cid); CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT); CREATE TABLE IF NOT EXISTS released_handles (handle TEXT PRIMARY KEY, did TEXT, at TEXT NOT NULL); CREATE TABLE IF NOT EXISTS record_tags (record_id TEXT NOT NULL, tag TEXT NOT NULL, PRIMARY KEY (record_id, tag)); CREATE INDEX IF NOT EXISTS record_tags_tag ON record_tags(tag); CREATE TABLE IF NOT EXISTS identity_links (attest_did TEXT NOT NULL, external_did TEXT NOT NULL, handle TEXT, via TEXT, at TEXT NOT NULL, PRIMARY KEY (attest_did, external_did)); CREATE TABLE IF NOT EXISTS edges (uri TEXT PRIMARY KEY, src TEXT NOT NULL, dst TEXT NOT NULL, kind TEXT NOT NULL, at TEXT, reason TEXT, imported TEXT NOT NULL); CREATE INDEX IF NOT EXISTS edges_src ON edges(src, kind); CREATE INDEX IF NOT EXISTS edges_dst ON edges(dst, kind);");
   for (const [table, col, type] of [["accounts", "status", "TEXT"], ["records", "about_did", "TEXT"], ["records", "about_via", "TEXT"]]) if (!db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`);
   return db;
 }
@@ -69,10 +69,25 @@ export function putRecord(id, envelope) {
   db.exec("BEGIN"); try {
     appendLog("record", id, envelope);
     db.prepare("INSERT INTO records (id, by_did, kind, target, at, ref, json, uri, cid, collection, rkey, about_did, about_via) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(id, r.by, r.kind, r.target, r.at, r.ref || null, JSON.stringify(envelope), envelope.uri || null, envelope.cid || null, envelope.collection || null, envelope.rkey || null, envelope.about?.did || null, envelope.about?.via || null);
+    for (const t of envelope.tags || []) db.prepare("INSERT OR IGNORE INTO record_tags (record_id, tag) VALUES (?, ?)").run(id, t);
     db.exec("COMMIT");
   } catch (e) { db.exec("ROLLBACK"); throw e; }
 }
-export function retractRecord(uri, byDid) { const n = db.prepare("UPDATE records SET retracted = 1 WHERE uri = ? AND by_did = ? AND retracted = 0").run(uri, byDid).changes; if (n) appendLog("retract", uri + "@" + now(), { uri, by: byDid, at: now() }); return n; }
+// Replace the index row for a uri (an updated record, such as an edited bookmark).
+export function dropRecordRow(uri) { const r = db.prepare("SELECT id FROM records WHERE uri = ?").get(uri); if (!r) return; db.prepare("DELETE FROM record_tags WHERE record_id = ?").run(r.id); db.prepare("DELETE FROM records WHERE uri = ?").run(uri); }
+const ACTIVE_B = "r.by_did NOT IN (SELECT did FROM accounts WHERE status IS NOT NULL AND status != 'active')";
+const bookmarkRow = (r) => { const j = JSON.parse(r.json); return { uri: r.uri, by: r.by_did, handle: r.handle, subject: r.target, title: j.repoRecord?.title || null, tags: j.repoRecord?.tags || [], note: j.repoRecord?.note || null, at: r.at }; };
+export const bookmarksBy = (did, tag = null, limit = 200) => (tag
+  ? db.prepare(`SELECT r.*, a.handle FROM records r JOIN record_tags t ON t.record_id = r.id LEFT JOIN accounts a ON a.did = r.by_did WHERE r.by_did = ? AND r.kind = 'bookmark' AND r.retracted = 0 AND t.tag = ? ORDER BY r.at DESC LIMIT ?`).all(did, tag, limit)
+  : db.prepare(`SELECT r.*, a.handle FROM records r LEFT JOIN accounts a ON a.did = r.by_did WHERE r.by_did = ? AND r.kind = 'bookmark' AND r.retracted = 0 ORDER BY r.at DESC LIMIT ?`).all(did, limit)).map(bookmarkRow);
+export const bookmarkOf = (did, subject) => { const r = db.prepare(`SELECT r.*, a.handle FROM records r LEFT JOIN accounts a ON a.did = r.by_did WHERE r.by_did = ? AND r.kind = 'bookmark' AND r.target = ? AND r.retracted = 0`).get(did, subject); return r ? bookmarkRow(r) : null; };
+export const tagsOf = (did) => db.prepare(`SELECT t.tag, COUNT(*) AS n FROM record_tags t JOIN records r ON r.id = t.record_id WHERE r.by_did = ? AND r.retracted = 0 GROUP BY t.tag ORDER BY n DESC, t.tag LIMIT 200`).all(did);
+export const popularTags = (limit = 60) => db.prepare(`SELECT t.tag, COUNT(DISTINCT r.by_did) AS people, COUNT(*) AS n FROM record_tags t JOIN records r ON r.id = t.record_id WHERE r.retracted = 0 AND ${ACTIVE_B} GROUP BY t.tag ORDER BY people DESC, n DESC LIMIT ?`).all(limit);
+// Everything filed under a tag, one row per subject, with who filed it.
+export function tagged(tag, limit = 200) {
+  return db.prepare(`SELECT r.target AS subject, COUNT(DISTINCT r.by_did) AS people, MAX(r.at) AS last, GROUP_CONCAT(DISTINCT a.handle) AS handles, MAX(json_extract(r.json, '$.repoRecord.title')) AS title FROM records r JOIN record_tags t ON t.record_id = r.id LEFT JOIN accounts a ON a.did = r.by_did WHERE t.tag = ? AND r.retracted = 0 AND ${ACTIVE_B} GROUP BY r.target ORDER BY people DESC, last DESC LIMIT ?`).all(tag, limit).map((x) => ({ ...x, handles: x.handles ? x.handles.split(",") : [] }));
+}
+export function retractRecord(uri, byDid) { const n = db.prepare("UPDATE records SET retracted = 1 WHERE uri = ? AND by_did = ? AND retracted = 0").run(uri, byDid).changes; db.prepare("DELETE FROM record_tags WHERE record_id IN (SELECT id FROM records WHERE uri = ?)").run(uri); if (n) appendLog("retract", uri + "@" + now(), { uri, by: byDid, at: now() }); return n; }
 export const getRecordByUri = (uri) => { const r = db.prepare("SELECT json, id, retracted FROM records WHERE uri = ?").get(uri); return r ? { ...JSON.parse(r.json), id: r.id, retracted: !!r.retracted } : null; };
 export const findLiveUri = (by, target, kind) => db.prepare("SELECT uri FROM records WHERE by_did = ? AND target = ? AND kind = ? AND retracted = 0").get(by, target, kind)?.uri || null;
 export function getRecord(id) { const r = db.prepare("SELECT json, retracted FROM records WHERE id = ?").get(id); return r ? { ...JSON.parse(r.json), id, retracted: !!r.retracted } : null; }

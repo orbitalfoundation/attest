@@ -18,7 +18,7 @@ facebook meta google apple microsoft github openai anthropic claude ethereum bit
 `.trim().split(/\s+/));
 // Crumpled namespace: people live at /<handle> beside the site's own pages. Pages always win, so every top-level page file and
 // route segment is reserved too; reserveRoots() is called at startup with what the server actually serves.
-export const ROUTE_WORDS = "technical domain handle record read stats service socket share bookmark bookmarklet extension popup embed widget tag tags new create edit delete privacy terms donate sponsor contact press robots sitemap favicon mascot hero attest-core version style menu";
+export const ROUTE_WORDS = "save saved bookmarks bookmark tagged tags manifest install tools technical domain handle record read stats service socket share bookmark bookmarklet extension popup embed widget tag tags new create edit delete privacy terms donate sponsor contact press robots sitemap favicon mascot hero attest-core version style menu";
 for (const w of ROUTE_WORDS.split(" ")) RESERVED.add(w);
 export function reserveRoots(names) { const added = []; for (const n of names) { const w = String(n).toLowerCase().replace(/\.[a-z0-9]+$/, ""); if (w.length >= MIN && !RESERVED.has(w)) { RESERVED.add(w); added.push(w); } } return added; }
 export function check(raw) {

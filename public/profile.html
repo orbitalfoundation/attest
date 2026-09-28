@@ -1,8 +1,11 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>attest · profile</title>
-<meta name="robots" content="noindex"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css"></head><body><main>
+<meta name="robots" content="noindex"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="stylesheet" href="/style.css"></head><body><main>
 <h1 id="h">…</h1>
 <p class="muted small" id="who"></p>
 <p id="vouchrow"></p>
+<h2>Bookmarks <span id="nb" class="muted"></span></h2>
+<p id="mytags" class="small"></p>
+<ul id="bms" class="small" style="padding-left:1.1rem"></ul>
 <h2>About this person</h2>
 <p class="small muted" id="aboutsum"></p>
 <div id="aboutw"></div>
@@ -46,6 +49,10 @@ $("elsewhere").innerHTML = (me.elsewhere.map((l) => `<li><a href="https://bsky.a
   (await import("/attest.js")).mount(document.getElementById("aboutw")).catch(() => {});
   const elsewhere = a.comments.filter((c) => c.target !== canon);
   $("aboutelse").innerHTML = elsewhere.map((c) => `<li><a href="/${esc(c.handle)}">@${esc(c.handle || A.short(c.by))}</a> on ${c.via === "site" ? "their site" : c.via === "bluesky" ? "their Bluesky profile" : "their page"} (<a href="${esc(c.target)}">${esc(c.target)}</a>): ${esc(c.body)}</li>`).join(""); }
+{ const qt = new URLSearchParams(location.search).get("tag"); const list = qt ? me.bookmarks.filter((b) => b.tags.includes(qt)) : me.bookmarks;
+  $("nb").textContent = qt ? `tagged ${qt} · ${list.length} (all: ${me.bookmarks.length})` : me.bookmarks.length;
+  $("mytags").innerHTML = me.tags.map((t) => `<a href="?tag=${encodeURIComponent(t.tag)}"${t.tag === qt ? ' style="font-weight:600"' : ""}>${esc(t.tag)}</a> <span class="muted">${t.n}</span>`).join(" · ") + (qt ? ` · <a href="?">all</a>` : "");
+  $("bms").innerHTML = list.map((b) => `<li style="margin:.45rem 0"><a href="${esc(b.subject)}">${esc(b.title || b.subject)}</a>${b.note ? `<div>${esc(b.note)}</div>` : ""}<div class="muted">${b.tags.map((t) => `<a href="/tag/${encodeURIComponent(t)}">#${esc(t)}</a>`).join(" ")} ${new Date(b.at).toLocaleDateString()}</div></li>`).join("") || "<li class='muted'>none yet</li>"; }
 $("counts").textContent = Object.entries(me.counts).map(([k, n]) => `${n} ${k}${n === 1 ? "" : "s"}`).join(" · ");
 // vouch button: only on the service's own origin, only for someone else
 const s = A.session();

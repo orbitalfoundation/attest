@@ -22,6 +22,11 @@ export async function routes(app) {
   });
   app.get("/handle/:handle", async (req, reply) => { const r = records.byHandle(req.params.handle); if (!r) return reply.code(404).send({ error: "no such handle" }); reply.header("Cache-Control", "public, max-age=0, s-maxage=5"); return r; });
   app.get("/@:handle", (req, reply) => reply.type("text/html").sendFile("profile.html", join(root, "public")));
+  app.get("/tagged/:tag", async (req, reply) => { reply.header("Cache-Control", "public, max-age=0, s-maxage=10"); return { tag: req.params.tag, items: store.tagged(String(req.params.tag).toLowerCase()) }; });
+  app.get("/tags.json", async (req, reply) => { reply.header("Cache-Control", "public, max-age=0, s-maxage=30"); return { tags: store.popularTags() }; });
+  app.get("/bookmarks/:did", async (req, reply) => { reply.header("Cache-Control", "public, max-age=0, s-maxage=5"); return { did: req.params.did, tag: req.query.tag || null, items: store.bookmarksBy(req.params.did, req.query.tag ? String(req.query.tag).toLowerCase() : null) }; });
+  app.get("/bookmark", async (req, reply) => { let subject; try { subject = (await import("../packages/orbital-attest/verify.mjs")).normalizeTarget(String(req.query.subject || "")); } catch { return reply.code(400).send({ error: "subject" }); } reply.header("Cache-Control", "no-store"); return { bookmark: store.bookmarkOf(String(req.query.did || ""), subject), counts: store.countsFor(subject) }; });
+  app.get("/tag/:tag", (req, reply) => reply.type("text/html").sendFile("tag.html", join(root, "public")));
   app.get("/u/:handle", (req, reply) => reply.redirect("/" + encodeURIComponent(req.params.handle), 301));
   app.get("/domain/:host", async (req, reply) => { if (!/^[a-z0-9.-]+\.[a-z]{2,}$|^localhost(:\d+)?$/i.test(req.params.host)) return reply.code(400).send({ error: "host" }); reply.header("Cache-Control", "public, max-age=0, s-maxage=30"); return store.siteSummary(req.params.host); });
   app.get("/site/:host", (req, reply) => reply.type("text/html").sendFile("site.html", join(root, "public")));

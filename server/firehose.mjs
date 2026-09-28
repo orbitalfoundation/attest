@@ -14,7 +14,7 @@ export function start({ pdsUrl }) {
   const service = pdsUrl.replace(/^http/, "ws");
   fh = new Firehose({
     idResolver: new IdResolver(), service, unauthenticatedCommits: true, unauthenticatedHandles: true, excludeSync: true,
-    filterCollections: ["vote", "comment", "statement", "vouch", "claim", "verification"].map((k) => NS + k),
+    filterCollections: ["vote", "comment", "statement", "vouch", "claim", "verification", "bookmark"].map((k) => NS + k),
     getCursor: () => store.getMeta("firehose_cursor") ?? undefined,
     handleEvent: async (evt) => {
       try {
@@ -32,12 +32,14 @@ export function start({ pdsUrl }) {
 export const stop = () => fh?.destroy();
 async function indexRecord(evt) {
   const uri = evt.uri.toString(), did = evt.did, collection = evt.collection;
-  if (store.getRecordByUri(uri)) return; // we wrote it, or saw it already
+  const existing = store.getRecordByUri(uri);
+  if (existing && (evt.event !== "update" || existing.cid === evt.cid.toString())) return; // we wrote it, or saw it already
+  if (existing) store.dropRecordRow(uri);
   const record = lexToJson(evt.record); if (!record || record.$type !== collection) return;
   const [v] = await inlineVerify(record, did, async (keyDid) => jwkFromDidKey(keyDid)).catch(() => []);
   if (!v?.ok) { console.warn("firehose: unsigned or unverifiable record ignored", uri); return; }
   const cid = evt.cid.toString(); const shape = records.indexShape(collection, record, did); if (!shape) return;
   const del = store.delegationForDevice(did, v.key.split("#")[0]);
-  store.putRecord(cid, { record: shape, repoRecord: record, uri, cid, collection, rkey: evt.rkey, del: del || undefined, viaFirehose: true, about: aboutFor(shape.target) });
+  store.putRecord(cid, { record: shape, repoRecord: record, uri, cid, collection, rkey: evt.rkey, del: del || undefined, viaFirehose: true, about: aboutFor(shape.target), tags: record.tags || [] });
   records.events.emit("counts", { target: shape.target, counts: store.countsFor(shape.target) });
 }

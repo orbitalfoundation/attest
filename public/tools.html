@@ -1,0 +1,37 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>attest · save from anywhere</title>
+<meta name="description" content="A bookmarklet and phone setup to save, tag and vouch for any page with attest."><link rel="canonical" href="https://attest.monster/tools">
+<link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="stylesheet" href="/style.css"></head><body><main>
+<h1>save from anywhere <small>bookmarklet and phones</small></h1>
+<p>Save any page you are reading, with tags and a note, and vouch for it if you want to. A small attest window opens with the page's address and title; you sign there, with attest's own session, so the page you are reading never touches your key.</p>
+
+<h2>On a computer</h2>
+<p>Drag this to your bookmarks bar, then click it on any page:</p>
+<p><a id="bm" class="card" style="display:inline-block;padding:.5rem .9rem;text-decoration:none;font-weight:600">＋ attest</a></p>
+
+<h2>On an Android phone</h2>
+<ol>
+<li>Open <a href="/">attest.monster</a> in Chrome and sign in.</li>
+<li>Menu ⋮ → <b>Add to home screen</b> (or <b>Install app</b>).</li>
+<li>From then on, <b>Share → attest</b> appears for any link, in any app.</li>
+</ol>
+
+<h2>On an iPhone or iPad</h2>
+<p>Safari does not let websites join the share sheet, so use the bookmarklet:</p>
+<ol>
+<li>Copy this: <button id="copy" class="quiet small">copy bookmarklet</button> <span id="copied" class="small ok"></span></li>
+<li>In Safari, bookmark any page (share button → <b>Add Bookmark</b>), naming it "＋ attest".</li>
+<li>Open bookmarks, <b>Edit</b>, tap the new one, and replace its address with what you copied.</li>
+<li>On any page, tap the address bar, choose "＋ attest" from your bookmarks.</li>
+</ol>
+<p class="small muted">If you prefer the share sheet on iPhone, a Shortcut can do it: make one that receives URLs from the share sheet and opens <code>https://attest.monster/save?url=</code> followed by the shared URL.</p>
+
+<h2>Where saves go</h2>
+<p>Each bookmark is a <code>monster.attest.bookmark</code> record in your own AT Protocol repository, signed by your key: the address, title, tags and note. Filing a page under a tag is not the same as vouching for it; the checkbox adds a separate upvote. Your bookmarks are on your page at <code>attest.monster/yourname</code>, and everything filed under a word is at <code>attest.monster/tag/word</code>.</p>
+</main>
+<script type="module">
+import "/menu.js";
+const code = "javascript:(()=>{window.open('" + location.origin + "/save?url='+encodeURIComponent(location.href)+'&title='+encodeURIComponent(document.title),'attest','popup,width=440,height=680')})()";
+document.getElementById("bm").href = code;
+document.getElementById("bm").onclick = (e) => { e.preventDefault(); document.getElementById("copied").textContent = "Drag it to the bookmarks bar instead of clicking."; };
+document.getElementById("copy").onclick = async () => { try { await navigator.clipboard.writeText(code); document.getElementById("copied").textContent = "copied"; } catch { prompt("Copy this:", code); } };
+</script></body></html>

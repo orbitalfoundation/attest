@@ -1,0 +1,47 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>attest · save</title>
+<meta name="robots" content="noindex"><link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="stylesheet" href="/style.css"></head><body><main style="padding-top:1.2rem">
+<h1 style="font-size:1.2rem"><img src="/mascot.svg" alt="" width="28" height="28" style="vertical-align:-7px;margin-right:.3rem">save to attest</h1>
+<div class="card">
+  <input id="title" placeholder="title">
+  <p class="small muted" style="margin:.3rem 0 .6rem;word-break:break-all" id="url"></p>
+  <label class="small muted" for="tags">tags <span id="tagcount"></span></label>
+  <input id="tags" placeholder="space or comma separated; use-hyphens-for-phrases" autocapitalize="none" autocomplete="off" spellcheck="false">
+  <p id="suggest" class="small" style="margin:.35rem 0"></p>
+  <label class="small muted" for="note">note</label>
+  <textarea id="note" rows="3" placeholder="optional, public"></textarea>
+  <p style="margin:.6rem 0"><label><input type="checkbox" id="vote" style="width:auto"> I vouch for this page (upvote)</label></p>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap"><button id="save">Save</button><button id="remove" class="quiet" hidden>Remove bookmark</button></div>
+  <p id="msg" class="small" style="margin:.7rem 0 0"></p>
+</div>
+<p class="small muted" id="counts"></p>
+<p class="small muted">Everything here is public and signed by your key. <a href="/tools">Bookmarklet and phone setup</a>.</p>
+</main>
+<script type="module">
+import * as A from "/attest-core.js";
+const q = new URLSearchParams(location.search), $ = (id) => document.getElementById(id), esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const msg = (t, cls = "") => { $("msg").innerHTML = t; $("msg").className = "small " + cls; };
+// Phones share the link in `url`, or only in `text` (sometimes with the title in front of it).
+let raw = q.get("url") || ""; if (!raw) { const m = (q.get("text") || "").match(/https?:\/\/\S+/); if (m) raw = m[0]; }
+let subject; try { subject = A.normalizeTarget(raw); } catch { msg("Nothing to save: this window needs a page address.", "err"); throw new Error("no url"); }
+$("url").textContent = subject; $("title").value = q.get("title") || (q.get("text") || "").replace(/https?:\/\/\S+/, "").trim();
+const s = A.session();
+if (!s) { location.href = "/login?return=" + encodeURIComponent(location.pathname + location.search); throw new Error("sign in"); }
+const [{ bookmark, counts }, mine] = await Promise.all([fetch(`/bookmark?did=${encodeURIComponent(s.root)}&subject=${encodeURIComponent(subject)}`).then((r) => r.json()), A.by(s.root)]);
+let voteUri = mine.records.find((r) => r.kind === "upvote" && r.target === subject && !r.retracted)?.uri || null;
+$("vote").checked = !!voteUri;
+if (bookmark) { $("title").value = bookmark.title || $("title").value; $("tags").value = bookmark.tags.join(" "); $("note").value = bookmark.note || ""; $("remove").hidden = false; msg("You saved this before; edit and save again.", "muted"); }
+$("counts").textContent = counts ? `${counts.upvotes} upvote${counts.upvotes === 1 ? "" : "s"} · ${counts.comments.length} comment${counts.comments.length === 1 ? "" : "s"} on this page` : "";
+const myTags = (mine.tags || []).map((t) => t.tag); const popular = await fetch("/tags.json").then((r) => r.json()).then((j) => j.tags.map((t) => t.tag)).catch(() => []);
+const renderSuggest = () => { const have = A.normalizeTags($("tags").value); const cand = [...new Set([...myTags, ...popular])].filter((t) => !have.includes(t)).slice(0, 14);
+  $("suggest").innerHTML = cand.map((t) => `<a href="#" data-t="${esc(t)}" style="margin-right:.5rem">${esc(t)}</a>`).join(""); $("tagcount").textContent = have.length ? `(${have.length}/12)` : ""; };
+$("suggest").onclick = (e) => { const t = e.target.dataset.t; if (!t) return; e.preventDefault(); $("tags").value = ($("tags").value.trim() + " " + t).trim(); renderSuggest(); };
+$("tags").oninput = renderSuggest; renderSuggest();
+const done = () => { if (window.opener || window.name === "attest") setTimeout(() => window.close(), 900); };
+$("save").onclick = async () => { $("save").disabled = true; try {
+  const r = await A.attest("bookmark", subject, { title: $("title").value.trim(), tags: $("tags").value, note: $("note").value.trim() });
+  if ($("vote").checked && !voteUri) voteUri = (await A.attest("upvote", subject)).uri;
+  if (!$("vote").checked && voteUri) { await A.retract(voteUri); voteUri = null; }
+  $("remove").hidden = false; msg(`Saved. <a href="/${esc(s.handle)}">Your bookmarks</a>`, "ok"); done();
+} catch (e) { msg(esc(e.message), "err"); } finally { $("save").disabled = false; } };
+$("remove").onclick = async () => { try { const b = await fetch(`/bookmark?did=${encodeURIComponent(s.root)}&subject=${encodeURIComponent(subject)}`).then((r) => r.json()); if (b.bookmark) await A.retract(b.bookmark.uri); $("remove").hidden = true; msg("Removed.", "ok"); done(); } catch (e) { msg(esc(e.message), "err"); } };
+</script></body></html>

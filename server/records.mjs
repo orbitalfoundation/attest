@@ -5,7 +5,7 @@ import * as pds from "./pds.mjs";
 import * as dns from "./dns.mjs";
 import { aboutFor } from "./people.mjs";
 import { checkDelegation, checkAction } from "./identity.mjs";
-import { normalizeTarget, isDid, isAccountDid, didFromJwk, inlineSign, inlineVerify, INLINE_TYPE, canonical, verifyObject, jwkFromDidKey } from "../packages/orbital-attest/verify.mjs";
+import { normalizeTarget, normalizeTags, isDid, isAccountDid, didFromJwk, inlineSign, inlineVerify, INLINE_TYPE, canonical, verifyObject, jwkFromDidKey } from "../packages/orbital-attest/verify.mjs";
 import { cidString } from "../packages/orbital-attest/cid.mjs";
 import { verifyAssertion } from "./passkeys.mjs";
 import { Lexicons, jsonToLex } from "@atproto/lexicon";
@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url";
 import { createHash, randomBytes } from "node:crypto";
 export const events = new EventEmitter(); // "counts" {target, counts}
 const NS = "monster.attest.";
-const KIND_OF = { vote: "upvote", comment: "comment", statement: "statement", vouch: "vouch", claim: "claim", verification: "verify" };
+const KIND_OF = { vote: "upvote", comment: "comment", statement: "statement", vouch: "vouch", claim: "claim", verification: "verify", bookmark: "bookmark" };
 const COLLECTIONS = Object.keys(KIND_OF).map((k) => NS + k);
 // ---- lexicons
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -71,6 +71,7 @@ export function indexShape(collection, record, by) {
   if (k === "vouch") return { by, kind, target: record.subject, at, body: record.reason };
   if (k === "claim") return { by, kind, target: record.target, at };
   if (k === "verification") return { by, kind, target: record.target, at, ref: record.claim?.cid, body: record.evidence };
+  if (k === "bookmark") return { by, kind, target: record.subject, at, body: record.note || record.title };
 }
 export async function acceptRecord({ envelope, origin }) {
   const { collection, record, del } = envelope || {}; let { rkey } = envelope || {};
@@ -81,7 +82,8 @@ export async function acceptRecord({ envelope, origin }) {
   const at = Date.parse(record.createdAt); if (!(at > 0) || Math.abs(at - Date.now()) > 10 * 60e3) throw new Error("createdAt is not near now");
   // subjects normalised, and kind rules
   const k = collection.slice(NS.length);
-  if (["vote", "comment"].includes(k) || (k === "statement" && record.subject !== undefined)) { if (normalizeTarget(record.subject) !== record.subject || isDid(record.subject)) throw new Error("subject must be a normalised URL, doi: or sha256: URI"); }
+  if (k === "bookmark") { const t = normalizeTags(record.tags || []); if (JSON.stringify(t) !== JSON.stringify(record.tags || [])) throw new Error("tags must be normalised"); }
+  if (["vote", "comment", "bookmark"].includes(k) || (k === "statement" && record.subject !== undefined)) { if (normalizeTarget(record.subject) !== record.subject || isDid(record.subject)) throw new Error("subject must be a normalised URL, doi: or sha256: URI"); }
   if (k === "vouch") { if (!isAccountDid(record.subject)) throw new Error("vouch subject must be an account did"); if (record.subject === repo) throw new Error("you cannot vouch for yourself"); }
   if (k === "claim") { if (normalizeTarget(record.target) !== record.target || isDid(record.target)) throw new Error("claim target must be a normalised URL or service:handle"); }
   // exactly one inline signature, by the delegated device key, verifying against this repo
@@ -90,13 +92,15 @@ export async function acceptRecord({ envelope, origin }) {
   const [v] = await inlineVerify(record, repo, async (did) => (did === dg.device ? dg.devKey : jwkFromDidKey(did))); if (!v?.ok) throw new Error("inline signature does not verify for this repo");
   lexicons.assertValidRecord(collection, jsonToLex(record));
   // deterministic keys for one-per-subject kinds
-  const subject = k === "claim" ? record.target : record.subject; const wantKey = ["vote", "vouch", "claim"].includes(k) ? rkeyFor(subject) : null;
-  if (wantKey) { if (rkey && rkey !== wantKey) throw new Error("rkey must be " + wantKey); rkey = wantKey; const existing = store.findLiveUri(repo, subject, KIND_OF[k]); if (existing) return { uri: existing, id: store.getRecordByUri(existing).id, duplicate: true, counts: store.countsFor(subject) }; }
+  const subject = k === "claim" ? record.target : record.subject; const wantKey = ["vote", "vouch", "claim", "bookmark"].includes(k) ? rkeyFor(subject) : null;
+  let replacing = null;
+  if (wantKey) { if (rkey && rkey !== wantKey) throw new Error("rkey must be " + wantKey); rkey = wantKey; const existing = store.findLiveUri(repo, subject, KIND_OF[k]); if (existing) { if (k !== "bookmark") return { uri: existing, id: store.getRecordByUri(existing).id, duplicate: true, counts: store.countsFor(subject) }; replacing = existing; } }
   // write to the repo, then index
   const token = await repoToken(repo);
   const w = wantKey ? await pds.putRecord(token, repo, collection, rkey, record) : await pds.createRecord(token, repo, collection, record);
   const uri = w.uri, cid = w.cid, shape = indexShape(collection, record, repo);
-  if (!store.getRecordByUri(uri)) store.putRecord(cid, { record: shape, repoRecord: record, uri, cid, collection, rkey: uri.split("/").pop(), del, about: aboutFor(shape.target) });
+  if (replacing) store.dropRecordRow(replacing);
+  if (!store.getRecordByUri(uri)) store.putRecord(cid, { record: shape, repoRecord: record, uri, cid, collection, rkey: uri.split("/").pop(), del, about: aboutFor(shape.target), tags: record.tags || [] });
   const counts = store.countsFor(shape.target); events.emit("counts", { target: shape.target, counts });
   return { uri, id: cid, counts };
 }
@@ -134,6 +138,6 @@ export async function acceptAction({ envelope, origin }) {
 }
 // ---- reads
 export function read(targets) { const out = {}; for (const t of targets.slice(0, 100)) { try { const n = normalizeTarget(t); out[t] = { target: n, ...store.countsFor(n) }; } catch (e) { out[t] = { error: e.message }; } } return out; }
-export const by = (did) => { const a = store.getAccount(did); return { did, handle: a?.handle || null, repoHandle: a?.pds_handle || null, since: a?.created || null, status: a?.status || "active", service: did === service?.did || undefined, elsewhere: store.linksOf(did).map((l) => ({ ...l, out: store.edgeCountsFrom(l.did) })), trustIn: store.memberEdgesTo(did), trustOut: store.memberEdgesFrom(did), about: store.aboutSummary(did), keys: store.keysOf(did).map(({ id, jwk, created, transports }) => ({ id, jwk, created, transports })), delegations: store.delegationsOf(did), counts: store.countsBy(did), vouchedBy: store.vouchesFor(did), vouches: store.vouchesBy(did), proofs: store.claimsOf(did), records: store.recordsBy(did) }; };
+export const by = (did) => { const a = store.getAccount(did); return { did, handle: a?.handle || null, repoHandle: a?.pds_handle || null, since: a?.created || null, status: a?.status || "active", service: did === service?.did || undefined, elsewhere: store.linksOf(did).map((l) => ({ ...l, out: store.edgeCountsFrom(l.did) })), trustIn: store.memberEdgesTo(did), trustOut: store.memberEdgesFrom(did), about: store.aboutSummary(did), tags: store.tagsOf(did), bookmarks: store.bookmarksBy(did, null, 100), keys: store.keysOf(did).map(({ id, jwk, created, transports }) => ({ id, jwk, created, transports })), delegations: store.delegationsOf(did), counts: store.countsBy(did), vouchedBy: store.vouchesFor(did), vouches: store.vouchesBy(did), proofs: store.claimsOf(did), records: store.recordsBy(did) }; };
 export const byHandle = (handle) => { const a = store.getAccountByHandle(String(handle || "").toLowerCase()); if (!a) return null; return by(a.did); };
 export const whois = (did) => store.handleOf(did);

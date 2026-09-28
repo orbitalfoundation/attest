@@ -48,7 +48,12 @@ export function normalizeTarget(t) {
   if (/^sha256:[0-9a-f]{64}$/i.test(t)) return "sha256:" + t.slice(7).toLowerCase();
   throw new Error("unrecognised target: " + t.slice(0, 80));
 }
-export const KINDS = ["upvote", "comment", "vouch", "statement", "retract", "claim", "verify"];
+export function normalizeTags(input) {
+  const raw = Array.isArray(input) ? input : String(input || "").split(/[\s,]+/);
+  const out = []; for (const t of raw) { const x = String(t).trim().toLowerCase().replace(/^#/, "").replace(/[^\p{L}\p{N}-]+/gu, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 32); if (x && !out.includes(x)) out.push(x); if (out.length === 12) break; }
+  return out;
+}
+export const KINDS = ["upvote", "comment", "vouch", "statement", "retract", "claim", "verify", "bookmark"];
 
 // ---- Inline signatures on AT Protocol records (badge.blue / app.certified.signature.defs#inline).
 // Signed input: the 36-byte CIDv1 (dag-cbor, sha-256) of the record with `signatures` removed and a `$sig` object

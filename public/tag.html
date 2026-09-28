@@ -1,0 +1,17 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>attest · tag</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css"></head><body><main>
+<h1 id="h">…</h1>
+<p class="muted small" id="sum"></p>
+<ul id="items" style="padding-left:1.1rem"></ul>
+<h2>Other tags</h2>
+<p id="cloud" class="small"></p>
+</main>
+<script type="module">
+import "/menu.js";
+const tag = decodeURIComponent(location.pathname.replace(/^\/tag\//, "")).toLowerCase(), $ = (id) => document.getElementById(id), esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+document.title = "attest · " + tag; $("h").textContent = "#" + tag;
+const [d, t] = await Promise.all([fetch("/tagged/" + encodeURIComponent(tag)).then((r) => r.json()), fetch("/tags.json").then((r) => r.json())]);
+$("sum").textContent = d.items.length ? `${d.items.length} page${d.items.length === 1 ? "" : "s"} filed here, most-filed first. Counts are raw; scoring from people you trust comes later.` : "Nothing filed under this tag yet.";
+$("items").innerHTML = d.items.map((i) => `<li style="margin:.5rem 0"><a href="${esc(i.subject)}">${esc(i.title || i.subject)}</a><div class="small muted">${i.people} ${i.people === 1 ? "person" : "people"}: ${i.handles.map((h) => `<a href="/${esc(h)}">@${esc(h)}</a>`).join(", ")} · <a href="/save?url=${encodeURIComponent(i.subject)}&title=${encodeURIComponent(i.title || "")}">save</a></div></li>`).join("");
+$("cloud").innerHTML = t.tags.filter((x) => x.tag !== tag).map((x) => `<a href="/tag/${encodeURIComponent(x.tag)}">${esc(x.tag)}</a> <span class="muted">${x.people}</span>`).join(" · ") || "<span class='muted'>none yet</span>";
+</script></body></html>
