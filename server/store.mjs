@@ -27,7 +27,7 @@ export function open(path = process.env.ATTEST_DB || "data/attest.sqlite") {
   for (const [table, col, type] of [["accounts", "key_did", "TEXT"], ["accounts", "pds_handle", "TEXT"], ["accounts", "pds_password", "TEXT"], ["records", "uri", "TEXT"], ["records", "cid", "TEXT"], ["records", "collection", "TEXT"], ["records", "rkey", "TEXT"]])
     if (!db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`);
   db.exec("CREATE INDEX IF NOT EXISTS records_uri ON records(uri); CREATE INDEX IF NOT EXISTS records_cid ON records(cid); CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT); CREATE TABLE IF NOT EXISTS released_handles (handle TEXT PRIMARY KEY, did TEXT, at TEXT NOT NULL); CREATE TABLE IF NOT EXISTS identity_links (attest_did TEXT NOT NULL, external_did TEXT NOT NULL, handle TEXT, via TEXT, at TEXT NOT NULL, PRIMARY KEY (attest_did, external_did)); CREATE TABLE IF NOT EXISTS edges (uri TEXT PRIMARY KEY, src TEXT NOT NULL, dst TEXT NOT NULL, kind TEXT NOT NULL, at TEXT, reason TEXT, imported TEXT NOT NULL); CREATE INDEX IF NOT EXISTS edges_src ON edges(src, kind); CREATE INDEX IF NOT EXISTS edges_dst ON edges(dst, kind);");
-  for (const [table, col, type] of [["accounts", "status", "TEXT"]]) if (!db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`);
+  for (const [table, col, type] of [["accounts", "status", "TEXT"], ["records", "about_did", "TEXT"], ["records", "about_via", "TEXT"]]) if (!db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`);
   return db;
 }
 const now = () => new Date().toISOString();
@@ -68,7 +68,7 @@ export function putRecord(id, envelope) {
   const r = envelope.record;
   db.exec("BEGIN"); try {
     appendLog("record", id, envelope);
-    db.prepare("INSERT INTO records (id, by_did, kind, target, at, ref, json, uri, cid, collection, rkey) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(id, r.by, r.kind, r.target, r.at, r.ref || null, JSON.stringify(envelope), envelope.uri || null, envelope.cid || null, envelope.collection || null, envelope.rkey || null);
+    db.prepare("INSERT INTO records (id, by_did, kind, target, at, ref, json, uri, cid, collection, rkey, about_did, about_via) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(id, r.by, r.kind, r.target, r.at, r.ref || null, JSON.stringify(envelope), envelope.uri || null, envelope.cid || null, envelope.collection || null, envelope.rkey || null, envelope.about?.did || null, envelope.about?.via || null);
     db.exec("COMMIT");
   } catch (e) { db.exec("ROLLBACK"); throw e; }
 }
@@ -117,6 +117,17 @@ export const edgeCountsFrom = (src) => db.prepare("SELECT kind, COUNT(*) AS n FR
 const memberOf = `SELECT attest_did AS m, external_did AS d FROM identity_links UNION SELECT did AS m, did AS d FROM accounts`;
 export const memberEdgesTo = (attestDid) => db.prepare(`SELECT e.kind, e.at, e.reason, e.uri, s.m AS from_member, a.handle FROM edges e JOIN (${memberOf}) s ON s.d = e.src JOIN (${memberOf}) t ON t.d = e.dst JOIN accounts a ON a.did = s.m WHERE t.m = ? AND s.m != ? ORDER BY e.kind`).all(attestDid, attestDid);
 export const memberEdgesFrom = (attestDid) => db.prepare(`SELECT e.kind, e.at, e.uri, t.m AS to_member, a.handle FROM edges e JOIN (${memberOf}) s ON s.d = e.src JOIN (${memberOf}) t ON t.d = e.dst JOIN accounts a ON a.did = t.m WHERE s.m = ? AND t.m != ? ORDER BY e.kind`).all(attestDid, attestDid);
+export const linkByExternal = (did) => db.prepare("SELECT attest_did FROM identity_links WHERE external_did = ?").get(did) || null;
+export const linkByHandle = (h) => db.prepare("SELECT attest_did FROM identity_links WHERE lower(handle) = ?").get(h) || null;
+export const verifiedClaimFor = (target) => db.prepare("SELECT c.by_did FROM records c WHERE c.kind = 'claim' AND c.retracted = 0 AND c.target = ? AND EXISTS (SELECT 1 FROM records v WHERE v.kind = 'verify' AND v.retracted = 0 AND v.ref = c.cid) ORDER BY c.at LIMIT 1").get(target)?.by_did || null;
+// Statements about a person (records whose subject resolved to them), excluding their own and inactive authors.
+export function aboutSummary(did) {
+  const ACTIVE = "r.by_did NOT IN (SELECT did FROM accounts WHERE status IS NOT NULL AND status != 'active')";
+  const counts = db.prepare(`SELECT r.kind, COUNT(*) AS n, COUNT(DISTINCT r.by_did) AS people FROM records r WHERE r.about_did = ? AND r.by_did != ? AND r.retracted = 0 AND ${ACTIVE} GROUP BY r.kind`).all(did, did).reduce((o, x) => (o[x.kind] = { n: x.n, people: x.people }, o), {});
+  const comments = db.prepare(`SELECT r.id, r.uri, r.by_did, r.at, r.target, r.about_via, r.json, a.handle FROM records r LEFT JOIN accounts a ON a.did = r.by_did WHERE r.about_did = ? AND r.by_did != ? AND r.retracted = 0 AND ${ACTIVE} AND r.kind IN ('comment','statement') ORDER BY r.at DESC LIMIT 50`).all(did, did).map((c) => ({ id: c.id, uri: c.uri, by: c.by_did, handle: c.handle, at: c.at, target: c.target, via: c.about_via, body: JSON.parse(c.json).record.body }));
+  return { counts, comments };
+}
+export function backfillAbout(resolve) { let n = 0; for (const r of db.prepare("SELECT id, target FROM records WHERE about_did IS NULL AND target LIKE 'http%'").all()) { const a = resolve(r.target); if (a) { db.prepare("UPDATE records SET about_did = ?, about_via = ? WHERE id = ?").run(a.did, a.via, r.id); n++; } } return n; }
 export const getMeta = (k) => { const r = db.prepare("SELECT value FROM meta WHERE key = ?").get(k); return r ? JSON.parse(r.value) : null; };
 export const setMeta = (k, v) => db.prepare("INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(k, JSON.stringify(v));
 export function setAccountStatus(did, status) {

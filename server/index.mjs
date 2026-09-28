@@ -11,6 +11,7 @@ await routes(app);
 await app.ready();
 attach(app.server);
 await app.listen({ port: PORT, host: HOST });
+{ const { aboutFor } = await import("./people.mjs"); const n = store.backfillAbout(aboutFor); if (n) console.log("linked", n, "existing records to the people they are about"); }
 if (process.env.PDS_URL) (await import("./firehose.mjs")).start({ pdsUrl: process.env.PDS_URL });
 if (process.env.GRAPH_IMPORT !== "off") (await import("./graph.mjs")).start();
 console.log(`attest listening on http://${HOST}:${PORT}`);

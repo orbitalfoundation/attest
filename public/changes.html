@@ -4,6 +4,9 @@
 <h1>changes <small>a public revision log</small></h1>
 <p>Newest first. Decisions and reversals are recorded here as they happen, including the ones that make earlier pages wrong; those pages get corrected, and the correction is logged too. The full working notes are the dated entries in <a href="https://github.com/orbitalfoundation/attest/tree/main/devlog">devlog/</a> in the repository.</p>
 
+<h2>2026-09-28 · Attesting people, not just pages</h2>
+<p>Now that each person has a page address, the index recognises statements about a person wherever they are made: an upvote or comment on <code>attest.monster/name</code>, on <code>name.attest.monster</code>, on their Bluesky profile (by their attest handle, their DID, or a Bluesky identity they have proven), or on the home page of a site they have proven they control. Profiles have a widget for exactly that, and show what was said about the person elsewhere. The link to the person is fixed when the statement is indexed, so a handle reused later does not inherit it.</p>
+
 <h2>2026-09-28 · Handles and public addresses</h2>
 <p>Handle rules tightened before real sign-ups: 4 to 20 characters, lowercase letters, digits and single hyphens, starting with a letter, because a handle becomes a hostname. Role names, the site's own page names and a few brands are reserved; page and route names are reserved automatically when the server starts, so a new page can never collide with a person. A deleted account's handle is held for a year. People's pages now live at the root, <code>attest.monster/name</code>, beside the site's pages, with <code>/@name</code> and <code>/u/name</code> as aliases and a link to the same account on Bluesky.</p>
 

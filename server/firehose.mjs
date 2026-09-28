@@ -7,6 +7,7 @@ import { lexToJson } from "@atproto/lexicon";
 import * as store from "./store.mjs";
 import * as records from "./records.mjs";
 import { inlineVerify, jwkFromDidKey } from "../packages/orbital-attest/verify.mjs";
+import { aboutFor } from "./people.mjs";
 const NS = "monster.attest.";
 let fh = null;
 export function start({ pdsUrl }) {
@@ -37,6 +38,6 @@ async function indexRecord(evt) {
   if (!v?.ok) { console.warn("firehose: unsigned or unverifiable record ignored", uri); return; }
   const cid = evt.cid.toString(); const shape = records.indexShape(collection, record, did); if (!shape) return;
   const del = store.delegationForDevice(did, v.key.split("#")[0]);
-  store.putRecord(cid, { record: shape, repoRecord: record, uri, cid, collection, rkey: evt.rkey, del: del || undefined, viaFirehose: true });
+  store.putRecord(cid, { record: shape, repoRecord: record, uri, cid, collection, rkey: evt.rkey, del: del || undefined, viaFirehose: true, about: aboutFor(shape.target) });
   records.events.emit("counts", { target: shape.target, counts: store.countsFor(shape.target) });
 }

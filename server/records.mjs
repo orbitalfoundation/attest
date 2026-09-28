@@ -3,6 +3,7 @@
 import * as store from "./store.mjs";
 import * as pds from "./pds.mjs";
 import * as dns from "./dns.mjs";
+import { aboutFor } from "./people.mjs";
 import { checkDelegation, checkAction } from "./identity.mjs";
 import { normalizeTarget, isDid, isAccountDid, didFromJwk, inlineSign, inlineVerify, INLINE_TYPE, canonical, verifyObject, jwkFromDidKey } from "../packages/orbital-attest/verify.mjs";
 import { cidString } from "../packages/orbital-attest/cid.mjs";
@@ -95,7 +96,7 @@ export async function acceptRecord({ envelope, origin }) {
   const token = await repoToken(repo);
   const w = wantKey ? await pds.putRecord(token, repo, collection, rkey, record) : await pds.createRecord(token, repo, collection, record);
   const uri = w.uri, cid = w.cid, shape = indexShape(collection, record, repo);
-  if (!store.getRecordByUri(uri)) store.putRecord(cid, { record: shape, repoRecord: record, uri, cid, collection, rkey: uri.split("/").pop(), del });
+  if (!store.getRecordByUri(uri)) store.putRecord(cid, { record: shape, repoRecord: record, uri, cid, collection, rkey: uri.split("/").pop(), del, about: aboutFor(shape.target) });
   const counts = store.countsFor(shape.target); events.emit("counts", { target: shape.target, counts });
   return { uri, id: cid, counts };
 }
@@ -133,6 +134,6 @@ export async function acceptAction({ envelope, origin }) {
 }
 // ---- reads
 export function read(targets) { const out = {}; for (const t of targets.slice(0, 100)) { try { const n = normalizeTarget(t); out[t] = { target: n, ...store.countsFor(n) }; } catch (e) { out[t] = { error: e.message }; } } return out; }
-export const by = (did) => { const a = store.getAccount(did); return { did, handle: a?.handle || null, repoHandle: a?.pds_handle || null, since: a?.created || null, status: a?.status || "active", service: did === service?.did || undefined, elsewhere: store.linksOf(did).map((l) => ({ ...l, out: store.edgeCountsFrom(l.did) })), trustIn: store.memberEdgesTo(did), trustOut: store.memberEdgesFrom(did), keys: store.keysOf(did).map(({ id, jwk, created, transports }) => ({ id, jwk, created, transports })), delegations: store.delegationsOf(did), counts: store.countsBy(did), vouchedBy: store.vouchesFor(did), vouches: store.vouchesBy(did), proofs: store.claimsOf(did), records: store.recordsBy(did) }; };
+export const by = (did) => { const a = store.getAccount(did); return { did, handle: a?.handle || null, repoHandle: a?.pds_handle || null, since: a?.created || null, status: a?.status || "active", service: did === service?.did || undefined, elsewhere: store.linksOf(did).map((l) => ({ ...l, out: store.edgeCountsFrom(l.did) })), trustIn: store.memberEdgesTo(did), trustOut: store.memberEdgesFrom(did), about: store.aboutSummary(did), keys: store.keysOf(did).map(({ id, jwk, created, transports }) => ({ id, jwk, created, transports })), delegations: store.delegationsOf(did), counts: store.countsBy(did), vouchedBy: store.vouchesFor(did), vouches: store.vouchesBy(did), proofs: store.claimsOf(did), records: store.recordsBy(did) }; };
 export const byHandle = (handle) => { const a = store.getAccountByHandle(String(handle || "").toLowerCase()); if (!a) return null; return by(a.did); };
 export const whois = (did) => store.handleOf(did);

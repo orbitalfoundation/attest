@@ -3,6 +3,10 @@
 <h1 id="h">…</h1>
 <p class="muted small" id="who"></p>
 <p id="vouchrow"></p>
+<h2>About this person</h2>
+<p class="small muted" id="aboutsum"></p>
+<div id="aboutw"></div>
+<ul id="aboutelse" class="small"></ul>
 <h2>Vouched for by <span id="nvb" class="muted"></span></h2>
 <ul id="vouchedby" class="small"></ul>
 <h2>Elsewhere on AT Protocol</h2>
@@ -35,6 +39,13 @@ const inLabel = { "tangled.vouch": "vouches on Tangled", "tangled.denounce": "de
 $("elsewhere").innerHTML = (me.elsewhere.map((l) => `<li><a href="https://bsky.app/profile/${esc(l.handle)}">@${esc(l.handle)}</a> <span class="ok">✓ proven</span> · ${Object.entries(l.out).map(([k, n]) => `${n} ${esc((kindLabel[k] || k).replace(/^(vouches for|denounces|follows)/, (m) => m))}`).join(" · ") || "no graph records"}</li>`).join("")
   + me.trustIn.map((e) => `<li><a href="/${esc(e.handle)}">@${esc(e.handle)}</a> ${esc(inLabel[e.kind] || e.kind)} this person${e.reason ? `: “${esc(e.reason)}”` : ""}</li>`).join("")
   + me.trustOut.map((e) => `<li>${esc((kindLabel[e.kind] || e.kind))} <a href="/${esc(e.handle)}">@${esc(e.handle)}</a></li>`).join("")) || "<li class='muted'>no linked identity yet; prove a Bluesky handle from your own page to bring in your Tangled vouches and follows</li>";
+{ const canon = location.origin + "/" + me.handle, a = me.about;
+  const k = (x) => a.counts[x] ? `${a.counts[x].n} ${x}${a.counts[x].n === 1 ? "" : "s"} from ${a.counts[x].people} ${a.counts[x].people === 1 ? "person" : "people"}` : null;
+  $("aboutsum").textContent = [k("upvote"), k("comment"), k("statement")].filter(Boolean).join(" · ") || "Nothing said about this person yet. Upvote or comment below, on this page's address.";
+  const w = document.createElement("div"); w.setAttribute("data-attest", ""); w.setAttribute("data-target", canon); w.setAttribute("data-comments", ""); $("aboutw").appendChild(w);
+  (await import("/attest.js")).mount(document.getElementById("aboutw")).catch(() => {});
+  const elsewhere = a.comments.filter((c) => c.target !== canon);
+  $("aboutelse").innerHTML = elsewhere.map((c) => `<li><a href="/${esc(c.handle)}">@${esc(c.handle || A.short(c.by))}</a> on ${c.via === "site" ? "their site" : c.via === "bluesky" ? "their Bluesky profile" : "their page"} (<a href="${esc(c.target)}">${esc(c.target)}</a>): ${esc(c.body)}</li>`).join(""); }
 $("counts").textContent = Object.entries(me.counts).map(([k, n]) => `${n} ${k}${n === 1 ? "" : "s"}`).join(" · ");
 // vouch button: only on the service's own origin, only for someone else
 const s = A.session();

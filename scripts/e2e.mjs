@@ -89,6 +89,10 @@ await sleep(1500); await evaluate(`document.getElementById('vouch').click(); tru
 ok(await waitFor(`document.getElementById('vouch').textContent.startsWith('✓') && document.getElementById('nvb').textContent === '1'`), "vouch recorded; profile shows 1 voucher");
 const p1 = await (await fetch(`${base}/by/${encodeURIComponent(did1)}`)).json();
 ok(p1.vouchedBy.length === 1 && p1.vouchedBy[0].handle === handle2 && p1.proofs[0].verifications.length === 1 && /^attest/.test(p1.proofs[0].verifications[0].handle || ""), "/by lists the voucher and the service's verification");
+await evaluate(`document.querySelector('#aboutw .up').click(); true`); await waitFor(`document.querySelector('#aboutw .n')?.textContent === '1'`);
+await evaluate(`(async () => { const A = await import('/attest-core.js'); await A.attest('comment', 'https://bsky.app/profile/' + ${JSON.stringify(handle)} + '.attest.monster', { body: 'said on his bluesky profile url' }); })()`);
+const ab = (await (await fetch(`${base}/by/${encodeURIComponent(did1)}`)).json()).about;
+ok(ab.counts.upvote?.n === 1 && ab.comments.some((c) => c.via === "bluesky"), "an upvote on /" + handle + " and a comment on his Bluesky profile URL are both detected as about him");
 const selfVouch = await evaluate(`(async () => { const A = await import('/attest-core.js'); const s = A.session(); try { await A.attest('vouch', s.root); return 'accepted'; } catch (e) { return e.message; } })()`);
 ok(/yourself/.test(selfVouch), "self-vouch refused: " + selfVouch);
 await evaluate(`localStorage.removeItem('attest:session'); true`); await go("/login?return=/me");
