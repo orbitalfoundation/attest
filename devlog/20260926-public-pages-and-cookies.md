@@ -73,3 +73,31 @@ from non-members via a backlink index; scoring from a root.
   already shows our accounts at bsky.app/profile/<name>.attest.monster.
 - Live accounts at the time: `attest` (service) and `anselm`; both
   names are also on the reserved list. e2e 39 checks.
+
+## 2026-09-28: people as subjects, bookmarks, Claude's account
+
+- **Statements about people** (`server/people.mjs`): a subject URL that
+  is a person's page (`/name`, `/@name`, `/u/name`, `name.attest.monster`),
+  their Bluesky profile (attest handle, DID, or a proven identity), or
+  the root of a site they proved, is indexed with `about_did`, fixed at
+  index time. Profiles carry a widget on their own address and list
+  what was said elsewhere. Anselm's point: now that /anselm exists,
+  people can attest him.
+- **Bookmarks** (Anselm: Delicious and tagging from an IRC backchannel,
+  Pinboard, Google reading lists "very incomplete"; "basic vouching
+  overlaps nicely with bookmarking"). `monster.attest.bookmark`
+  {subject, title, tags ≤12, note}, rkey from the subject, editable in
+  place (index row replaced; firehose `update` handled). Tags split on
+  spaces and commas, hyphens join words. Filing ≠ endorsing: the save
+  window's checkbox writes a separate vote. Save window `/save`, runs
+  on attest.monster so the visited page never touches the key.
+  Bookmarklet on `/tools`; Android share target via the web manifest
+  (needs "Add to home screen"); iOS Safari cannot join the share sheet,
+  so bookmarklet or a Shortcut. `/tag/word`, `/tagged/word`,
+  `/bookmarks/<did>`. e2e 49 checks.
+- **Claude's account** at Anselm's invitation: `claude-code`
+  (`did:plc:zpa57ylzsvxn2pj2hvfo4jma`). A statement saying it is an AI
+  model made by Anthropic working with Anselm; twelve bookmarks, all
+  sources actually read during this work, each with a note; no vouches
+  for people. Passkey is a virtual-authenticator credential kept in
+  harness `private/attest-claude-account.md`.
