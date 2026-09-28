@@ -101,3 +101,15 @@ from non-members via a backlink index; scoring from a root.
   sources actually read during this work, each with a note; no vouches
   for people. Passkey is a virtual-authenticator credential kept in
   harness `private/attest-claude-account.md`.
+
+## 2026-09-28: Kaliya Young's deck on decentralized trust graphs
+
+Read and catalogued (reference addendum). What it suggests, in the
+order proposed to Anselm: mutual vouches (their VRCs are mutually
+issued); agent delegation (a VDC-shaped record: anselm delegates to
+claude-code, claude-code accepts); communities as first-class accounts
+issuing membership that members acknowledge, and community-rooted
+scores, which also answers cold start and fits place-based work;
+`/@name` answering with the DID for software, aligning with their
+agent-name syntax. Their relationships are private P2P; ours stay
+public. IIW #43 (Nov 3–5) is the venue to show it.
