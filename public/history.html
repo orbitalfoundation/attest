@@ -1,0 +1,82 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>attest · history</title>
+<meta name="description" content="The work attest stands on: thirty-five years of webs of trust, reputation, trust metrics, tagging, federated and decentralized identity, and the people who did it.">
+<link rel="canonical" href="https://attest.monster/history">
+<meta property="og:type" content="website"><meta property="og:site_name" content="attest"><meta property="og:title" content="attest · history"><meta property="og:description" content="The work attest stands on, and the people who did it."><meta property="og:url" content="https://attest.monster/history"><meta property="og:image" content="https://attest.monster/og.png"><meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css">
+<style>.era{margin-top:2.4rem}.item{margin:1rem 0 1.1rem}.item .when{font-family:ui-monospace,Menlo,monospace;font-size:.85rem;color:var(--muted)}.item .gave{color:var(--muted);font-size:.95rem}</style>
+</head><body><main>
+<h1>history <small>the work this stands on</small></h1>
+<p>attest is a late arrival in a conversation that has run for more than thirty years. Nearly every idea in it was someone else's first: that people can vouch for each other's keys, that reputation has an economics, that trust can be computed as a flow from people you already trust, that anyone can file the web under their own words, that you should be able to sign in without handing a password to every site, and that identity can belong to the person rather than the platform. This page is a thank-you, in rough order, to the people who did that work. Each entry says what it gave us and links to the original.</p>
+<p class="small muted">Dates and names come from the sources linked beside them. If something is wrong or missing, the <a href="/about#ways-in">ways in</a> say how to tell us; corrections will be logged on the <a href="/changes">changes</a> page.</p>
+
+<h2 class="era">Commons</h2>
+<div class="item"><span class="when">1990</span> <b><a href="https://en.wikipedia.org/wiki/Elinor_Ostrom">Elinor Ostrom</a></b>, <i>Governing the Commons</i>. Eight design principles for communities that manage shared resources without a central owner, among them graduated sanctions and "rapid access to low-cost local arenas to resolve conflicts". She received the Nobel prize in economics in 2009.
+<div class="gave">Gave us: the frame for how trust communities should govern themselves, which is still an open question on our <a href="/roadmap">roadmap</a>.</div></div>
+
+<h2 class="era">Keys and the first web of trust</h2>
+<div class="item"><span class="when">1991–1992</span> <b><a href="https://en.wikipedia.org/wiki/Web_of_trust">Phil Zimmermann</a></b>, PGP, and the web of trust, introduced in the manual for PGP 2.0: "everyone will gradually accumulate and distribute with their key a collection of certifying signatures from other people".
+<div class="gave">Gave us: the whole idea. People vouching for people, with no central authority, is where every system on this page starts.</div></div>
+
+<h2 class="era">Reputation and its economics</h2>
+<div class="item"><span class="when">1995</span> <b><a href="https://en.wikipedia.org/wiki/EBay">eBay</a></b>, founded by Pierre Omidyar, whose buyers and sellers "rate and review each other after each transaction". Its Feedback Forum was one of the first large reputation systems among strangers, and the case Friedman and Resnick studied.
+<div class="gave">Gave us: proof that strangers will cooperate on the strength of a public record.</div></div>
+<div class="item"><span class="when">1999–2001</span> <b><a href="https://www.freehaven.net/anonbib/cache/cheap-pseudonyms.pdf">Eric Friedman and Paul Resnick</a></b>, "The Social Cost of Cheap Pseudonyms". When identities are free, no arrangement sustains much more cooperation than making newcomers pay their dues.
+<div class="gave">Gave us: the reason every new key here starts at zero, and the honest price of letting people start over.</div></div>
+
+<h2 class="era">Trust as a computation</h2>
+<div class="item"><span class="when">1999</span> <b><a href="https://levien.com/free/tmetric-HOWTO.html">Raph Levien</a></b>, the Advogato trust metric. Trust computed as a network flow from seed accounts through peer certifications, with a capacity bound that limits how far a cluster of fakes can reach, later generalised to assertions about anything with an identifier.
+<div class="gave">Gave us: the nearest ancestor of our planned scoring, almost a specification for it.</div></div>
+<div class="item"><span class="when">2003</span> <b><a href="https://nlp.stanford.edu/pubs/eigentrust.pdf">Sepandar Kamvar, Mario Schlosser and Hector Garcia-Molina</a></b>, EigenTrust. Global trust by power iteration, anchored in a set of pre-trusted peers.
+<div class="gave">Gave us: the pre-trusted root, and a cheap way to compute from it.</div></div>
+<div class="item"><span class="when">2004</span> <b><a href="https://www.vldb.org/conf/2004/RS15P3.PDF">Zoltán Gyöngyi, Hector Garcia-Molina and Jan Pedersen</a></b>, TrustRank. Trust propagated across the web from fewer than two hundred hand-checked sites.
+<div class="gave">Gave us: scoring the sources of the web from a curated root.</div></div>
+<div class="item"><span class="when">2005</span> <b><a href="https://dl.acm.org/doi/10.1145/1080192.1080202">Alice Cheng and Eric Friedman</a></b>, "Sybilproof reputation mechanisms". No symmetric reputation function can resist fake identities; asymmetric ones, computed from a source, can.
+<div class="gave">Gave us: why every score here names whose view it is.</div></div>
+<div class="item"><span class="when">2006</span> <b><a href="https://www.comp.nus.edu.sg/~yuhf/sybilguard-sigcomm06.pdf">Haifeng Yu, Michael Kaminsky, Phillip Gibbons and Abraham Flaxman</a></b>, SybilGuard. Fake identities are cheap but trust relationships are not, so the number of fakes accepted is bounded by the few real relationships they can obtain.
+<div class="gave">Gave us: the reason a thousand fake accounts need not matter.</div></div>
+<div class="item"><span class="when">2012</span> <b><a href="https://www.usenix.org/system/files/conference/nsdi12/nsdi12-final42_2.pdf">Qiang Cao, Michael Sirivianos, Xiaowei Yang and Tiago Pregueiro</a></b>, SybilRank. Rank rather than classify, by trust propagated from seeds, deployed at Tuenti.
+<div class="gave">Gave us: rank, do not accuse.</div></div>
+
+<h2 class="era">Tagging and social bookmarking</h2>
+<div class="item"><span class="when">2003</span> <b><a href="https://en.wikipedia.org/wiki/Delicious_(website)">Joshua Schachter and Peter Gadjokov</a></b>, del.icio.us, "the first explicit opportunity where website users were given the ability to add their own tags to their bookmarks". By 2008 it held more than five million users and 180 million bookmarked URLs.
+<div class="gave">Gave us: tags, and the idea that a public record of what people save is worth keeping.</div></div>
+<div class="item"><span class="when">2004</span> <b><a href="https://en.wikipedia.org/wiki/Folksonomy">Thomas Vander Wal</a></b> named the pattern: folksonomy, a portmanteau of folk and taxonomy, with del.icio.us and Flickr as its early examples.
+<div class="gave">Gave us: the word for classification by everyone rather than by an editor.</div></div>
+<div class="item"><span class="when">2009</span> <b><a href="https://en.wikipedia.org/wiki/Pinboard_(website)">Maciej Cegłowski</a></b>, Pinboard, "a focus on personal management of bookmarks using tags", which in 2017 acquired Delicious.
+<div class="gave">Gave us: the argument for bookmarks as a durable personal archive rather than a feed.</div></div>
+
+<h2 class="era">Federated identity</h2>
+<div class="item"><span class="when">2005</span> <b><a href="https://en.wikipedia.org/wiki/OpenID">Brad Fitzpatrick</a></b>, OpenID, first called YADIS, "Yet Another Decentralized Identity Interoperability System". The OpenID Foundation followed in 2007 and OpenID Connect in 2014.
+<div class="gave">Gave us: sign in once, with an identity you choose, anywhere.</div></div>
+<div class="item"><span class="when">2005</span> <b><a href="https://en.wikipedia.org/wiki/Internet_Identity_Workshop">Kaliya Young, Doc Searls and Phil Windley</a></b> founded the Internet Identity Workshop, where much of the rest of this list was argued out in person.
+<div class="gave">Gave us: a place where this community still meets.</div></div>
+<div class="item"><span class="when">2006</span> <b><a href="https://en.wikipedia.org/wiki/OAuth">Blaine Cook</a></b> began OAuth while building OpenID for Twitter; published as RFC 5849 in 2010 and OAuth 2.0 as RFC 6749 in 2012.
+<div class="gave">Gave us: delegation without handing over a password, which our per-site device keys echo.</div></div>
+
+<h2 class="era">Identity that belongs to the person</h2>
+<div class="item"><span class="when">2014</span> <b><a href="https://en.wikipedia.org/wiki/Keybase">Chris Coyne, Max Krohn and others</a></b>, Keybase, where "identities are proven by posting a signed statement as the account a user wishes to prove ownership of". Acquired by Zoom in 2020.
+<div class="gave">Gave us: proof of control, almost exactly as we do it.</div></div>
+<div class="item"><span class="when">2017</span> <b><a href="https://www.w3.org/TR/webmention/">Webmention</a></b>, a W3C Recommendation edited by Aaron Parecki, and the IndieWeb community around it: one site notifying another that it linked to it, identity as your own URL.
+<div class="gave">Gave us: the web itself as the social graph.</div></div>
+<div class="item"><span class="when">2022, 2025</span> <b><a href="https://en.wikipedia.org/wiki/Decentralized_identifier">Decentralized identifiers</a></b> became a W3C Recommendation on July 19, 2022, and the <a href="https://www.w3.org/TR/vc-data-model-2.0/">Verifiable Credentials Data Model 2.0</a> on May 15, 2025, the work of their W3C working groups.
+<div class="gave">Gave us: the <code>did:</code> identifiers every account here has.</div></div>
+
+<h2 class="era">The social web on open protocols</h2>
+<div class="item"><span class="when">2020</span> <b><a href="https://en.wikipedia.org/wiki/Nostr">fiatjaf</a></b>, Nostr: signed events from keys, relayed by anyone. Its reactions to arbitrary URLs and its <a href="https://github.com/nostr-protocol/nips/blob/master/73.md">identifier grammar</a> were running before we started.
+<div class="gave">Gave us: proof that signed statements about any web page can simply exist.</div></div>
+<div class="item"><span class="when">2021</span> <b><a href="https://github.com/twitter/communitynotes">Community Notes</a></b>, begun as Birdwatch at Twitter: a note is shown only when raters who usually disagree agree that it helps. Its code is open.
+<div class="gave">Gave us: a trust computation that rewards agreement across division.</div></div>
+<div class="item"><span class="when">2022</span> <b><a href="https://en.wikipedia.org/wiki/AT_Protocol">Bluesky Social</a></b>, the AT Protocol, first released as the Authenticated Data Experiment: personal data repositories, portable identity, a public firehose, and <a href="https://atproto.com/specs/label">labels</a> any client can subscribe to.
+<div class="gave">Gave us: the fabric attest now runs on.</div></div>
+<div class="item"><span class="when">recent</span> <b><a href="https://badge.blue/">badge.blue</a></b>, a specification for signatures on AT Protocol records bound to the repository they sit in, implemented in the <a href="https://docs.rs/atproto-attestation">atproto-attestation</a> crate by ngerakines; the <a href="https://github.com/hypercerts-org/hypercerts-lexicon">Hypercerts</a> community's shared vocabulary for attestation; and <a href="https://tangled.org">Tangled</a>'s vouches, which others already reuse as a trust graph.
+<div class="gave">Gave us: the signature on every record here, and the shapes we write into.</div></div>
+
+<h2 class="era">Trust graphs and communities</h2>
+<div class="item"><span class="when">2025–</span> <b>Kaliya Young, Kevin Triplett and Drummond Reed</b>, and the <a href="https://github.com/OpenVTC">Decentralized Trust Graph</a> working group of Trust over IP and the Decentralized Identity Foundation: relationships as mutually signed credentials, communities as first-class members of the trust graph, and delegation to agents.
+<div class="gave">Gave us: the case that a web of trust made only of individuals cannot scale, and that a person is a community too.</div></div>
+
+<h2 class="era">And the rest</h2>
+<p>Many more fed this: the <a href="https://en.wikipedia.org/wiki/Wikipedia:Reliable_sources/Perennial_sources">Wikipedia editors</a> who rate sources and require a linked discussion as evidence; the <a href="https://github.com/ethereum-attestation-service">Ethereum Attestation Service</a>'s clean attestation model; <a href="https://web.hypothes.is/">Hypothesis</a> and its annotation of any passage on the web; <a href="https://www.brightid.org/">BrightID</a>, <a href="https://proofofhumanity.id/">Proof of Humanity</a> and <a href="https://docs.passport.human.tech/">Human Passport</a>, whose attempts at proof of personhood taught us where we would rather not go; and the <a href="https://docs.farcaster.xyz/">Farcaster</a> designers, whose per-app keys under one identity we borrowed. The full reading list, fifty sources with the address and date each was read, is in the <a href="https://github.com/orbitalfoundation/attest/tree/main/reference">repository</a>.</p>
+<p>And, before any of it, Kurt Vonnegut's <i>Cat's Cradle</i> (1963), for the idea that a thing can be made entirely of its relationships.</p>
+</main>
+<script type="module" src="/menu.js"></script></body></html>
