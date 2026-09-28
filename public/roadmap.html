@@ -32,7 +32,10 @@
 <li><b>Mutual vouches.</b> Detect and show when a vouch is returned; weigh it above a one-sided vouch.</li>
 <li><b>Agents as accounts.</b> An agent account declares whom it acts for; the person signs the delegation; both profiles show it; either side can end it. Claude's own account becomes the first example.</li>
 <li><b>Communities.</b> A community account with its own page in the same namespace as people, founded and administered by its members. It issues memberships that each member acknowledges, so membership is mutual. Communities can vouch and be vouched for like anyone else.</li>
+<li><b>Contextual vouches.</b> A vouch can carry tags, "I trust her on #soil", so trust is scoped to a subject from the start, as Pubky's tagged relationships do.</li>
 <li><b>Scores, first version.</b> Transitive flow from a root you name, a person or a community, with a capacity limit at each step and decay with distance. Edge kinds weighted: mutual vouch, vouch, community membership, Tangled vouch, follows. Scoped by tag when asked. Every score shows the paths that produced it. Shown on pages, tags and the widget as "trusted by people you trust".</li>
+<li><b>A person-held recovery key.</b> Today the service holds the rotation key for accounts made here. Let people add a recovery key of their own that outranks ours, so their identity survives us. KERI's pre-rotation is the model to learn from.</li>
+<li><b>Rate our own capture risk</b> in public, the way OpenHaven rates everyone else's: who holds which keys, which host, which company's protocol, and what we are doing about each.</li>
 <li><b>Import bookmarks</b> from a Pinboard or Delicious export, or a browser's bookmarks file.</li>
 <li><b>Link an existing Bluesky account</b> and write records into its repository, keeping the site cookie-free.</li>
 <li><b>Inbound trust from people not on attest</b>, through a backlink index such as Constellation.</li>
@@ -64,8 +67,9 @@
 </ul>
 
 <h2>Still reading</h2>
-<p>Projects readers have pointed us at, or that we found, not yet studied closely enough to say how we relate:</p>
+<p>Projects readers have pointed us at, or that we found, not yet studied closely enough to say how we relate. The <a href="/reading">reading room</a> keeps them all in one place.</p>
 <ul>
+<li><a href="https://openhaven.net">OpenHaven</a>: a human-verified catalogue of decentralized infrastructure, with capture-risk ratings and an open API. Its Identity &amp; Trust section alone lists 57 efforts, among them <a href="https://github.com/federated-auth-network/federated-auth-network/blob/main/SPEC.md">FAN</a>, <a href="https://hackmd.io/@1px7zs0rRpWQMLQjnFf8Sg/Hy3BGK9pj">GreenCheck</a>, <a href="https://pubky.org">Pubky</a>, KERI, did:webvh and Keyhive.</li>
 <li>The <b>Decentralized Trust Graph</b> work of Kaliya Young, Kevin Triplett and Drummond Reed, and the ToIP and DIF working group behind it: mutually signed relationship credentials, communities as first-class members of the trust graph, delegation to AI agents, and <code>domain/@name</code> agent names. Its diagnosis of the peer-only web of trust is ours too. Code: <a href="https://github.com/OpenVTC">OpenVTC</a>.</li>
 <li><a href="https://nstar.social">NorthStar Social</a> (nstar.social): announced as a decentralized, local-first social network, beta in spring 2026. Its pages do not yet say which protocol or how it handles trust.</li>
 <li><a href="https://socialweb.computer/">socialweb.computer</a>: how its vouch and denounce policies are expressed, and whether it can read our records.</li>

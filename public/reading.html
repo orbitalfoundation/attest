@@ -1,0 +1,25 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>attest · reading room</title>
+<meta name="description" content="The reading room: papers, specifications and projects on trust, identity and communities, filed by the people who read them.">
+<link rel="canonical" href="https://attest.monster/reading"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css">
+<style>.item{margin:.8rem 0 1rem}.item .who{font-size:.85rem;color:var(--muted)}.topics a{margin-right:.6rem}</style></head><body><main>
+<h1>reading room <small>what the people here have read</small></h1>
+<p>Papers, specifications and projects on trust, identity and communities, each filed by someone who read it, with their note. It is built from ordinary attest bookmarks: anyone can add to it by saving a page with the tag <code>reading-room</code>, from the <a href="/tools">bookmarklet</a> or the save window, alongside tags for its topic. Items filed by more people rise.</p>
+<p class="small muted">For the history of this field in order, see <a href="/history">history</a>. For a far larger, human-verified catalogue of decentralized tools with capture-risk ratings, see <a href="https://openhaven.net">OpenHaven</a>. Our own working catalogue, with the address and date each source was read, is in the <a href="https://github.com/orbitalfoundation/attest/tree/main/reference">repository</a>.</p>
+<p class="topics small" id="topics"></p>
+<div id="items"><p class="muted">loading…</p></div>
+</main>
+<script type="module">
+import "/menu.js";
+const $ = (id) => document.getElementById(id), esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const topic = new URLSearchParams(location.search).get("topic");
+const d = await fetch("/tagged/reading-room").then((r) => r.json());
+// Per subject, gather every filer's bookmark (tags and notes) from their public bookmark lists.
+const people = [...new Set(d.items.flatMap((i) => i.handles))];
+const lists = await Promise.all(people.map((h) => fetch("/handle/" + encodeURIComponent(h)).then((r) => r.json()).catch(() => null)));
+const notes = new Map(); for (const p of lists) for (const b of p?.bookmarks || []) if (b.tags.includes("reading-room")) { const a = notes.get(b.subject) || []; a.push({ handle: p.handle, note: b.note, tags: b.tags, title: b.title }); notes.set(b.subject, a); }
+const counts = {}; for (const [, a] of notes) for (const t of new Set(a.flatMap((x) => x.tags))) if (t !== "reading-room") counts[t] = (counts[t] || 0) + 1;
+$("topics").innerHTML = (topic ? `<a href="?">all</a>` : "") + Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([t, n]) => `<a href="?topic=${encodeURIComponent(t)}"${t === topic ? ' style="font-weight:600"' : ""}>${esc(t)}</a><span class="muted">${n}</span>`).join(" ");
+const rows = d.items.filter((i) => !topic || (notes.get(i.subject) || []).some((x) => x.tags.includes(topic)));
+$("items").innerHTML = rows.map((i) => { const a = notes.get(i.subject) || []; const title = a.find((x) => x.title)?.title || i.title || i.subject;
+  return `<div class="item"><a href="${esc(i.subject)}"><b>${esc(title)}</b></a>${a.map((x) => x.note ? `<div>${esc(x.note)} <span class="who">— <a href="/${esc(x.handle)}">@${esc(x.handle)}</a></span></div>` : "").join("")}<div class="who">filed by ${i.people} · ${[...new Set(a.flatMap((x) => x.tags))].filter((t) => t !== "reading-room").map((t) => `<a href="?topic=${encodeURIComponent(t)}">#${esc(t)}</a>`).join(" ")} · <a href="/save?url=${encodeURIComponent(i.subject)}&title=${encodeURIComponent(title)}">save</a></div></div>`; }).join("") || "<p class='muted'>Nothing here yet.</p>";
+</script></body></html>

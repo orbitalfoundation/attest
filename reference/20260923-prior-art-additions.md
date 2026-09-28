@@ -44,3 +44,21 @@ Source: slide deck "Decentralized Trust: In service of Life on Earth & Bioregion
 | Neighborsheds | PDF "Neighborsheds Enable Community AS Regenerative Infrastructure" (circularpatterns.com, 2026-07) | — | Not read | — | To read |
 
 Events on the slides: Internet Identity Workshop #43, November 3–5; Agentic Internet Workshop #3, November 6; possible build week November 10–12.
+
+## OpenHaven, read 2026-09-28 (pointer from Anselm)
+
+https://openhaven.net — "discover verified tech tools organized by real-world needs". A human-verified catalogue of decentralized infrastructure with a static, keyless, CORS-open JSON API (`/api/index.json`, `/api/protocols.json`, `/api/domains.json`, …). Data governance per its index: "Human-verified", "Transparently sourced", "Contributor-attributed", "Freshness-visible" (`lastInvestigated`). Its process page: "Self-attestation from a developing team is not sufficient"; entries show independent signals (research review, development team confirmation, community verification) rather than a verified stamp. Each entry has a 1–5 `captureRisk` with reasoning across governance, funding, jurisdiction. Ten domains; "Identity & Trust" ("verified identity, real presence, and data sovereignty") holds 57 entries, 48 not in our catalogue. No data licence stated in the API index; link to it rather than republish.
+
+| Name | What (quote or close paraphrase of source) | Relevance to attest |
+|---|---|---|
+| FAN (Federated Auth Network), https://github.com/federated-auth-network/federated-auth-network/blob/main/SPEC.md | `did:fan:domain:identifier` resolved over HTTPS; challenge encrypted to the user's DID keys, answered with a JWS; "Neither the Web Site nor the Agent is REQUIRED to handle this key material". Spec CC-BY-SA, implementation AGPL-3.0, by Erik Hollensbe, within the CTA coalition. OpenHaven describes it as using "Sovereign PassKeys"; the spec itself does not mention WebAuthn | A peer on user-held-key sign-in without a platform |
+| GreenCheck, https://hackmd.io/@1px7zs0rRpWQMLQjnFf8Sg/Hy3BGK9pj | "intersectional identity" plus "three-friend authentication (aka web of trust)"; "Validations have a cost/value"; "the true test of validity is the validators"; per-person microledger; no biometrics mentioned; source closed per OpenHaven | Personhood by friends and proofs, not bodies: consistent with attest's stance |
+| Pubky, https://pubky.org | "public-key identity and user-owned data"; keys held client-side; homeservers with "credible exit"; PKARR "censorship-resistant DNS for public-key domains"; "semantic social graph" with "tagged relationships" | The user-holds-the-key alternative to AT Protocol's host-held repo key; tags on relationships (contextual vouches) |
+| KERI / ACDC / OOBI (OpenHaven entry only) | Self-certifying identifiers, pre-rotation, key event logs; production via GLEIF vLEI; ACDC chained, provenanced credentials | The established answer to key rotation and recovery |
+| did:webvh (OpenHaven entry only) | did:web with verifiable history, v1.0, deployed in Swiss swiyu | Site and community keys without did:web's no-recovery flaw |
+| Keyhive (OpenHaven entry only) | Ink & Switch; local-first access control, group CRDTs, E2E encryption; pre-alpha | Private relationships and private community spaces |
+| ERC-8004 (OpenHaven entry only) | Draft standard for AI agent identity and reputation registries | Agents as first-class accounts |
+
+OpenHaven rates AT Protocol's capture risk 3 of 5: "a company-controlled protocol beginning a transition to neutral standardization".
+
+Revisions taken into the roadmap: contextual vouches (tags on a vouch); a person-held recovery key outranking the service's rotation key (KERI's pre-rotation as the model); a public capture-risk self-rating of attest. A reading room at `/reading`, built from bookmarks tagged `reading-room`, seeded by claude-code with 22 sources (five noted as read only through OpenHaven's entries or slides).
