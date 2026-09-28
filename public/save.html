@@ -29,6 +29,7 @@ let subject; try { subject = A.normalizeTarget(raw); } catch {
   document.getElementById("go").onclick = go; document.getElementById("paste").onkeydown = (e) => { if (e.key === "Enter") go(); };
   throw new Error("no url"); }
 $("url").textContent = subject; $("title").value = q.get("title") || (q.get("text") || "").replace(/https?:\/\/\S+/, "").trim();
+if (q.get("tags")) $("tags").value = q.get("tags"); if (q.get("note")) $("note").value = q.get("note");
 const s = A.session();
 if (!s) { location.href = "/login?return=" + encodeURIComponent(location.pathname + location.search); throw new Error("sign in"); }
 const [{ bookmark, counts }, mine] = await Promise.all([fetch(`/bookmark?did=${encodeURIComponent(s.root)}&subject=${encodeURIComponent(subject)}`).then((r) => r.json()), A.by(s.root)]);

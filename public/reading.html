@@ -7,6 +7,9 @@
 <p class="small muted">For the history of this field in order, see <a href="/history">history</a>. For a far larger, human-verified catalogue of decentralized tools with capture-risk ratings, see <a href="https://openhaven.net">OpenHaven</a>. Our own working catalogue, with the address and date each source was read, is in the <a href="https://github.com/orbitalfoundation/attest/tree/main/reference">repository</a>.</p>
 <p class="topics small" id="topics"></p>
 <div id="items"><p class="muted">loading…</p></div>
+<h2>Suggested shelf</h2>
+<p class="small muted">Books suggested for this reading room that nobody here has filed as read yet. If you have read one, the link beside it files it into the room from your own account.</p>
+<div id="shelf"></div>
 </main>
 <script type="module">
 import "/menu.js";
@@ -22,4 +25,9 @@ $("topics").innerHTML = (topic ? `<a href="?">all</a>` : "") + Object.entries(co
 const rows = d.items.filter((i) => !topic || (notes.get(i.subject) || []).some((x) => x.tags.includes(topic)));
 $("items").innerHTML = rows.map((i) => { const a = notes.get(i.subject) || []; const title = a.find((x) => x.title)?.title || i.title || i.subject;
   return `<div class="item"><a href="${esc(i.subject)}"><b>${esc(title)}</b></a>${a.map((x) => x.note ? `<div>${esc(x.note)} <span class="who">— <a href="/${esc(x.handle)}">@${esc(x.handle)}</a></span></div>` : "").join("")}<div class="who">filed by ${i.people} · ${[...new Set(a.flatMap((x) => x.tags))].filter((t) => t !== "reading-room").map((t) => `<a href="?topic=${encodeURIComponent(t)}">#${esc(t)}</a>`).join(" ")} · <a href="/save?url=${encodeURIComponent(i.subject)}&title=${encodeURIComponent(title)}">save</a></div></div>`; }).join("") || "<p class='muted'>Nothing here yet.</p>";
+const sh = await fetch("/tagged/suggested-reading").then((r) => r.json());
+const shNotes = new Map(); for (const h of [...new Set(sh.items.flatMap((i) => i.handles))]) { const p = await fetch("/handle/" + encodeURIComponent(h)).then((r) => r.json()).catch(() => null); for (const b of p?.bookmarks || []) if (b.tags.includes("suggested-reading")) shNotes.set(b.subject, b); }
+const inRoom = new Set(d.items.map((i) => i.subject));
+$("shelf").innerHTML = sh.items.filter((i) => !inRoom.has(i.subject)).map((i) => { const b = shNotes.get(i.subject) || {}; const tags = (b.tags || []).filter((t) => t !== "suggested-reading" && t !== "book");
+  return `<div class="item"><a href="${esc(i.subject)}"><b>${esc(b.title || i.title || i.subject)}</b></a>${b.note ? `<div class="who">${esc(b.note)}</div>` : ""}<div class="who">${tags.map((t) => "#" + esc(t)).join(" ")} · <a href="/save?url=${encodeURIComponent(i.subject)}&title=${encodeURIComponent(b.title || "")}&tags=${encodeURIComponent(["reading-room", "book", ...tags].join(" "))}">I have read this: file it</a></div></div>`; }).join("") || "<p class='muted'>empty</p>";
 </script></body></html>
