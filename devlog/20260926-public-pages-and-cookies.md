@@ -138,3 +138,24 @@ context, paths shown) → bookmark import → Bluesky linking → inbound
 edges → URL-subject proposal. Open: private relationships, community
 governance (Ostrom 5 and 6), decay parameters. FAQ gained "Do you
 check that I am human?".
+
+## 2026-09-28: the home page for novices
+
+Kaliya (via Anselm): "the plumbing exists but it is ugly"; Anselm
+worried attest is "incomprehensible for a novice", liked into-the.blue's
+backdrop video, is "fundamentally an environmentalist", and wanted
+real humans and bridging across borders. Decisions: no photoreal
+generated people on a trust site; painterly illustration, credited.
+Four themes via AtlasCloud (key from reframe's swap tool env):
+Seedream v4.7 stills, animated with Seedance 2.0 Fast (Wan 2.2 hung
+past 15 min; Seedance ~90 s; it adds audio, and one clip was refused
+for "copyright" audio until `generate_audio:false`). First hands still
+drew a literal cat, the second a pentagram-like star; the third, a
+woven lattice, was kept. Clips encoded silent, 1280×720, forward then
+reversed for a seamless 10 s loop, ~2.5–3 MB each, in `public/video/`
+with `index.json`; one per visit, stills for reduced motion. Home
+rebuilt: fixed backdrop behind the page, centred story, three steps,
+why, builders below on a translucent panel. `/docs` is now a hub;
+integrator guide at `/builders`; menu cut to save / FAQ / about / docs
+/ your page. Script: `scripts/gen-backdrops.mjs`; helper
+`scripts/shot-scroll.mjs` for phone screenshots below the fold.
