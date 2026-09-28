@@ -8,7 +8,7 @@
 <style>
 body{background:#0c2a33}
 .bg{position:fixed;inset:0;z-index:0;background:#0c2a33}
-.bg video,.bg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.bg video,.bg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:opacity 1.5s ease}.bg video{opacity:0}.bg video.on{opacity:1}
 .bg::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(6,18,22,.35) 0%,rgba(6,18,22,.72) 100%)}
 .page{position:relative;z-index:1;color:#fff}
 .hero{min-height:100svh;display:flex;align-items:center}
@@ -28,7 +28,7 @@ body{background:#0c2a33}
 .hero{position:relative}.credit{position:absolute;right:.8rem;bottom:.6rem;z-index:2;font-size:.72rem;opacity:.65;color:#fff}
 @media (prefers-reduced-motion: reduce){.bg video{display:none}}
 </style></head><body>
-<div class="bg" aria-hidden="true"><img id="poster" alt="" src="/video/forest.jpg"><video id="bg" muted autoplay loop playsinline preload="auto"></video></div>
+<div class="bg" aria-hidden="true"><img id="poster" alt="" src="/video/forest.jpg"><video id="va" muted playsinline preload="none"></video><video id="vb" muted playsinline preload="none"></video></div>
 <div class="page">
 <section class="hero">
 <div class="in">
@@ -64,12 +64,24 @@ body{background:#0c2a33}
 import { session } from "/attest-core.js"; import "/menu.js";
 const s = session();
 if (s) { document.getElementById("start").textContent = "Your page"; document.getElementById("start").href = "/" + s.handle; document.getElementById("status").innerHTML = `Signed in as <a href="/${s.handle}">@${s.handle}</a>. <a href="/tools">Save from anywhere</a>.`; }
-// One backdrop per visit; the still shows first and stays for reduced motion or slow connections.
+// Backdrop: open on a still; only after the page has sat untouched for a while does it start to move, then it fades
+// gently from clip to clip. Any interaction lets the current clip finish and rest on its last frame.
 fetch("/video/index.json", { cache: "no-store" }).then((r) => r.json()).then(({ clips }) => {
-  if (!clips?.length) return; const c = clips[Math.floor(Math.random() * clips.length)];
-  document.getElementById("poster").src = c.poster; document.getElementById("poster").alt = c.alt || ""; if (c.credit) document.getElementById("credit").textContent = c.credit;
-  if (matchMedia("(prefers-reduced-motion: reduce)").matches || navigator.connection?.saveData) return;
-  if (!c.src) return; const v = document.getElementById("bg"); v.poster = c.poster; v.src = c.src; v.play().catch(() => {});
+  clips = (clips || []).filter((c) => c.poster); if (!clips.length) return;
+  let i = Math.floor(Math.random() * clips.length); const poster = document.getElementById("poster");
+  poster.src = clips[i].poster; poster.alt = clips[i].alt || ""; if (clips[i].credit) document.getElementById("credit").textContent = clips[i].credit;
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches || navigator.connection?.saveData; if (still) return;
+  const moving = clips.filter((c) => c.src); if (!moving.length) return;
+  const vids = [document.getElementById("va"), document.getElementById("vb")]; let front = 0, awake = false, idleTimer = null, resting = true, played = false;
+  const IDLE_MS = 8000;
+  const play = (clip) => { played = true; const v = vids[front ^ 1]; v.src = clip.src; v.currentTime = 0; v.onended = next;
+    v.play().then(() => { v.classList.add("on"); vids[front].classList.remove("on"); front ^= 1; }).catch(() => {}); };
+  function next() { if (!awake) { resting = true; return; } i = (i + 1) % clips.length; const c = clips[i]; if (!c.src) return next(); play(c); }
+  const wake = () => { if (awake) return; awake = true; if (resting) { resting = false; if (played) next(); else play(clips[i].src ? clips[i] : moving[0]); } };
+  const settle = () => { awake = false; clearTimeout(idleTimer); idleTimer = setTimeout(wake, IDLE_MS); };
+  for (const e of ["scroll", "pointerdown", "keydown", "touchstart", "wheel"]) addEventListener(e, settle, { passive: true });
+  settle();
+  window.__attestBackdrop = () => ({ awake, resting, played, front, index: i, on: vids.map((v) => v.classList.contains("on")), src: vids.map((v) => v.currentSrc.split("/").pop()), t: vids.map((v) => +v.currentTime.toFixed(1)) });
 }).catch(() => {});
 fetch("/version.json", { cache: "no-store" }).then((r) => r.json()).then((v) => { const sha = String(v.sha || "").replace(/-dirty$/, ""); const day = String(v.at || "").slice(0, 10); document.getElementById("version").innerHTML = `version ${day} · <a href="https://github.com/orbitalfoundation/attest/commit/${sha}"><code>${v.sha}</code></a> · released continuously, see <a href="/changes">changes</a>`; }).catch(() => {});
 </script></body></html>
