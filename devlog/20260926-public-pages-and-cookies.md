@@ -267,3 +267,22 @@ Scunthorpe blocked (not in the dictionary). Admin page: block or allow
 a word, stored only as its hash (`blockhash`, `allowhash`). A repo scan
 confirms no listed word appears in any tracked text file. obscenity
 (pattern syntax, not word lists) was tried and dropped.
+
+## 2026-09-29: handle-guard package
+
+Anselm: make the blocklist a module, convenient for us, not necessarily
+on npm; readme on why another blocklist and the multilingual concerns;
+optionally block simple paths like /admin. Done as
+`packages/handle-guard` (private, not published): `createGuard({words,
+reserved, extraReserved, block, allow})` returning `check`,
+`isOffensive`, `isReserved`, `reserve`, `counts`; `RESERVED_PATHS`
+(generic roles, mail/DNS, auth and common page names) in `reserved.mjs`;
+`build.mjs` and `blocklist.json` moved in from `scripts/` and `server/`
+(rebuild reproduced identical hashes); `node --test` with invented
+words only. attest's `server/handles.mjs` keeps just its own words
+(protocol, brands, other networks, route words) on top. Parts now also
+split on `_` and `.`. Corrected figure: the dictionary has 9,919
+distinct names (earlier entry said 9,704); 1 blocked; 232 of 63,737
+lowercase words blocked. Non-Latin-script entries drop out at
+normalising (handles are ASCII): Russian keeps 22 of 314, Chinese 31
+of 292; stated in the readme.

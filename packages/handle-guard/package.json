@@ -1,0 +1,22 @@
+{
+  "name": "handle-guard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Check proposed usernames, subdomains and URL handles against offensive words in twelve languages, kept only as SHA-256 hashes, and against reserved paths like /admin.",
+  "license": "MIT",
+  "type": "module",
+  "repository": { "type": "git", "url": "git+https://github.com/orbitalfoundation/attest.git", "directory": "packages/handle-guard" },
+  "exports": {
+    ".": "./index.mjs",
+    "./reserved": "./reserved.mjs"
+  },
+  "files": ["index.mjs", "reserved.mjs", "blocklist.json", "README.md"],
+  "scripts": { "build": "node build.mjs", "test": "node --test" },
+  "engines": { "node": ">=18" },
+  "devDependencies": {
+    "@2toad/profanity": "^3.3.0",
+    "bad-words": "^4.1.5",
+    "leo-profanity": "^1.9.0"
+  },
+  "keywords": ["username", "handle", "blocklist", "profanity", "reserved", "multilingual", "hashed"]
+}

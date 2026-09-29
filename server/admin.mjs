@@ -7,7 +7,6 @@ import * as pds from "./pds.mjs";
 import * as atoauth from "./atoauth.mjs";
 import { verifyObject } from "../packages/orbital-attest/verify.mjs";
 import { statfsSync } from "node:fs";
-import { counts as blockCounts } from "./blocklist.mjs";
 export function admins() {
   const env = (process.env.ADMIN_DIDS || "").split(",").map((s) => s.trim()).filter(Boolean); if (env.length) return env;
   const a = store.getAccountByHandle(process.env.ADMIN_HANDLE || "anselm"); return a ? [a.did] : [];
@@ -39,7 +38,7 @@ const handlers = {
   async blockword({ word }, by) { const h = handles.hashWord(word); if (!word || h === handles.hashWord("")) throw new Error("empty"); store.kvSet("blockhash", h, { by, at: new Date().toISOString() }); return { ok: true, hash: h.slice(0, 12) }; },
   async allowword({ word }, by) { const h = handles.hashWord(word); if (!word) throw new Error("empty"); store.kvSet("allowhash", h, { by, at: new Date().toISOString() }); return { ok: true, hash: h.slice(0, 12) }; },
   async unblockhash({ hash }) { store.kvDel("blockhash", hash); store.kvDel("allowhash", hash); return { ok: true }; },
-  wordlists: () => { return { ...blockCounts(), blocked: store.kvList("blockhash").map((r) => ({ hash: r.key, at: r.value.at })), allowed: store.kvList("allowhash").map((r) => ({ hash: r.key, at: r.value.at })) }; },
+  wordlists: () => { return { ...handles.guardCounts(), blocked: store.kvList("blockhash").map((r) => ({ hash: r.key, at: r.value.at })), allowed: store.kvList("allowhash").map((r) => ({ hash: r.key, at: r.value.at })) }; },
 };
 export async function handle(envelope, origin) {
   const by = await check(envelope, origin); const h = handlers[envelope.name]; if (!h) throw new Error("unknown admin request");
