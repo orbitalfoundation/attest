@@ -1,7 +1,7 @@
 // Cross-origin end-to-end: a page on one origin embeds the widget from the service on another. Headless Chrome cannot open
-// the sign-in popup (window.open stalls under CDP), so the test does what the popup does: it opens the service's login page
-// in a second tab with the page's device key and origin, registers with a virtual authenticator, and hands the resulting
-// session to the page the way postMessage would. Then it checks the page can sign, and that the same delegation is refused
+// the sign-in popup (window.open stalls under CDP), so the test takes the redirect flow a phone without popups takes: it opens
+// the service's login page in a second tab with the page's device key, origin and return address, registers with a virtual
+// authenticator, and attest sends that tab back to the site with the session in the URL fragment. Then it checks the page can sign, and that the same delegation is refused
 // from any other origin. Usage: node scripts/e2e-cross.mjs [site] [service]
 import WebSocket from "ws"; import { spawn } from "node:child_process"; import { existsSync, readdirSync } from "node:fs"; import { homedir } from "node:os";
 import { requireCleanupCredentials } from "./test-env.mjs";
@@ -22,17 +22,17 @@ ok(await evalIn(page, `!!document.querySelector('[data-attest] .up')`), "widget 
 const dev = JSON.parse(await evalIn(page, `(async () => { const A = await import(${JSON.stringify(service + "/attest-core.js")}); const d = await A.deviceKey(); return JSON.stringify({ did: d.did, jwk: d.jwk }); })()`));
 ok(dev.did.startsWith("did:key:zDna"), "page has its own device key " + dev.did.slice(0, 20) + "…");
 const keyParam = Buffer.from(JSON.stringify(dev.jwk)).toString("base64url");
-const login = await tab(`${service}/login?device=${encodeURIComponent(dev.did)}&key=${encodeURIComponent(keyParam)}&origin=${encodeURIComponent(site)}`);
+const login = await tab(`${service}/login?device=${encodeURIComponent(dev.did)}&key=${encodeURIComponent(keyParam)}&origin=${encodeURIComponent(site)}&return=${encodeURIComponent(site + "/")}`);
 await send("WebAuthn.enable", { enableUI: false }, login);
 await send("WebAuthn.addVirtualAuthenticator", { options: { protocol: "ctap2", transport: "internal", hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } }, login);
 ok(await evalIn(login, `document.getElementById('for').textContent.includes(${JSON.stringify(site)})`), "login page names the requesting origin");
 const handle = "x" + Math.random().toString(36).slice(2, 7);
 await evalIn(login, `document.getElementById('handle').value = ${JSON.stringify(handle)}; document.getElementById('register').click(); true`);
-ok(await waitFor(login, `location.pathname === '/me' || document.getElementById('msg')?.textContent.startsWith('Signed in as')`, 15000), "registered and delegated for the foreign origin (login page moved on to " + await evalIn(login, `location.pathname`) + ")");
-// With no opener the login page kept the session on the service origin; hand it to the page as postMessage would.
+// With no opener the login page takes the redirect flow: back to the site's return address with the session in the fragment,
+// which the client library consumes at load. The page tab shares that origin's localStorage.
+ok(await waitFor(login, `location.origin === ${JSON.stringify(site)} && location.hash === ''`, 15000), "registered and delegated for the foreign origin; attest sent the tab back to the site and the fragment was consumed");
 const session = await evalIn(login, `localStorage.getItem('attest:session')`);
 ok(JSON.parse(session).delegation.origin === site && JSON.parse(session).delegation.device === dev.did, "delegation is scoped to the page's origin and device key");
-await evalIn(page, `localStorage.setItem('attest:session', ${JSON.stringify(session)}); true`);
 await send("Page.reload", {}, page); await sleep(2000);
 ok(await evalIn(page, `document.body.innerText.includes('@' + ${JSON.stringify(handle)})`), "page shows the handle from the handed-over session");
 await evalIn(page, `document.querySelector('[data-attest] .up').click(); true`);

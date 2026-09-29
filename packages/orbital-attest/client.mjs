@@ -73,18 +73,33 @@ export async function retract(uri) {
 }
 export const read = async (targets) => (await (await fetch(need() + "/read?targets=" + encodeURIComponent(targets.join(",")))).json()).targets;
 export const by = async (did) => (await fetch(need() + "/by/" + encodeURIComponent(did))).json();
-// --- sign in: same origin → go to the login page and come back; another origin → popup that posts the session back.
-export function signIn() {
+// --- sign in. Same origin: go to the login page and come back. Another origin: a popup on the service that posts the session
+// back, or, when a popup cannot work, a redirect to the service that returns here with the session in the URL fragment.
+// Mobile: Safari only allows a popup opened synchronously inside the tap, so a caller that has already awaited something
+// should open a blank window in its tap handler and pass it as {popup}; a blocked popup (null) falls back to the redirect.
+// {mode:"redirect"} forces the redirect (a home-screen web app, where a popup loses its opener; an in-app browser).
+export function signIn({ popup, mode } = {}) {
   return new Promise(async (resolve, reject) => {
-    const dev = await deviceKey(); need();
+    need();
     if (server === location.origin) { location.href = server + "/login?return=" + encodeURIComponent(location.href); return; }
+    let w = popup; if (w === undefined && mode !== "redirect") { try { w = window.open("about:blank", "attest-login", "popup,width=420,height=560"); } catch { w = null; } }
+    const dev = await deviceKey();
     const url = server + "/login?device=" + encodeURIComponent(dev.did) + "&key=" + encodeURIComponent(b64u(new TextEncoder().encode(JSON.stringify(dev.jwk)))) + "&origin=" + encodeURIComponent(location.origin);
-    const w = window.open(url, "attest-login", "popup,width=420,height=560"); if (!w) return reject(new Error("popup blocked"));
+    if (mode === "redirect" || !w) { if (w) w.close(); location.href = url + "&return=" + encodeURIComponent(location.href); return; }
+    w.location.href = url;
     const onMsg = (e) => { if (e.origin !== server || e.data?.type !== "attest:session") return; window.removeEventListener("message", onMsg); setSession(e.data.session); resolve(e.data.session); };
     window.addEventListener("message", onMsg);
     const t = setInterval(() => { if (w.closed) { clearInterval(t); window.removeEventListener("message", onMsg); if (!session()) reject(new Error("sign-in cancelled")); } }, 500);
   });
 }
+// The redirect's return: the login page sends the person back with #attest-session=<base64url JSON>. Taken at load, so a page
+// that imports this module is signed in by the time it asks session(); the fragment is removed from the address bar.
+export function takeSessionFromHash() {
+  try { const m = (location.hash || "").match(/^#attest-session=([A-Za-z0-9_-]+)$/); if (!m) return null;
+    const s = JSON.parse(new TextDecoder().decode(unb64u(m[1]))); if (!s?.id || !s.delegation || s.delegation.origin !== location.origin) return null;
+    setSession(s); history.replaceState(null, "", location.pathname + location.search); return s; } catch { return null; }
+}
+if (typeof location !== "undefined") takeSessionFromHash();
 export const short = (did) => did.slice(8, 16) + "…" + did.slice(-4);
 // --- WebAuthn JSON helpers and root actions (used by the service's own pages).
 export const creationOptions = (o) => ({ ...o, challenge: unb64u(o.challenge), user: { ...o.user, id: unb64u(o.user.id) }, excludeCredentials: (o.excludeCredentials || []).map((c) => ({ ...c, id: unb64u(c.id) })) });

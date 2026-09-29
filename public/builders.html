@@ -17,7 +17,7 @@
 <tr><td><code>data-comments</code></td><td>also show signed comments and a composer</td></tr>
 </table>
 <p>Several widgets on one page are fine; they share one socket and one read. The first click on any widget starts sign-in. Colour comes from the CSS variable <code>--attest-accent</code> on any ancestor; everything else inherits your page's font and colours.</p>
-<p>Sign-in from your origin opens a small popup on <code>ORIGIN</code>. The popup returns a session to your page by <code>postMessage</code>, scoped to your origin. Your page never sees the passkey and never holds a password. If your page runs inside a sandboxed iframe or blocks popups, sign-in cannot complete.</p>
+<p>Sign-in from your origin opens a small popup on <code>ORIGIN</code>. The popup returns a session to your page by <code>postMessage</code>, scoped to your origin. Your page never sees the passkey and never holds a password. Where a popup cannot work (it was blocked, a home-screen web app, an in-app browser), the page itself goes to <code>ORIGIN</code> instead and comes back to the same address with the session in the URL fragment, which the library consumes at load. Mobile Safari allows a popup only when it is opened synchronously in the tap: the widget does that; for your own UI, open a blank window in your tap handler and pass it as <code>signIn({popup})</code>, or pass <code>{mode:"redirect"}</code> to skip the popup. A page inside a sandboxed iframe cannot complete sign-in either way.</p>
 
 <p><b>Existing accounts.</b> People with a Bluesky or other AT Protocol account sign in with their handle through AT Protocol OAuth, from the same popup. attest is a confidential client (<code>/client-metadata.json</code>, <code>/jwks.json</code>) asking only for <code>repo:monster.attest.*</code>, so it can publish attest records into their repository and nothing else. They still create a passkey, and records still carry its inline signature.</p>
 
@@ -25,7 +25,9 @@
 <p>The widget is built on a small module you can use directly for your own UI. The same module is the npm package <code>orbital-attest</code> (not yet published; it lives in <code>packages/orbital-attest</code> in the repo): <code>import * as A from "orbital-attest"</code> then <code>A.configure({ server: "ORIGIN" })</code>. The served copy below is pre-configured for this origin. The verifier alone is <code>orbital-attest/verify</code>, with no dependencies.</p>
 <pre>import * as A from "ORIGIN/attest-core.js";
 A.session()                       // {id, root, handle, until, delegation} or null
-await A.signIn()                  // popup; resolves with the session
+await A.signIn()                  // popup, or a redirect that comes back here; resolves with the session (popup case)
+await A.signIn({ popup: w })      // w = window.open("about:blank", …) from your tap handler (Safari); null → redirect
+await A.signIn({ mode: "redirect" })
 await A.attest("upvote", url)     // sign with this page's device key and submit
 await A.attest("comment", url, { body: "…" })
 await A.attest("retract", url, { ref: recordUri })   // or A.retract(recordUri)

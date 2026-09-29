@@ -56,8 +56,13 @@ async function delegate(root, handle) {
   const r = await A.req("delegate.finish", { delegation, credentialId: cred.id, assertion: credToJSON(cred) });
   const session = { id: r.id, delegation, root: r.root, handle: r.handle, until: r.until };
   localStorage.setItem("attest:handle", r.handle);
+  const back = q.get("return");
   if (window.opener && origin !== location.origin) { window.opener.postMessage({ type: "attest:session", session }, origin); msg("Signed in as @" + r.handle + ". You can close this window.", "ok"); setTimeout(() => window.close(), 800); }
-  else { A.setSession(session); msg("Signed in as @" + r.handle + ".", "ok"); const back = q.get("return"); if (back && back.startsWith("/")) location.href = back; else if (back) location.href = back; else location.href = "/me"; }
+  else if (origin !== location.origin) { // the redirect flow (no popup: mobile Safari, a home-screen app): back to the site with the session in the fragment, only to the origin the delegation names
+    let dest = null; try { const u = new URL(back || ""); if (u.origin === origin) { u.hash = ""; dest = u.toString(); } } catch {}
+    if (!dest) { msg("Signed in as @" + r.handle + " for " + origin + ", but that site gave no address to return to.", "err"); return; }
+    msg("Signed in as @" + r.handle + ". Back to " + origin + "…", "ok"); location.href = dest + "#attest-session=" + b64u(new TextEncoder().encode(JSON.stringify(session))); }
+  else { A.setSession(session); msg("Signed in as @" + r.handle + ".", "ok"); if (back && back.startsWith("/")) location.href = back; else if (back) location.href = back; else location.href = "/me"; }
 }
 const busy = (on) => { $("signin").disabled = on; $("register").disabled = on; };
 $("signin").onclick = async () => { busy(true); try { const handle = $("handle").value.trim().toLowerCase(); if (!handle) throw new Error("enter your handle"); const { did } = await A.req("lookup", { handle }); await delegate(did, handle); } catch (e) { msg(e.message, "err"); } finally { busy(false); } };
