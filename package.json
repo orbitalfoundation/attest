@@ -11,7 +11,10 @@
     "e2e": "node scripts/e2e.mjs"
   },
   "dependencies": {
+    "@atproto-labs/did-resolver": "^0.3.9",
+    "@atproto/jwk-jose": "^0.2.4",
     "@atproto/lexicon": "^0.7.14",
+    "@atproto/oauth-client-node": "^0.5.7",
     "@atproto/sync": "^0.4.10",
     "@fastify/http-proxy": "^11.6.2",
     "@fastify/static": "^10.1.3",

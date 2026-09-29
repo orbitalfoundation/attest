@@ -6,6 +6,7 @@ import { attach } from "./socket.mjs";
 const PORT = Number(process.env.PORT || 8100), HOST = process.env.HOST || "0.0.0.0";
 store.open();
 const { initServiceKey } = await import("./records.mjs"); console.log("service key", await initServiceKey());
+try { console.log("oauth client", (await (await import("./atoauth.mjs")).init()) ? "ready" : "off"); } catch (e) { console.error("oauth client unavailable:", e.message); }
 const app = Fastify({ logger: { level: process.env.LOG_LEVEL || "info" }, trustProxy: true });
 await routes(app);
 await app.ready();

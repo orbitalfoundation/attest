@@ -4,6 +4,10 @@
 <h1>changes <small>a public revision log</small></h1>
 <p>Newest first. Decisions and reversals are recorded here as they happen, including the ones that make earlier pages wrong; those pages get corrected, and the correction is logged too. The full working notes are the dated entries in <a href="https://github.com/orbitalfoundation/attest/tree/main/devlog">devlog/</a> in the repository.</p>
 
+<h2>2026-09-29 · Sign in with your existing handle</h2>
+<p>A reader asked the right question: does this only work with accounts created on attest's own server? It did. Now anyone with a Bluesky or other AT Protocol account can sign in with their handle. Their own server asks them to approve attest, which requests only permission to publish attest's own record types in their repository, not their posts, follows or messages. They then create a passkey here, so each record carries their own signature as well as their server's. Records go into their repository, where anyone can read them. Tested end to end against a server we run and checked against Bluesky's own server, which accepts the narrow request.</p>
+<p>Along the way we found that the official AT Protocol OAuth library for Node, on loading, replaces Node's built-in HTTP engine with a copy from a different version, after which every fetch in the process returned responses without headers. attest now puts Node's own engine back straight after loading it. We will report it upstream.</p>
+
 <h2>2026-09-28 · Why a monster</h2>
 <p>A page on the motive underneath the project: power drifts to centers without anyone deciding it should, centers attract the people who should least hold them, fabricated participation overruns open networks, and the crises that matter most are ecological. The reef rather than the empire; the design rules that follow; what they mean for attest; and what is not yet known. Read it at <a href="/why">Why a monster</a>.</p>
 

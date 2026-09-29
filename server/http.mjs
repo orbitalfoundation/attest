@@ -6,6 +6,8 @@ import { dirname, join } from "node:path";
 import * as records from "./records.mjs";
 import * as store from "./store.mjs";
 import * as handles from "./handles.mjs";
+import * as atoauth from "./atoauth.mjs";
+import { randomBytes } from "node:crypto";
 import { readdirSync } from "node:fs";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CANONICAL_HOST = process.env.CANONICAL_HOST || "";
@@ -22,6 +24,27 @@ export async function routes(app) {
   });
   app.get("/handle/:handle", async (req, reply) => { const r = records.byHandle(req.params.handle); if (!r) return reply.code(404).send({ error: "no such handle" }); reply.header("Cache-Control", "public, max-age=0, s-maxage=5"); return r; });
   app.get("/@:handle", (req, reply) => reply.type("text/html").sendFile("profile.html", join(root, "public")));
+  // Sign in with an existing AT Protocol handle. The original /login query (device key, origin, return) rides in the OAuth state.
+  app.get("/client-metadata.json", async (req, reply) => { reply.header("Cache-Control", "public, max-age=300"); return atoauth.clientMetadata(); });
+  app.get("/jwks.json", async (req, reply) => { reply.header("Cache-Control", "public, max-age=300"); return atoauth.jwks(); });
+  app.get("/atproto/login", async (req, reply) => {
+    if (!atoauth.enabled()) return reply.code(503).send("sign-in with an existing handle is not available here");
+    const handle = String(req.query.handle || "").trim().replace(/^@/, "").toLowerCase(); if (!/^[a-z0-9.-]{3,253}$/.test(handle) && !handle.startsWith("did:")) return reply.redirect("/login?err=" + encodeURIComponent("enter your full handle, like name.bsky.social"));
+    try { const url = await atoauth.authorize(handle, JSON.stringify({ q: String(req.query.q || "") })); return reply.redirect(url.toString()); }
+    catch (e) { const chain = []; for (let x = e; x && chain.length < 5; x = x.cause) chain.push(x.message); req.log.error({ chain }, "oauth authorize failed"); return reply.redirect("/login?" + new URLSearchParams({ err: "could not reach the server for " + handle + ": " + chain.join(" ← ") })); }
+  });
+  app.get("/atproto/callback", async (req, reply) => {
+    let q = "";
+    try {
+      const { did, handle, state } = await atoauth.callback(new URLSearchParams(req.query));
+      try { q = JSON.parse(state || "{}").q || ""; } catch {}
+      const back = new URLSearchParams(q);
+      const existing = store.getAccount(did);
+      if (existing && store.keysOf(did).length) { back.set("handle", existing.handle); back.set("msg", "Connected. Sign in with your passkey to finish."); return reply.redirect("/login?" + back); }
+      const token = randomBytes(18).toString("base64url"); store.kvSet("oauth_link", token, { did, handle, at: Date.now() });
+      back.set("link", token); back.set("handle", handle || did); return reply.redirect("/login?" + back);
+    } catch (e) { return reply.redirect("/login?" + new URLSearchParams({ err: "sign-in was not completed: " + e.message })); }
+  });
   app.get("/tagged/:tag", async (req, reply) => { reply.header("Cache-Control", "public, max-age=0, s-maxage=10"); return { tag: req.params.tag, items: store.tagged(String(req.params.tag).toLowerCase()) }; });
   app.get("/tags.json", async (req, reply) => { reply.header("Cache-Control", "public, max-age=0, s-maxage=30"); return { tags: store.popularTags() }; });
   app.get("/bookmarks/:did", async (req, reply) => { reply.header("Cache-Control", "public, max-age=0, s-maxage=5"); return { did: req.params.did, tag: req.query.tag || null, items: store.bookmarksBy(req.params.did, req.query.tag ? String(req.query.tag).toLowerCase() : null) }; });
@@ -44,8 +67,8 @@ export async function routes(app) {
   const pages = readdirSync(join(root, "public"));
   app.addHook("onReady", async () => { const segs = new Set(pages); for (const r of app.printRoutes({ commonPrefix: false }).split("\n")) { const m = r.match(/\/([a-z0-9@._-]+)/i); if (m) segs.add(m[1]); } const added = handles.reserveRoots(segs); if (added.length) console.log("reserved page names as handles:", added.join(" ")); });
   app.setNotFoundHandler((req, reply) => {
-    const m = req.method === "GET" && req.url.match(/^\/([a-z][a-z0-9-]{3,19})\/?(?:\?.*)?$/);
-    if (m && store.getAccountByHandle(m[1])) return reply.type("text/html").sendFile("profile.html", join(root, "public"));
+    const m = req.method === "GET" && req.url.match(/^\/@?([a-z0-9][a-z0-9.-]{2,252})\/?(?:\?.*)?$/i);
+    if (m && store.getAccountByHandle(m[1].toLowerCase())) return reply.type("text/html").sendFile("profile.html", join(root, "public"));
     reply.code(404).type("text/plain").send("not found");
   });
 }

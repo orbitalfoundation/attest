@@ -4,6 +4,7 @@ import * as store from "./store.mjs";
 import * as pds from "./pds.mjs";
 import * as dns from "./dns.mjs";
 import { aboutFor } from "./people.mjs";
+import * as atoauth from "./atoauth.mjs";
 import { checkDelegation, checkAction } from "./identity.mjs";
 import { normalizeTarget, normalizeTags, isDid, isAccountDid, didFromJwk, inlineSign, inlineVerify, INLINE_TYPE, canonical, verifyObject, jwkFromDidKey } from "../packages/orbital-attest/verify.mjs";
 import { cidString } from "../packages/orbital-attest/cid.mjs";
@@ -44,7 +45,13 @@ export const serviceInfo = () => ({ did: service?.did, keyDid: service?.keyDid, 
 const b32 = "abcdefghijklmnopqrstuvwxyz234567";
 export function rkeyFor(subject) { const h = createHash("sha256").update(subject).digest(); let bits = 0, val = 0, out = ""; for (const b of h.subarray(0, 20)) { val = (val << 8) | b; bits += 8; while (bits >= 5) { out += b32[(val >>> (bits - 5)) & 31]; bits -= 5; } } return out; }
 const hexToB64u = (h) => Buffer.from(h, "hex").toString("base64url");
-async function repoToken(did) { const c = store.pdsCredentials(did); if (!c?.pds_handle) throw new Error("no repo for " + did); return pds.tokenFor(did, c.pds_handle, c.pds_password); }
+async function repoToken(did) { const c = store.pdsCredentials(did); if (!c?.pds_password) throw new Error("no repo for " + did); return pds.tokenFor(did, c.pds_handle, c.pds_password); }
+// A repo writer for an account: our own PDS (server-held password) or the person's own PDS (their OAuth session).
+async function writer(did) {
+  if (store.pdsCredentials(did)?.pds_password) { const t = await repoToken(did); return { put: (c, k, r) => pds.putRecord(t, did, c, k, r), create: (c, r) => pds.createRecord(t, did, c, r), del: (c, k) => pds.deleteRecord(t, did, c, k) }; }
+  if (atoauth.enabled()) return { put: (c, k, r) => atoauth.putRecord(did, c, k, r), create: (c, r) => atoauth.createRecord(did, c, r), del: (c, k) => atoauth.deleteRecord(did, c, k) };
+  throw new Error("no way to write to the repository of " + did + "; sign in with your handle again");
+}
 // ---- delegations (unchanged in shape; the root is now the account's did:plc)
 export async function acceptDelegation({ envelope, origin }) {
   const id = await checkDelegation(envelope.delegation);
@@ -96,8 +103,8 @@ export async function acceptRecord({ envelope, origin }) {
   let replacing = null;
   if (wantKey) { if (rkey && rkey !== wantKey) throw new Error("rkey must be " + wantKey); rkey = wantKey; const existing = store.findLiveUri(repo, subject, KIND_OF[k]); if (existing) { if (k !== "bookmark") return { uri: existing, id: store.getRecordByUri(existing).id, duplicate: true, counts: store.countsFor(subject) }; replacing = existing; } }
   // write to the repo, then index
-  const token = await repoToken(repo);
-  const w = wantKey ? await pds.putRecord(token, repo, collection, rkey, record) : await pds.createRecord(token, repo, collection, record);
+  const wr = await writer(repo);
+  const w = wantKey ? await wr.put(collection, rkey, record) : await wr.create(collection, record);
   const uri = w.uri, cid = w.cid, shape = indexShape(collection, record, repo);
   if (replacing) store.dropRecordRow(replacing);
   if (!store.getRecordByUri(uri)) store.putRecord(cid, { record: shape, repoRecord: record, uri, cid, collection, rkey: uri.split("/").pop(), del, about: aboutFor(shape.target), tags: record.tags || [] });
@@ -111,7 +118,7 @@ export async function acceptRetract({ envelope, origin }) {
   if (!(Date.parse(at) > 0) || Math.abs(Date.parse(at) - Date.now()) > 10 * 60e3) throw new Error("retract time is not near now");
   if (!(await verifyObject(dg.devKey, { type: "retract", uri, at }, sig))) throw new Error("retract signature does not verify");
   const [, , , collection, rkey] = uri.replace("at://", "").split("/").length === 3 ? ["", "", "", ...uri.replace("at://", "").split("/").slice(1)] : [];
-  const parts = uri.replace("at://", "").split("/"); await pds.deleteRecord(await repoToken(repo), repo, parts[1], parts[2]);
+  const parts = uri.replace("at://", "").split("/"); await (await writer(repo)).del(parts[1], parts[2]);
   store.retractRecord(uri, repo); const counts = store.countsFor(r.record.target); events.emit("counts", { target: r.record.target, counts });
   return { uri, retracted: true, counts };
 }

@@ -16,7 +16,9 @@ const pending = new Map(); // nonce -> {challenge, handle, at}
 setInterval(() => { const cutoff = Date.now() - 5 * 60e3; for (const [k, v] of pending) if (v.at < cutoff) pending.delete(k); }, 60e3).unref();
 const HANDLE = /^[a-z0-9][a-z0-9._-]{1,31}$/;
 const handlers = {
-  async "passkey.register.start"({ handle }, ctx) {
+  async "passkey.register.start"({ handle, link }, ctx) {
+    if (link) { const l = store.kvGet("oauth_link", link); if (!l || Date.now() - l.at > 30 * 60e3) throw new Error("that sign-in link expired; sign in with your handle again"); if (store.getAccount(l.did) && store.keysOf(l.did).length) throw new Error("this account already has a passkey; sign in instead");
+      const options = await passkeys.registrationOptions({ origin: ctx.origin, handle: l.handle || l.did }); const nonce = randomBytes(16).toString("base64url"); pending.set(nonce, { challenge: options.challenge, handle: l.handle || l.did, link, at: Date.now() }); return { nonce, options }; }
     const c = handles.check(handle); if (!c.ok) throw new Error(c.error); handle = c.handle;
     const options = await passkeys.registrationOptions({ origin: ctx.origin, handle });
     const nonce = randomBytes(16).toString("base64url"); pending.set(nonce, { challenge: options.challenge, handle, at: Date.now() });
@@ -27,6 +29,9 @@ const handlers = {
     const credential = await passkeys.verifyRegistration({ origin: ctx.origin, response, challenge: p.challenge });
     const keyDid = didFromJwk(credential.jwk);
     if (store.getCredential(credential.id)) throw new Error("this passkey already has an account");
+    if (p.link) { const l = store.kvGet("oauth_link", p.link); if (!l) throw new Error("that sign-in link expired; sign in with your handle again"); store.kvDel("oauth_link", p.link);
+      if (store.getAccount(l.did)) store.addCredential(l.did, credential); else store.createAccount({ did: l.did, handle: (l.handle || l.did).toLowerCase(), credential, keyDid, pdsHandle: l.handle || null, pdsPassword: null });
+      return { did: l.did, handle: (l.handle || l.did).toLowerCase(), external: true }; }
     if (store.getAccountByHandle(p.handle)) throw new Error("that handle is taken");
     if (pds.enabled()) {
       // The account is a repo on our PDS. Its password is a server-side secret; the passkey is the person's key.

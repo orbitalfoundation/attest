@@ -8,9 +8,15 @@
 <p id="for" class="muted"></p>
 <div class="card">
   <label class="small muted" for="handle">your handle</label>
-  <input id="handle" placeholder="4 to 20 letters, digits or hyphens" autocomplete="username webauthn" spellcheck="false">
+  <input id="handle" placeholder="your handle" autocomplete="username webauthn" spellcheck="false">
   <div style="display:flex;gap:.5rem;margin-top:.75rem;flex-wrap:wrap"><button id="signin">Sign in with passkey</button><button id="register" class="quiet">Create account</button></div>
   <p id="msg" class="small" style="margin:.75rem 0 0"></p>
+</div>
+<div class="card" id="linked" hidden><p id="linkedmsg" style="margin:0 0 .7rem"></p><button id="linkpass">Create my attest passkey</button></div>
+<div class="card" id="external">
+  <label class="small muted" for="ext">already on Bluesky or another AT Protocol server?</label>
+  <div style="display:flex;gap:.5rem;margin-top:.3rem;flex-wrap:wrap"><input id="ext" placeholder="name.bsky.social" autocapitalize="none" spellcheck="false" style="flex:1;min-width:12rem"><button id="extgo" class="quiet">Sign in with your handle</button></div>
+  <p class="small muted" style="margin:.5rem 0 0">Your own server asks you to approve attest. Your records then go into your own repository, each also signed by a passkey you create here.</p>
 </div>
 <p class="small muted">Sign-in is your passkey signing a 30-day permission for this device, on this site, to sign on your behalf. Creating an account also makes you an AT Protocol account with the handle you choose under attest.monster. No email, no password, no cookies.</p>
 </main>
@@ -23,7 +29,13 @@ if (q.get("device") && q.get("key")) { const jwk = JSON.parse(new TextDecoder().
 else device = await A.deviceKey();
 if (q.get("origin")) { if (!/^https?:\/\/[^/]+$/.test(q.get("origin"))) { msg("bad origin", "err"); throw new Error("bad origin"); } origin = q.get("origin"); }
 $("for").textContent = origin === location.origin ? "Sign in to attest." : "Sign in to attest for " + origin + ".";
-$("handle").value = localStorage.getItem("attest:handle") || "";
+$("handle").value = q.get("handle") || localStorage.getItem("attest:handle") || "";
+if (q.get("err")) msg(q.get("err"), "err"); if (q.get("msg")) msg(q.get("msg"), "ok");
+// Pass this page's own query (device key, origin, return) through the OAuth round trip.
+const passQ = new URLSearchParams(location.search); for (const k of ["err", "msg", "link", "handle"]) passQ.delete(k);
+$("extgo").onclick = () => { const h = $("ext").value.trim(); if (!h) return; location.href = "/atproto/login?" + new URLSearchParams({ handle: h, q: passQ.toString() }); };
+$("ext").onkeydown = (e) => { if (e.key === "Enter") $("extgo").click(); };
+if (q.get("link")) { $("linked").hidden = false; $("external").hidden = true; $("linkedmsg").innerHTML = "Connected as <b>@" + (q.get("handle") || "").replace(/[<>&]/g, "") + "</b>. One step left: create a passkey on this device, so what you sign here carries your own signature."; }
 if (!window.PublicKeyCredential) msg("This browser has no passkey support.", "err");
 const toBuf = A.unb64u, b64u = A.b64u;
 const creationOptions = (o) => ({ ...o, challenge: toBuf(o.challenge), user: { ...o.user, id: toBuf(o.user.id) }, excludeCredentials: (o.excludeCredentials || []).map((c) => ({ ...c, id: toBuf(c.id) })) });
@@ -49,6 +61,13 @@ async function delegate(root, handle) {
 }
 const busy = (on) => { $("signin").disabled = on; $("register").disabled = on; };
 $("signin").onclick = async () => { busy(true); try { const handle = $("handle").value.trim().toLowerCase(); if (!handle) throw new Error("enter your handle"); const { did } = await A.req("lookup", { handle }); await delegate(did, handle); } catch (e) { msg(e.message, "err"); } finally { busy(false); } };
+$("linkpass") && ($("linkpass").onclick = async () => { busy(true); $("linkpass").disabled = true; try {
+  const { nonce, options } = await A.req("passkey.register.start", { link: q.get("link") });
+  msg("Your device creates a passkey…");
+  const cred = await navigator.credentials.create({ publicKey: creationOptions(options) });
+  const { did, handle } = await A.req("passkey.register.finish", { nonce, response: credToJSON(cred) });
+  await delegate(did, handle);
+} catch (e) { msg(e.message, "err"); $("linkpass").disabled = false; } finally { busy(false); } });
 $("register").onclick = async () => { busy(true); try {
   const handle = $("handle").value.trim().toLowerCase(); if (!handle) throw new Error("choose a handle");
   const hc = await A.req("handle.check", { handle }); if (!hc.ok) throw new Error(hc.error);

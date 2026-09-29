@@ -175,3 +175,48 @@ cannot file a support ticket), what it means for attest, and what is
 not proven. Kept non-partisan (no named parties or companies), no file
 paths, his phrases as the page's own voice; footer marks it as a
 drafted reading published for his revision.
+
+## 2026-09-29: sign in with an existing handle (Joe Germuska's LinkedIn comment)
+
+"does this only work with accounts created on its own PDS? Should I be
+able to log in with my existing handle?" It did; Anselm replied he
+would fix it. Built:
+
+- `server/atoauth.mjs`: confidential atproto OAuth client
+  (`/client-metadata.json`, `/jwks.json`, ES256 key in
+  `data/oauth-key.json`), state and sessions in a `kv` table. Routes
+  `/atproto/login?handle=…&q=<original /login query>` and
+  `/atproto/callback`; a new account gets a 30-min link token, then
+  `/login?link=…` creates a passkey bound to the external DID
+  (no PDS account, no handle rules, `pds_password` null). Returning
+  users sign in with the passkey by handle as usual.
+- Writes go through `writer(did)`: our PDS by server password, or the
+  person's PDS through `client.restore(did)`. Inline device-key
+  signature unchanged. Profiles resolve dotted handles at `/<handle>`.
+- Scope narrowed from `transition:generic` (consent listed posts,
+  follows, private preferences, "any service") to
+  `atproto repo:monster.attest.{vote,comment,statement,vouch,claim,bookmark}`;
+  consent now reads "Repository: Publish changes". bsky.social accepts
+  it (PAR succeeds). Our PDS cached the old client metadata; a restart
+  cleared it.
+- **Bug found**: importing `@atproto/oauth-client-node` (0.5.7, via
+  `@atproto-labs/fetch-node` 0.4.0 bundling undici 6/7/8) replaces
+  `globalThis[Symbol.for('undici.globalDispatcher.1')]` with a
+  `Dispatcher1Wrapper`; Node's built-in fetch then returns responses
+  with empty headers, so identity resolution failed with "Missing
+  response Content-Type header" for every handle. The property cannot
+  be deleted; `atoauth.mjs` makes a throwaway fetch first so Node
+  creates its own dispatcher, imports the package, and assigns Node's
+  dispatcher back. Anselm asked whether we want a package intercepting
+  fetch: no; this restores Node's. To report upstream; the clean
+  alternative is running OAuth in its own process.
+- Also: `@atproto-labs/did-resolver`'s cached resolver misbehaved in
+  the broken state; a `DirectDidResolver` is passed in (kept; harmless).
+- Tested end to end with two throwaway password accounts on our PDS
+  (DNS-bound), through its OAuth UI: sign in, authorize, passkey,
+  bookmark written to the account's own repo, inline signature
+  verified from the public record; `scripts/e2e-oauth.mjs`. Test
+  accounts deleted. No Set-Cookie on attest.monster.
+- Not yet: indexing records written to other servers by other tools
+  (Jetstream); the index only knows what attest wrote there.
+- A first non-us account exists: `clericclericsson`.
