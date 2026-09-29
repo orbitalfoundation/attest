@@ -4,8 +4,9 @@
 // session to the page the way postMessage would. Then it checks the page can sign, and that the same delegation is refused
 // from any other origin. Usage: node scripts/e2e-cross.mjs [site] [service]
 import WebSocket from "ws"; import { spawn } from "node:child_process"; import { existsSync, readdirSync } from "node:fs"; import { homedir } from "node:os";
+import { requireCleanupCredentials } from "./test-env.mjs";
 const pwDir = `${homedir()}/.cache/ms-playwright`; const pw = existsSync(pwDir) ? readdirSync(pwDir).filter((d) => d.startsWith("chromium-")).sort().map((d) => `${pwDir}/${d}/chrome-linux64/chrome`).filter(existsSync).pop() : null;
-const CHROME = process.env.CHROME || pw || "chromium"; const site = process.argv[2] || "http://localhost:8101", service = process.argv[3] || "http://localhost:8100"; const port = 9600 + Math.floor(Math.random() * 100);
+const CHROME = process.env.CHROME || pw || "chromium"; const site = process.argv[2] || "http://localhost:8101", service = process.argv[3] || "http://localhost:8100"; requireCleanupCredentials(service); const port = 9600 + Math.floor(Math.random() * 100);
 const chrome = spawn(CHROME, ["--headless=new", "--no-sandbox", "--disable-gpu", `--remote-debugging-port=${port}`, "--user-data-dir=/tmp/attest-cross-" + port, "about:blank"], { stdio: "ignore" });
 for (let i = 0; i < 40; i++) { try { await fetch(`http://127.0.0.1:${port}/json/version`); break; } catch { await new Promise((r) => setTimeout(r, 250)); } }
 const { webSocketDebuggerUrl } = await (await fetch(`http://127.0.0.1:${port}/json/version`)).json(); const ws = new WebSocket(webSocketDebuggerUrl); await new Promise((r) => ws.on("open", r)); let id = 0; const sessions = new Map();

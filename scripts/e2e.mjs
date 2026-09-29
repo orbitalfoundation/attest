@@ -3,8 +3,9 @@
 // Usage: node scripts/e2e.mjs [http://localhost:8100]
 import WebSocket from "ws"; import { spawn } from "node:child_process"; import { existsSync, readdirSync } from "node:fs"; import { homedir } from "node:os";
 import { verifyObject, idOf } from "../packages/orbital-attest/verify.mjs";
+import { requireCleanupCredentials } from "./test-env.mjs";
 const pwDir = `${homedir()}/.cache/ms-playwright`; const pw = existsSync(pwDir) ? readdirSync(pwDir).filter((d) => d.startsWith("chromium-")).sort().map((d) => `${pwDir}/${d}/chrome-linux64/chrome`).filter(existsSync).pop() : null;
-const CHROME = process.env.CHROME || pw || "chromium"; const base = process.argv[2] || "http://localhost:8100"; const port = 9500 + Math.floor(Math.random() * 100);
+const CHROME = process.env.CHROME || pw || "chromium"; const base = process.argv[2] || "http://localhost:8100"; requireCleanupCredentials(base); const port = 9500 + Math.floor(Math.random() * 100);
 const chrome = spawn(CHROME, ["--headless=new", "--no-sandbox", "--disable-gpu", `--remote-debugging-port=${port}`, "--user-data-dir=/tmp/attest-e2e-" + port, "about:blank"], { stdio: "ignore" });
 for (let i = 0; i < 40; i++) { try { await fetch(`http://127.0.0.1:${port}/json/version`); break; } catch { await new Promise((r) => setTimeout(r, 250)); } }
 const page = (await (await fetch(`http://127.0.0.1:${port}/json`)).json()).find((t) => t.type === "page"); const ws = new WebSocket(page.webSocketDebuggerUrl); await new Promise((r) => ws.on("open", r)); let id = 0;

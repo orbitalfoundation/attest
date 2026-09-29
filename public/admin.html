@@ -6,7 +6,7 @@
 <div id="gate"></div>
 <section id="panel" hidden>
 <h2>Health</h2><div class="tiles" id="tiles"></div>
-<h2>Accounts</h2><table id="accounts"><thead><tr><th>handle</th><th>joined</th><th>records</th><th>passkeys</th><th>kind</th><th>status</th><th></th></tr></thead><tbody></tbody></table>
+<h2>Accounts</h2><p class="muted"><label><input type="checkbox" id="showdeleted"> show deleted accounts <span id="deletedcount"></span></label></p><table id="accounts"><thead><tr><th>handle</th><th>joined</th><th>records</th><th>passkeys</th><th>kind</th><th>status</th><th></th></tr></thead><tbody></tbody></table>
 <h2>Recent records</h2><table id="records"><thead><tr><th>when</th><th>who</th><th>kind</th><th>subject</th><th>state</th><th></th></tr></thead><tbody></tbody></table>
 <h2>Reserved handles</h2><p class="small muted" id="builtin"></p><ul id="added" class="small"></ul>
 <form id="reserve" style="display:flex;gap:.4rem;max-width:24rem"><input id="rname" placeholder="handle to reserve"><button class="quiet">reserve</button></form>
@@ -32,7 +32,12 @@ const tile = (v, l) => `<div><b>${esc(v)}</b><span>${esc(l)}</span></div>`;
 $("tiles").innerHTML = [tile(ov.stats.accounts, "active accounts"), tile(ov.stats.records, "live records"), tile(ov.log, "log entries"), tile(ov.firehoseCursor ?? "none", "firehose cursor"), tile(ov.pds?.startsWith("did:") ? "ok" : ov.pds, "data server"), tile(ov.oauth ? "ready" : "off", "handle sign-in"), tile(ov.disk ? `${ov.disk.freeGB} / ${ov.disk.totalGB} GB` : "?", "disk free"), tile(ov.memoryMB + " MB", "memory"), tile(ov.uptimeMin + " min", "uptime"), tile(ov.node, "node")].join("");
 async function load() {
   const [accts, recs, res, mod] = await Promise.all([A.adminReq("accounts"), A.adminReq("records", { limit: 80 }), A.adminReq("reserved"), A.adminReq("moderation")]);
-  $("accounts").querySelector("tbody").innerHTML = accts.map((a) => `<tr><td><a href="/${esc(a.handle)}">@${esc(a.handle)}</a><div class="muted" style="font-size:.75rem">${esc(a.did)}</div></td><td>${when(a.created)}</td><td>${a.records}</td><td>${a.passkeys}</td><td>${a.hosted ? "hosted here" : "own server"}</td><td class="st-${esc(a.status || "active")}">${esc(a.status || "active")}</td><td>${a.status === "hidden" ? `<button class="quiet" data-act="unhide" data-kind="account" data-subject="${esc(a.did)}">unhide</button>` : (!a.status || a.status === "active") ? `<button class="quiet" data-act="hide" data-kind="account" data-subject="${esc(a.did)}">hide</button>` : ""}</td></tr>`).join("");
+  // Deleted accounts are hidden unless asked for. Rows whose handle starts with "~" are markers for accounts deleted
+  // elsewhere, kept so their firehose-indexed records stop counting; they are never listed.
+  const real = accts.filter((a) => !String(a.handle || "").startsWith("~")), deleted = real.filter((a) => a.status === "deleted");
+  $("deletedcount").textContent = `(${deleted.length})`;
+  const shown = $("showdeleted").checked ? real : real.filter((a) => a.status !== "deleted");
+  $("accounts").querySelector("tbody").innerHTML = shown.map((a) => `<tr><td><a href="/${esc(a.handle)}">@${esc(a.handle)}</a><div class="muted" style="font-size:.75rem">${esc(a.did)}</div></td><td>${when(a.created)}</td><td>${a.records}</td><td>${a.passkeys}</td><td>${a.hosted ? "hosted here" : "own server"}</td><td class="st-${esc(a.status || "active")}">${esc(a.status || "active")}</td><td>${a.status === "hidden" ? `<button class="quiet" data-act="unhide" data-kind="account" data-subject="${esc(a.did)}">unhide</button>` : (!a.status || a.status === "active") ? `<button class="quiet" data-act="hide" data-kind="account" data-subject="${esc(a.did)}">hide</button>` : ""}</td></tr>`).join("");
   $("records").querySelector("tbody").innerHTML = recs.map((r) => `<tr><td>${when(r.at)}</td><td>@${esc(r.handle || "?")}</td><td>${esc(r.kind)}</td><td style="max-width:22rem;word-break:break-all">${esc(r.target)}${r.body ? `<div class="muted">${esc(r.body.slice(0, 140))}</div>` : ""}</td><td class="st-${r.state}">${r.state}</td><td>${r.state === "live" ? `<button class="quiet" data-act="hide" data-kind="record" data-subject="${esc(r.uri || r.id)}">hide</button>` : r.state === "hidden" ? `<button class="quiet" data-act="unhide" data-kind="record" data-subject="${esc(r.uri || r.id)}">unhide</button>` : ""}</td></tr>`).join("");
   $("builtin").textContent = `${res.builtIn.length} built in, including every page name. Added by admins:`;
   $("added").innerHTML = res.added.map((r) => `<li>${esc(r.key)} <span class="muted">${when(r.at)}</span> <button class="quiet small" data-unreserve="${esc(r.key)}">remove</button></li>`).join("") || "<li class='muted'>none</li>";
@@ -41,6 +46,7 @@ async function load() {
   $("modlog").innerHTML = mod.map((m) => `<li>${when(m.at)} · @${esc(m.by_handle)} ${esc(m.action)} ${esc(m.kind)} <code>${esc(m.subject)}</code>${m.reason ? ` · ${esc(m.reason)}` : ""}</li>`).join("") || "<li class='muted'>nothing yet</li>";
 }
 await load();
+$("showdeleted").addEventListener("change", () => load());
 document.body.addEventListener("click", async (e) => {
   const w = e.target.closest("button[data-w]"); if (w) { e.preventDefault(); try { const r = await A.adminReq(w.dataset.w, { word: $("word").value }); $("word").value = ""; msg("stored as " + r.hash + "…", "ok"); await load(); } catch (err) { msg(err.message, "err"); } return; }
   const u = e.target.closest("button[data-unhash]"); if (u) { try { await A.adminReq("unblockhash", { hash: u.dataset.unhash }); await load(); } catch (err) { msg(err.message, "err"); } return; }
