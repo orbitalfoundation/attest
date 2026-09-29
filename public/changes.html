@@ -4,6 +4,9 @@
 <h1>changes <small>a public revision log</small></h1>
 <p>Newest first. Decisions and reversals are recorded here as they happen, including the ones that make earlier pages wrong; those pages get corrected, and the correction is logged too. The full working notes are the dated entries in <a href="https://github.com/orbitalfoundation/attest/tree/main/devlog">devlog/</a> in the repository.</p>
 
+<h2>2026-09-29 · Offensive handles refused, without keeping the words</h2>
+<p>Sign-up now refuses offensive handles, including disguised spellings with digits or repeated letters. The words come from three open-source lists covering English and eleven other languages, read only when the list is built; what the service keeps is their SHA-256 hashes, so no such word appears in its code or on its server. To avoid blocking real people, a word that is also someone's name never blocks, words from other languages that are ordinary English words are dropped, and only English words that never occur inside ordinary English words are caught in the middle of a handle. Against the system dictionary, one proper name in 9,704 is still caught. Admins can block or allow further words from the admin page, again stored only as hashes.</p>
+
 <h2>2026-09-29 · Admin, and a public moderation log</h2>
 <p>An admin page for the people who run this instance, today just the founder. Every admin request is signed by the admin's own key, like any record; there is no admin password. Admins can see the service's health, accounts and recent records, reserve handles, and hide a record or an account from attest's counts and pages. Hiding deletes nothing and can be undone, and every hide and unhide is published at <a href="/moderation">/moderation</a> with who did it and why, along with the list of admins. Power over a shared space should be visible to the people in it.</p>
 

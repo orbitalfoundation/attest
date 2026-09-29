@@ -1,6 +1,7 @@
 // Handle rules. A handle becomes <handle>.attest.monster, a DNS label and an AT Protocol handle segment, so it must be a
 // valid hostname label; we also require a minimum length, refuse reserved names, and hold released handles for a year.
 import * as store from "./store.mjs";
+import { isBlocked, normalizeWord, sha } from "./blocklist.mjs";
 export const MIN = 4, MAX = 20, HOLD_DAYS = 365;
 const SHAPE = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/; // letters, digits, single hyphens; starts with a letter; no leading/trailing/double hyphen
 // Roles, infrastructure subdomains, our own pages and brands, other networks, and words that would mislead as an identity.
@@ -27,8 +28,13 @@ export function check(raw) {
   if (h.length > MAX) return { ok: false, error: `handles are at most ${MAX} characters` };
   if (!SHAPE.test(h)) return { ok: false, error: "use lowercase letters, digits and single hyphens, starting with a letter" };
   if (RESERVED.has(h) || store.kvGet("reserved", h)) return { ok: false, error: "that handle is reserved" };
+  if (isBlocked(h, extraBlocklist())) return { ok: false, error: "please choose a different handle" };
   if (store.getAccountByHandle(h)) return { ok: false, error: "that handle is taken" };
   const held = store.releasedHandle(h); if (held && Date.now() - Date.parse(held.at) < HOLD_DAYS * 86400e3) return { ok: false, error: "that handle belonged to a deleted account and is held until " + new Date(Date.parse(held.at) + HOLD_DAYS * 86400e3).toISOString().slice(0, 10) };
   return { ok: true, handle: h };
 }
 export const extraReserved = () => store.kvList ? store.kvList("reserved") : [];
+// Admin additions to the blocklist, stored only as hashes: "blockhash" blocks a normalised word as a whole handle or part,
+// "allowhash" lets a whole handle through that the lists would block.
+export const extraBlocklist = () => ({ exact: new Set(store.kvList("blockhash").map((r) => r.key)), allow: new Set(store.kvList("allowhash").map((r) => r.key)) });
+export const hashWord = (w) => sha(normalizeWord(w));

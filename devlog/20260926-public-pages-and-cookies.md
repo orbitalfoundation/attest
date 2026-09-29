@@ -243,3 +243,27 @@ or even just hardcoded to Anselm." Built `/admin`:
 - Anselm asked whether routing is database-driven: only as a
   fallback; fixed routes and page files first, then the not-found
   handler looks the first path segment up as a handle.
+
+## 2026-09-29: hashed handle blocklist
+
+Anselm: block swearwords in handles, "I don't want plaintext of
+swearwords in our code"; "there must be hashed collections". No
+maintained hashed list was found (none claimed). Built our own:
+`scripts/build-blocklist.mjs` reads leo-profanity, bad-words and
+@2toad/profanity (12 languages) at build time (devDependencies, not
+installed on the server) and writes `server/blocklist.json` with only
+SHA-256 hashes of normalised words. `server/blocklist.mjs` normalises
+handles (leet digits and symbols, accents, runs of 3+ letters, v→u)
+and checks the whole handle and each hyphen part against all hashes,
+and every substring of 4+ letters against the "anywhere" tier.
+Tiers and exemptions, tuned against /usr/share/dict/words: English
+words only may match anywhere, and only if no ordinary English word or
+name contains them; other-language words that are English words are
+dropped; words that are names are exempt. Result: 873 exact + 644
+anywhere; 1 of 9,704 names blocked (twinkies); remaining dictionary
+blocks reviewed and judged offensive or borderline (screw, escort,
+flange, pawn). Known misses: names used as insults (a name is exempt),
+Scunthorpe blocked (not in the dictionary). Admin page: block or allow
+a word, stored only as its hash (`blockhash`, `allowhash`). A repo scan
+confirms no listed word appears in any tracked text file. obscenity
+(pattern syntax, not word lists) was tried and dropped.

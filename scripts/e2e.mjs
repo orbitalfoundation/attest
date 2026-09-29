@@ -74,7 +74,7 @@ ok(await evaluate(`document.getElementById('h').textContent === '@' + ${JSON.str
 await go("/me", 2500);
 await evaluate(`document.getElementById('ptype').value = 'https://'; document.getElementById('pvalue').value = ${JSON.stringify(site + "/")}; document.getElementById('claim').requestSubmit(); true`);
 ok(await waitFor(`document.getElementById('pmsg').textContent.includes('attest-proof:')`), "claim made; instructions show the token");
-const claimUri = await evaluate(`document.querySelector('#proofs [data-check]')?.dataset.check`); ok(!!claimUri, "claim listed as unverified: " + claimUri);
+await waitFor(`!!document.querySelector('#proofs [data-check]')`); const claimUri = await evaluate(`document.querySelector('#proofs [data-check]')?.dataset.check`); ok(!!claimUri, "claim listed as unverified: " + claimUri);
 const claimId = (await (await fetch(`${base}/by/${encodeURIComponent(did1)}`)).json()).proofs[0].cid; ok(/^bafy/.test(claimId || ""), "claim has a repo cid " + String(claimId).slice(0, 12));
 await evaluate(`document.querySelector('#proofs [data-check]').click(); true`);
 ok(await waitFor(`document.getElementById('pmsg').className.includes('err')`), "check before the token is placed fails honestly: " + await evaluate(`document.getElementById('pmsg').textContent`));

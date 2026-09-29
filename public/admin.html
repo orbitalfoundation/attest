@@ -10,6 +10,10 @@
 <h2>Recent records</h2><table id="records"><thead><tr><th>when</th><th>who</th><th>kind</th><th>subject</th><th>state</th><th></th></tr></thead><tbody></tbody></table>
 <h2>Reserved handles</h2><p class="small muted" id="builtin"></p><ul id="added" class="small"></ul>
 <form id="reserve" style="display:flex;gap:.4rem;max-width:24rem"><input id="rname" placeholder="handle to reserve"><button class="quiet">reserve</button></form>
+<h2>Blocked words</h2>
+<p class="small muted" id="wl"></p>
+<form id="words" style="display:flex;gap:.4rem;flex-wrap:wrap;max-width:34rem"><input id="word" placeholder="a word, stored only as its hash" autocomplete="off" style="flex:1"><button class="quiet" data-w="blockword">block</button><button class="quiet" data-w="allowword">allow as a handle</button></form>
+<ul id="wlist" class="small"></ul>
 <h2>Moderation log</h2><ul id="modlog" class="small"></ul>
 <p id="msg" class="small"></p>
 </section>
@@ -32,10 +36,14 @@ async function load() {
   $("records").querySelector("tbody").innerHTML = recs.map((r) => `<tr><td>${when(r.at)}</td><td>@${esc(r.handle || "?")}</td><td>${esc(r.kind)}</td><td style="max-width:22rem;word-break:break-all">${esc(r.target)}${r.body ? `<div class="muted">${esc(r.body.slice(0, 140))}</div>` : ""}</td><td class="st-${r.state}">${r.state}</td><td>${r.state === "live" ? `<button class="quiet" data-act="hide" data-kind="record" data-subject="${esc(r.uri || r.id)}">hide</button>` : r.state === "hidden" ? `<button class="quiet" data-act="unhide" data-kind="record" data-subject="${esc(r.uri || r.id)}">unhide</button>` : ""}</td></tr>`).join("");
   $("builtin").textContent = `${res.builtIn.length} built in, including every page name. Added by admins:`;
   $("added").innerHTML = res.added.map((r) => `<li>${esc(r.key)} <span class="muted">${when(r.at)}</span> <button class="quiet small" data-unreserve="${esc(r.key)}">remove</button></li>`).join("") || "<li class='muted'>none</li>";
+  const wl = await A.adminReq("wordlists"); $("wl").textContent = `${wl.exact + wl.anywhere} hashed words from open lists (${wl.exact} as whole names or parts, ${wl.anywhere} anywhere in a handle), built ${wl.generated ? new Date(wl.generated).toLocaleDateString() : "?"}. Added here: ${wl.blocked.length} blocked, ${wl.allowed.length} allowed.`;
+  $("wlist").innerHTML = [...wl.blocked.map((x) => ({ ...x, kind: "blocked" })), ...wl.allowed.map((x) => ({ ...x, kind: "allowed" }))].map((x) => `<li>${x.kind} <code>${esc(x.hash.slice(0, 12))}…</code> <span class="muted">${when(x.at)}</span> <button class="quiet small" data-unhash="${esc(x.hash)}">remove</button></li>`).join("");
   $("modlog").innerHTML = mod.map((m) => `<li>${when(m.at)} · @${esc(m.by_handle)} ${esc(m.action)} ${esc(m.kind)} <code>${esc(m.subject)}</code>${m.reason ? ` · ${esc(m.reason)}` : ""}</li>`).join("") || "<li class='muted'>nothing yet</li>";
 }
 await load();
 document.body.addEventListener("click", async (e) => {
+  const w = e.target.closest("button[data-w]"); if (w) { e.preventDefault(); try { const r = await A.adminReq(w.dataset.w, { word: $("word").value }); $("word").value = ""; msg("stored as " + r.hash + "…", "ok"); await load(); } catch (err) { msg(err.message, "err"); } return; }
+  const u = e.target.closest("button[data-unhash]"); if (u) { try { await A.adminReq("unblockhash", { hash: u.dataset.unhash }); await load(); } catch (err) { msg(err.message, "err"); } return; }
   const b = e.target.closest("button[data-act], button[data-unreserve]"); if (!b) return;
   try {
     if (b.dataset.unreserve) { await A.adminReq("unreserve", { handle: b.dataset.unreserve }); }
@@ -43,5 +51,6 @@ document.body.addEventListener("click", async (e) => {
     msg("done", "ok"); await load();
   } catch (err) { msg(err.message, "err"); }
 });
+$("words").onsubmit = (e) => e.preventDefault();
 $("reserve").onsubmit = async (e) => { e.preventDefault(); try { await A.adminReq("reserve", { handle: $("rname").value }); $("rname").value = ""; msg("reserved", "ok"); await load(); } catch (err) { msg(err.message, "err"); } };
 </script></body></html>
