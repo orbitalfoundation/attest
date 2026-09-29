@@ -40,7 +40,7 @@ ok(await waitFor(`document.querySelector('[data-attest] .up').getAttribute('aria
 console.log("second widget, live push");
 const before2 = await evaluate(`Number(document.querySelectorAll('[data-attest] .n')[1].textContent)`);
 await evaluate(`document.querySelectorAll('[data-attest] .up')[1].click(); true`);
-ok(await waitFor(`Number(document.querySelectorAll('[data-attest] .n')[1].textContent) === ${"${before2 + 1}"}`), "second target upvoted (count rose by one)");
+ok(await waitFor("Number(document.querySelectorAll('[data-attest] .n')[1].textContent) === " + (before2 + 1)), "second target upvoted (count rose by one)");
 console.log("sign out, sign in again");
 await evaluate(`localStorage.removeItem('attest:session'); true`); await go("/login?return=/me");
 await evaluate(`document.getElementById('handle').value = ${JSON.stringify(handle)}; document.getElementById('signin').click(); true`);
