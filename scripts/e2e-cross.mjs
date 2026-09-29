@@ -43,4 +43,5 @@ ok(await waitFor(page, `document.querySelector('[data-attest] li')?.innerText.in
 const env = await evalIn(page, `(async () => { const A = await import(${JSON.stringify(service + "/attest-core.js")}); return JSON.stringify(await A.makeRecord('upvote', 'https://example.org/other')); })()`);
 const misuse = await evalIn(login, `(async () => { const A = await import('/attest-core.js'); try { await A.req('attest', ${env}); return 'accepted'; } catch (e) { return e.message; } })()`);
 ok(/issued for/.test(misuse), "a validly signed record is refused when submitted from another origin: " + misuse);
+if (process.env.PDS_URL && process.env.PDS_ADMIN_PASSWORD) { try { const pds = await import("../server/pds.mjs"); await pds.deleteAccount(JSON.parse(session).root); console.log("  · test repo account deleted from the PDS"); } catch (e) { console.log("  · cleanup failed:", e.message); } }
 console.log(fails ? `${fails} FAILED` : "all passed"); ws.close(); chrome.kill(); process.exit(fails ? 1 : 0);

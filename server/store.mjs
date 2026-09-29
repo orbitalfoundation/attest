@@ -150,7 +150,9 @@ export const isExternal = (did) => { const a = db.prepare("SELECT pds_password F
 export const getMeta = (k) => { const r = db.prepare("SELECT value FROM meta WHERE key = ?").get(k); return r ? JSON.parse(r.value) : null; };
 export const setMeta = (k, v) => db.prepare("INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(k, JSON.stringify(v));
 export function setAccountStatus(did, status) {
-  db.prepare("UPDATE accounts SET status = ? WHERE did = ?").run(status, did);
+  // Record status even for accounts this index never registered (records that arrived through the firehose), so a
+  // deleted or deactivated account's records stop counting either way.
+  if (!db.prepare("UPDATE accounts SET status = ? WHERE did = ?").run(status, did).changes) db.prepare("INSERT OR IGNORE INTO accounts (did, handle, created, status) VALUES (?, ?, ?, ?)").run(did, "~" + did, now(), status);
   if (status === "deleted") { const a = db.prepare("SELECT handle FROM accounts WHERE did = ?").get(did); if (a) db.prepare("INSERT OR REPLACE INTO released_handles (handle, did, at) VALUES (?, ?, ?)").run(a.handle, did, now()); db.prepare("UPDATE accounts SET handle = handle || '~' || ? WHERE did = ?").run(did.slice(-8), did); }
 }
 export const releasedHandle = (h) => db.prepare("SELECT handle, did, at FROM released_handles WHERE handle = ?").get(h) || null;
