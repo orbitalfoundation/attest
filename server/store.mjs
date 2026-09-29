@@ -26,7 +26,7 @@ export function open(path = process.env.ATTEST_DB || "data/attest.sqlite") {
   `);
   for (const [table, col, type] of [["accounts", "key_did", "TEXT"], ["accounts", "pds_handle", "TEXT"], ["accounts", "pds_password", "TEXT"], ["records", "uri", "TEXT"], ["records", "cid", "TEXT"], ["records", "collection", "TEXT"], ["records", "rkey", "TEXT"]])
     if (!db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`);
-  db.exec("CREATE INDEX IF NOT EXISTS records_uri ON records(uri); CREATE INDEX IF NOT EXISTS records_cid ON records(cid); CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT); CREATE TABLE IF NOT EXISTS kv (ns TEXT NOT NULL, k TEXT NOT NULL, v TEXT NOT NULL, at TEXT NOT NULL, PRIMARY KEY (ns, k)); CREATE TABLE IF NOT EXISTS released_handles (handle TEXT PRIMARY KEY, did TEXT, at TEXT NOT NULL); CREATE TABLE IF NOT EXISTS record_tags (record_id TEXT NOT NULL, tag TEXT NOT NULL, PRIMARY KEY (record_id, tag)); CREATE INDEX IF NOT EXISTS record_tags_tag ON record_tags(tag); CREATE TABLE IF NOT EXISTS identity_links (attest_did TEXT NOT NULL, external_did TEXT NOT NULL, handle TEXT, via TEXT, at TEXT NOT NULL, PRIMARY KEY (attest_did, external_did)); CREATE TABLE IF NOT EXISTS edges (uri TEXT PRIMARY KEY, src TEXT NOT NULL, dst TEXT NOT NULL, kind TEXT NOT NULL, at TEXT, reason TEXT, imported TEXT NOT NULL); CREATE INDEX IF NOT EXISTS edges_src ON edges(src, kind); CREATE INDEX IF NOT EXISTS edges_dst ON edges(dst, kind);");
+  db.exec("CREATE INDEX IF NOT EXISTS records_uri ON records(uri); CREATE INDEX IF NOT EXISTS records_cid ON records(cid); CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT); CREATE TABLE IF NOT EXISTS moderation (seq INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, subject TEXT NOT NULL, action TEXT NOT NULL, reason TEXT, by_did TEXT NOT NULL, at TEXT NOT NULL); CREATE TABLE IF NOT EXISTS kv (ns TEXT NOT NULL, k TEXT NOT NULL, v TEXT NOT NULL, at TEXT NOT NULL, PRIMARY KEY (ns, k)); CREATE TABLE IF NOT EXISTS released_handles (handle TEXT PRIMARY KEY, did TEXT, at TEXT NOT NULL); CREATE TABLE IF NOT EXISTS record_tags (record_id TEXT NOT NULL, tag TEXT NOT NULL, PRIMARY KEY (record_id, tag)); CREATE INDEX IF NOT EXISTS record_tags_tag ON record_tags(tag); CREATE TABLE IF NOT EXISTS identity_links (attest_did TEXT NOT NULL, external_did TEXT NOT NULL, handle TEXT, via TEXT, at TEXT NOT NULL, PRIMARY KEY (attest_did, external_did)); CREATE TABLE IF NOT EXISTS edges (uri TEXT PRIMARY KEY, src TEXT NOT NULL, dst TEXT NOT NULL, kind TEXT NOT NULL, at TEXT, reason TEXT, imported TEXT NOT NULL); CREATE INDEX IF NOT EXISTS edges_src ON edges(src, kind); CREATE INDEX IF NOT EXISTS edges_dst ON edges(dst, kind);");
   for (const [table, col, type] of [["accounts", "status", "TEXT"], ["records", "about_did", "TEXT"], ["records", "about_via", "TEXT"]]) if (!db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`);
   return db;
 }
@@ -145,8 +145,26 @@ export function aboutSummary(did) {
 export function backfillAbout(resolve) { let n = 0; for (const r of db.prepare("SELECT id, target FROM records WHERE about_did IS NULL AND target LIKE 'http%'").all()) { const a = resolve(r.target); if (a) { db.prepare("UPDATE records SET about_did = ?, about_via = ? WHERE id = ?").run(a.did, a.via, r.id); n++; } } return n; }
 export const kvSet = (ns, k, v) => db.prepare("INSERT INTO kv (ns, k, v, at) VALUES (?, ?, ?, ?) ON CONFLICT(ns, k) DO UPDATE SET v = excluded.v, at = excluded.at").run(ns, k, JSON.stringify(v), now());
 export const kvGet = (ns, k) => { const r = db.prepare("SELECT v FROM kv WHERE ns = ? AND k = ?").get(ns, k); return r ? JSON.parse(r.v) : null; };
+export const kvList = (ns) => db.prepare("SELECT k, v, at FROM kv WHERE ns = ? ORDER BY k").all(ns).map((r) => ({ key: r.k, value: JSON.parse(r.v), at: r.at }));
 export const kvDel = (ns, k) => db.prepare("DELETE FROM kv WHERE ns = ? AND k = ?").run(ns, k);
 export const isExternal = (did) => { const a = db.prepare("SELECT pds_password FROM accounts WHERE did = ?").get(did); return !!a && !a.pds_password; };
+// ---- moderation: reversible, logged publicly. A hidden record is marked retracted = 2 (every live query needs 0);
+// a hidden account gets status 'hidden' (every count excludes non-active authors).
+export function moderate({ kind, subject, action, reason, by }) {
+  db.exec("BEGIN"); try {
+    if (kind === "record") { const n = db.prepare("UPDATE records SET retracted = ? WHERE (uri = ? OR id = ?) AND retracted = ?").run(action === "hide" ? 2 : 0, subject, subject, action === "hide" ? 0 : 2).changes; if (!n) throw new Error("no such " + (action === "hide" ? "live" : "hidden") + " record"); }
+    else if (kind === "account") { const n = db.prepare("UPDATE accounts SET status = ? WHERE did = ?").run(action === "hide" ? "hidden" : "active", subject).changes; if (!n) throw new Error("no such account"); }
+    else throw new Error("unknown kind");
+    db.prepare("INSERT INTO moderation (kind, subject, action, reason, by_did, at) VALUES (?, ?, ?, ?, ?, ?)").run(kind, subject, action, reason || null, by, now());
+    db.exec("COMMIT");
+  } catch (e) { db.exec("ROLLBACK"); throw e; }
+}
+export const moderationLog = (limit = 200) => db.prepare("SELECT m.*, a.handle AS by_handle FROM moderation m LEFT JOIN accounts a ON a.did = m.by_did ORDER BY seq DESC LIMIT ?").all(limit);
+export function adminAccounts() {
+  return db.prepare(`SELECT a.did, a.handle, a.created, a.status, a.pds_password IS NOT NULL AS hosted, (SELECT COUNT(*) FROM records r WHERE r.by_did = a.did AND r.retracted = 0) AS records, (SELECT COUNT(*) FROM credentials c WHERE c.did = a.did) AS passkeys, (SELECT MAX(r.at) FROM records r WHERE r.by_did = a.did) AS last FROM accounts a WHERE a.handle NOT LIKE '~%' ORDER BY a.created DESC`).all().map((a) => ({ ...a, hosted: !!a.hosted }));
+}
+export const recentRecords = (limit = 60) => db.prepare("SELECT r.id, r.uri, r.kind, r.target, r.at, r.retracted, r.json, a.handle FROM records r LEFT JOIN accounts a ON a.did = r.by_did ORDER BY r.at DESC LIMIT ?").all(limit).map((r) => ({ id: r.id, uri: r.uri, kind: r.kind, target: r.target, at: r.at, state: ["live", "retracted", "hidden"][r.retracted] || "?", handle: r.handle, body: JSON.parse(r.json).record?.body || null }));
+export const logCount = () => db.prepare("SELECT COALESCE(MAX(seq),0) AS n FROM log").get().n;
 export const getMeta = (k) => { const r = db.prepare("SELECT value FROM meta WHERE key = ?").get(k); return r ? JSON.parse(r.value) : null; };
 export const setMeta = (k, v) => db.prepare("INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(k, JSON.stringify(v));
 export function setAccountStatus(did, status) {

@@ -26,8 +26,9 @@ export function check(raw) {
   if (h.length < MIN) return { ok: false, error: `handles are at least ${MIN} characters` };
   if (h.length > MAX) return { ok: false, error: `handles are at most ${MAX} characters` };
   if (!SHAPE.test(h)) return { ok: false, error: "use lowercase letters, digits and single hyphens, starting with a letter" };
-  if (RESERVED.has(h)) return { ok: false, error: "that handle is reserved" };
+  if (RESERVED.has(h) || store.kvGet("reserved", h)) return { ok: false, error: "that handle is reserved" };
   if (store.getAccountByHandle(h)) return { ok: false, error: "that handle is taken" };
   const held = store.releasedHandle(h); if (held && Date.now() - Date.parse(held.at) < HOLD_DAYS * 86400e3) return { ok: false, error: "that handle belonged to a deleted account and is held until " + new Date(Date.parse(held.at) + HOLD_DAYS * 86400e3).toISOString().slice(0, 10) };
   return { ok: true, handle: h };
 }
+export const extraReserved = () => store.kvList ? store.kvList("reserved") : [];

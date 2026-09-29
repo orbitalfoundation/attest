@@ -45,6 +45,8 @@ export async function routes(app) {
       back.set("link", token); back.set("handle", handle || did); return reply.redirect("/login?" + back);
     } catch (e) { return reply.redirect("/login?" + new URLSearchParams({ err: "sign-in was not completed: " + e.message })); }
   });
+  app.get("/moderation.json", async (req, reply) => { reply.header("Cache-Control", "public, max-age=0, s-maxage=10"); const { admins } = await import("./admin.mjs"); return { admins: admins(), actions: store.moderationLog() }; });
+  app.get("/admins", async () => { const { admins } = await import("./admin.mjs"); return { admins: admins() }; });
   app.get("/tagged/:tag", async (req, reply) => { reply.header("Cache-Control", "public, max-age=0, s-maxage=10"); return { tag: req.params.tag, items: store.tagged(String(req.params.tag).toLowerCase()) }; });
   app.get("/tags.json", async (req, reply) => { reply.header("Cache-Control", "public, max-age=0, s-maxage=30"); return { tags: store.popularTags() }; });
   app.get("/bookmarks/:did", async (req, reply) => { reply.header("Cache-Control", "public, max-age=0, s-maxage=5"); return { did: req.params.did, tag: req.query.tag || null, items: store.bookmarksBy(req.params.did, req.query.tag ? String(req.query.tag).toLowerCase() : null) }; });

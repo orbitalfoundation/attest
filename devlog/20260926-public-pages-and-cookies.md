@@ -220,3 +220,26 @@ would fix it. Built:
 - Not yet: indexing records written to other servers by other tools
   (Jetstream); the index only knows what attest wrote there.
 - A first non-us account exists: `clericclericsson`.
+
+## 2026-09-29: admin page and public moderation log
+
+Anselm: "Do I have an admin page? Should be visible to the first user
+or even just hardcoded to Anselm." Built `/admin`:
+- Admins: `ADMIN_DIDS` env, default the DID of handle `ADMIN_HANDLE`
+  (default `anselm`, currently `did:plc:i44evao7r4qeg5373thidnqk`).
+- Every admin request is `{name, payload, at, del, sig}` with `sig` by
+  the delegated device key over `{type:"admin", name, payload, at}`;
+  server checks live delegation, origin, admin root, time, signature.
+- Views: health (stats, log, firehose cursor, PDS, OAuth, disk,
+  memory, uptime, node), accounts, recent records, reserved handles,
+  moderation log. Actions: hide/unhide record (retracted = 2) or
+  account (status `hidden`), reserve/unreserve handles (kv).
+- Every hide/unhide goes to the `moderation` table, public at
+  `/moderation` (page) and `/moderation.json`, with the admin list.
+  The menu shows "admin" only to admins (`/admins`).
+- `scripts/e2e-admin.mjs`: 12 checks locally against the live PDS
+  (admin panel, hide, public log, unhide, reserve, non-admin refused,
+  forged request refused); test accounts deleted after.
+- Anselm asked whether routing is database-driven: only as a
+  fallback; fixed routes and page files first, then the not-found
+  handler looks the first path segment up as a handle.

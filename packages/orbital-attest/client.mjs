@@ -102,3 +102,8 @@ export async function rootAction(action) {
   const cred = await navigator.credentials.get({ publicKey: requestOptions(options) });
   return req("root.finish", { action, credentialId: cred.id, assertion: credToJSON(cred) });
 }
+// Admin requests: signed by this page's device key over {type:"admin", name, payload, at}; the server checks the root is an admin.
+export async function adminReq(name, payload = null) {
+  const s = session(); if (!s) throw new Error("not signed in"); const dev = await deviceKey(); const at = new Date().toISOString();
+  return req("admin", { name, payload, at, del: s.id, sig: await signObject(dev.privateKey, { type: "admin", name, payload, at }) });
+}

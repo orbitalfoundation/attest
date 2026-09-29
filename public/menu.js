@@ -7,4 +7,5 @@ ${s ? `<li><a href="/${s.handle}">my page</a></li><li><a href="/me">settings</a>
 document.body.appendChild(el);
 el.querySelector("button").onclick = () => el.classList.toggle("open");
 document.addEventListener("click", (e) => { if (!el.contains(e.target)) el.classList.remove("open"); });
+if (s) fetch("/admins").then((r) => r.json()).then(({ admins }) => { if (admins.includes(s.root)) { const li = document.createElement("li"); li.innerHTML = '<a href="/admin">admin</a>'; el.querySelector("ul").insertBefore(li, el.querySelector("#signout")?.parentElement || null); } }).catch(() => {});
 el.querySelector("#signout")?.addEventListener("click", (e) => { e.preventDefault(); clearSession(); location.reload(); });

@@ -10,6 +10,7 @@ import * as proofs from "./proofs.mjs";
 import * as pds from "./pds.mjs";
 import * as dns from "./dns.mjs";
 import * as handles from "./handles.mjs";
+import * as admin from "./admin.mjs";
 import { randomBytes as rb } from "node:crypto";
 import { randomBytes } from "node:crypto";
 const pending = new Map(); // nonce -> {challenge, handle, at}
@@ -86,6 +87,7 @@ const handlers = {
   async "proof.instructions"({ claim }) { const c = proofs.claimRecord(claim); return { token: proofs.tokenFor(c.id), instructions: proofs.instructions(c.record.target, c.id) }; },
   async "proof.check"({ claim }, ctx) { if (!allow("proof:" + ctx.ip, 10)) throw new Error("too many checks; slow down"); return proofs.check(claim); },
   async "handle.check"({ handle }) { return handles.check(handle); },
+  async admin(envelope, ctx) { if (!allow("admin:" + ctx.ip, 120)) throw new Error("slow down"); return admin.handle(envelope, ctx.origin); },
   async lookup({ handle }) { const a = store.getAccountByHandle(String(handle || "").trim().toLowerCase()); if (!a) throw new Error("no account with that handle"); return { did: a.did, handle: a.handle }; },
   async read({ targets }) { return records.read(targets || []); },
 };
