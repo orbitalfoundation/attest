@@ -24,3 +24,9 @@ now takes the redirect flow, as matchmaker's `scripts/attest-e2e.mjs` does. Not 
 service from here; matchmaker's test ran against a local attest and passed. iOS is Anselm's to try on
 his phone once this is deployed; the matchmaker change is useless until attest.monster serves this
 client and login page.
+
+**Update, later 2026-09-29 (attest room).** Deployed and pushed at 7011f6a. Anselm tested matchmaker
+signing in through attest, including on his phone: it works. Live check from here: the cross-origin
+test against attest.monster, with a stand-in third-party page on localhost, took the redirect, consumed
+the fragment and had its signed upvote and comment accepted; its later steps need a full local attest
+as the site and were not run.
