@@ -3,6 +3,7 @@
 // Actions are reversible and moderation is logged publicly at /moderation.
 import * as store from "./store.mjs";
 import * as handles from "./handles.mjs";
+import * as records from "./records.mjs";
 import * as pds from "./pds.mjs";
 import * as atoauth from "./atoauth.mjs";
 import { verifyObject } from "../packages/orbital-attest/verify.mjs";
@@ -11,13 +12,9 @@ export function admins() {
   const env = (process.env.ADMIN_DIDS || "").split(",").map((s) => s.trim()).filter(Boolean); if (env.length) return env;
   const a = store.getAccountByHandle(process.env.ADMIN_HANDLE || "anselm"); return a ? [a.did] : [];
 }
-export async function check({ name, payload, at, del, sig }, origin) {
-  const d = store.getDelegation(del); if (!d) throw new Error("not signed in");
-  if (store.isRevoked(del)) throw new Error("session revoked; sign in again");
-  const dg = d.delegation; if (origin && dg.origin !== origin) throw new Error("wrong origin"); if (Date.now() > Date.parse(dg.until)) throw new Error("session expired");
+export async function check(envelope, origin) {
+  const dg = await records.checkSigned(envelope, origin, "admin");
   if (!admins().includes(dg.root)) throw new Error("not an admin");
-  if (!(Math.abs(Date.parse(at) - Date.now()) < 5 * 60e3)) throw new Error("request time is not near now");
-  if (!(await verifyObject(dg.devKey, { type: "admin", name, payload: payload ?? null, at }, sig))) throw new Error("admin signature does not verify");
   return dg.root;
 }
 const handlers = {

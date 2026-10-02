@@ -52,22 +52,36 @@ async function writer(did) {
   if (atoauth.enabled()) return { put: (c, k, r) => atoauth.putRecord(did, c, k, r), create: (c, r) => atoauth.createRecord(did, c, r), del: (c, k) => atoauth.deleteRecord(did, c, k) };
   throw new Error("no way to write to the repository of " + did + "; sign in with your handle again");
 }
-// ---- delegations (unchanged in shape; the root is now the account's did:plc)
-export async function acceptDelegation({ envelope, origin }) {
-  const id = await checkDelegation(envelope.delegation);
+// ---- delegations. The site a delegation was issued for (`proof.origin`) is kept privately beside it, never published.
+export async function acceptDelegation({ envelope, origin, proof }) {
+  const id = await checkDelegation(envelope.delegation, proof);
   const credential = store.getCredential(envelope.credentialId); if (!credential) throw new Error("unknown passkey");
   const account = store.getAccount(credential.did); if (!account || account.did !== envelope.delegation.root) throw new Error("passkey does not belong to root " + envelope.delegation.root);
   const { counter } = await verifyAssertion({ origin, response: envelope.assertion, challenge: hexToB64u(id), credential });
   store.setCounter(credential.id, counter);
-  if (!store.getDelegation(id)) store.putDelegation(id, envelope);
+  if (!store.getDelegation(id)) store.putDelegation(id, envelope, proof.origin);
   return { id, root: account.did, handle: account.handle, until: envelope.delegation.until };
 }
 function liveDelegation(del, origin) {
   const d = store.getDelegation(del); if (!d) throw new Error("unknown delegation");
   if (store.isRevoked(del)) throw new Error("delegation revoked; sign in again");
-  const dg = d.delegation; if (origin && dg.origin !== origin) throw new Error("delegation was issued for " + dg.origin + ", not " + origin);
+  const dg = d.delegation, issued = store.delegationOrigin(del); if (origin && issued !== origin) throw new Error("this sign-in was issued for another site, not " + origin);
   if (Date.now() > Date.parse(dg.until)) throw new Error("delegation expired; sign in again");
   return dg;
+}
+// A request signed by a live delegation's device key over {type, name, payload, at}, from the site the delegation was issued for.
+// Returns the delegation (its root is the signer). Used for the owner's own private reads and, with an admin check, for admin.
+export async function checkSigned({ name, payload, at, del, sig }, origin, type) {
+  const dg = liveDelegation(del, origin);
+  if (!(Math.abs(Date.parse(at) - Date.now()) < 5 * 60e3)) throw new Error("request time is not near now");
+  if (!(await verifyObject(dg.devKey, { type, name, payload: payload ?? null, at }, sig))) throw new Error("signature does not verify");
+  return dg;
+}
+// Status of one delegation, for a site's server confirming a sign-in. The id is unguessable (it covers a random salt), so only a
+// holder of the session can ask. With ?origin, answers whether it was issued for that site, without ever saying which site it was.
+export function delegationStatus(id, origin) {
+  const d = store.delegationStatus(id); if (!d) return null;
+  return { id: d.id, root: d.root, handle: store.handleOf(d.root), device: d.device, from: d.from_at, until: d.until_at, revoked: d.revoked || null, ...(origin ? { origin: d.origin === origin ? "match" : "mismatch" } : {}) };
 }
 // ---- a record from a client: { collection, rkey?, record, del }
 export function indexShape(collection, record, by) {

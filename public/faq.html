@@ -33,7 +33,11 @@
 <p>No to both. It runs on signed records in public repositories on ordinary servers, and there is nothing to buy.</p>
 
 <h2>Is everything public?</h2>
-<p>Yes. That is deliberate: a trust graph only works if anyone can check it. Anything derived from it, counts and scores included, is public too. Do not sign what you would not say in public.</p>
+<p>What you sign is. That is deliberate: a trust graph only works if anyone can check it. Anything derived from it, counts and scores included, is public too. Do not sign what you would not say in public.</p>
+
+<h2>Can people see which sites I sign in to with attest?</h2>
+<p>No. When you sign in to another site through attest, your passkey signs a permission for that site's key, and the permission names the site only as a salted hash. The salt stays with that site, so nobody else can work out which site it was. Signing in alone publishes nothing at all: the permission enters the public log only when something signed with it is published, such as a vote or a comment, and then still without the site's name.</p>
+<p>What you then publish there is public as usual. A vote or comment on a page names that page, because that is the point of it. attest's own server knows which site each sign-in is for, so it can refuse a key used somewhere else and show you your own sign-ins on <a href="/me">your page</a>. Sign-ins made before October 2, 2026 named the site openly; the public log now withholds those names.</p>
 
 <h2>Do you use cookies? Why is there no cookie notice?</h2>
 <p>No cookies, and nothing that tracks you, so there is nothing to ask consent for. The site keeps three things on your own device, all needed for what you asked it to do: your sign-in session and the handle you last used, in the browser's local storage, and the key that signs your records, in its database, marked so that even the page cannot read it out. None of it is sent to us. Signing out removes the session. On another site that embeds attest, those three live in that site's storage, not ours.</p>

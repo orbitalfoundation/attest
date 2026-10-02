@@ -45,13 +45,20 @@ const handlers = {
     return { did: keyDid, handle: p.handle };
   },
   // Sign-in is signing a delegation: the client builds the delegation, we hand back WebAuthn options whose challenge is its id.
-  async "delegate.start"({ delegation }, ctx) {
-    const { checkDelegation } = await import("./identity.mjs"); const id = await checkDelegation(delegation);
+  // `proof` = { origin, salt }: the site the delegation is for, sent beside it and kept private (the delegation carries only a hash).
+  async "delegate.start"({ delegation, proof }, ctx) {
+    const { checkDelegation } = await import("./identity.mjs"); const id = await checkDelegation(delegation, proof);
     const options = await passkeys.authenticationOptions({ origin: ctx.origin, challenge: Buffer.from(id, "hex").toString("base64url"), allow: store.keysOf(delegation.root) });
     return { id, options };
   },
-  async "delegate.finish"({ delegation, credentialId, assertion }, ctx) {
-    return records.acceptDelegation({ envelope: { delegation, credentialId, assertion }, origin: ctx.origin });
+  async "delegate.finish"({ delegation, proof, credentialId, assertion }, ctx) {
+    return records.acceptDelegation({ envelope: { delegation, credentialId, assertion }, origin: ctx.origin, proof });
+  },
+  // The owner's own private reads, signed by their device key on any site they signed in to: today, the list of their sign-ins.
+  async own(envelope, ctx) {
+    const dg = await records.checkSigned(envelope, ctx.origin, "own");
+    if (envelope.name === "sessions") return store.delegationsOf(dg.root, { withOrigin: true });
+    throw new Error("unknown request");
   },
   // Root actions (revoke a delegation, add or remove a passkey): the passkey signs the action's id.
   async "root.start"({ action }, ctx) {

@@ -30,6 +30,9 @@ export function canonical(value) {
 }
 export async function sha256(bytesOrString) { const data = typeof bytesOrString === "string" ? new TextEncoder().encode(bytesOrString) : bytesOrString; return new Uint8Array(await subtle.digest("SHA-256", data)); }
 export const idOf = async (obj) => hex(await sha256(canonical(obj)));
+// A v2 delegation names its site only as originHash = originCommitment(origin, salt). The salt stays with the site (in its
+// session), so the public delegation does not say where its holder signed in; the site, holding origin and salt, can prove it.
+export const originCommitment = (origin, salt) => idOf({ origin, salt });
 // ECDSA P-256 / SHA-256 over the canonical bytes of an object; signature is raw r||s, base64url.
 export async function signObject(privateKey, obj) { return b64u(await subtle.sign({ name: "ECDSA", hash: "SHA-256" }, privateKey, new TextEncoder().encode(canonical(obj)))); }
 export async function verifyObject(jwk, obj, sigB64u) {

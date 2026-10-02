@@ -26,9 +26,19 @@ const creds = await send("WebAuthn.getCredentials", { authenticatorId }); ok(cre
 await sleep(1500);
 ok(await evaluate(`!!localStorage.getItem('attest:session')`), "session stored");
 ok(await evaluate(`document.body.innerText.includes('@' + ${JSON.stringify(handle)})`), "widget shows the handle");
+console.log("sign-in privacy");
+const sess0 = JSON.parse(await evaluate(`localStorage.getItem('attest:session')`));
+const pubDel = async () => (await (await fetch(`${base}/log?since=0&limit=2000`)).json()).entries.find((e) => e.type === "delegation" && e.id === sess0.id);
+ok(sess0.delegation.v === 2 && !("origin" in sess0.delegation) && /^[0-9a-f]{64}$/.test(sess0.delegation.originHash) && sess0.origin === base && sess0.salt, "delegation names its site only as a salted hash; the session holds origin and salt");
+ok(!(await pubDel()) && !(await (await fetch(`${base}/by/${encodeURIComponent(sess0.root)}`)).json()).delegations.some((d) => d.id === sess0.id), "signing in alone publishes nothing: the delegation is in neither the log nor the profile");
+const st = await (await fetch(`${base}/delegation/${sess0.id}?origin=${encodeURIComponent(base)}`)).json(), st2 = await (await fetch(`${base}/delegation/${sess0.id}?origin=https://elsewhere.example`)).json();
+ok(st.root === sess0.root && st.origin === "match" && st2.origin === "mismatch" && !JSON.stringify(st).includes(base), "a site's server can confirm a sign-in by id and its own origin without the site being disclosed");
+const own = JSON.parse(await evaluate(`(async () => { const A = await import('/attest-core.js'); return JSON.stringify(await A.own('sessions')); })()`));
+ok(own.some((d) => d.id === sess0.id && d.origin === base && d.published === false), "the owner's signed request lists the sign-in with its site");
 console.log("upvote");
 await evaluate(`document.querySelector('[data-attest] .up').click(); true`);
 ok(await waitFor(`document.querySelector('[data-attest] .up').getAttribute('aria-pressed') === 'true' && document.querySelector('[data-attest] .n').textContent === '1'`), "upvote counted and marked mine");
+{ const e = await pubDel(); ok(e && e.delegation.originHash === sess0.delegation.originHash && !JSON.stringify(e).includes(base.replace(/^https?:\/\//, "")), "the first signed record publishes the delegation, still without its site"); }
 console.log("comment");
 await evaluate(`const ta = document.querySelector('[data-attest] textarea'); ta.value = 'signed hello from e2e'; document.querySelector('[data-attest] form button').click(); true`);
 ok(await waitFor(`document.querySelector('[data-attest] li')?.innerText.includes('signed hello from e2e')`), "comment appears, attributed");

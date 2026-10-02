@@ -1,7 +1,7 @@
 // orbital-attest client: a per-site device key, a delegation from the person's passkey, signing, and one socket to the service.
 // Plain ES module, no build step, no dependencies (socket.io's client is loaded from the service itself).
 // Usage: import * as A from "orbital-attest"; A.configure({ server: "https://attest.monster" }).
-import { didFromJwk, canonical, idOf, signObject, normalizeTarget, normalizeTags, b64u, unb64u, KINDS, inlineSign, inlineVerify } from "./verify.mjs";
+import { didFromJwk, canonical, idOf, signObject, normalizeTarget, normalizeTags, b64u, unb64u, KINDS, inlineSign, inlineVerify, originCommitment } from "./verify.mjs";
 export { didFromJwk, canonical, idOf, normalizeTarget, normalizeTags, b64u, unb64u, KINDS, inlineSign, inlineVerify };
 const NS = "monster.attest.";
 export let server = null;
@@ -96,10 +96,18 @@ export function signIn({ popup, mode } = {}) {
 // that imports this module is signed in by the time it asks session(); the fragment is removed from the address bar.
 export function takeSessionFromHash() {
   try { const m = (location.hash || "").match(/^#attest-session=([A-Za-z0-9_-]+)$/); if (!m) return null;
-    const s = JSON.parse(new TextDecoder().decode(unb64u(m[1]))); if (!s?.id || !s.delegation || s.delegation.origin !== location.origin) return null;
+    const s = JSON.parse(new TextDecoder().decode(unb64u(m[1]))); if (!s?.id || !s.delegation || siteOf(s) !== location.origin) return null;
     setSession(s); history.replaceState(null, "", location.pathname + location.search); return s; } catch { return null; }
 }
 if (typeof location !== "undefined") takeSessionFromHash();
+// The site a session is for: v2 sessions carry it beside the delegation (whose originHash commits to it, with the salt); v1 named it.
+export function siteOf(s) { return s?.delegation?.v === 1 ? s.delegation.origin : s?.origin || null; } // hoisted: used at module load
+// The owner's own private reads, signed by this page's device key: own("sessions") lists every sign-in with its site.
+export async function own(name, payload = null) {
+  const s = session(); if (!s) throw new Error("not signed in"); const dev = await deviceKey(); const at = new Date().toISOString();
+  return req("own", { name, payload, at, del: s.id, sig: await signObject(dev.privateKey, { type: "own", name, payload, at }) });
+}
+export { originCommitment };
 export const short = (did) => did.slice(8, 16) + "…" + did.slice(-4);
 // --- WebAuthn JSON helpers and root actions (used by the service's own pages).
 export const creationOptions = (o) => ({ ...o, challenge: unb64u(o.challenge), user: { ...o.user, id: unb64u(o.user.id) }, excludeCredentials: (o.excludeCredentials || []).map((c) => ({ ...c, id: unb64u(c.id) })) });

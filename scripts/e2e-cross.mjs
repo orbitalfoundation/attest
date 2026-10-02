@@ -17,6 +17,14 @@ const evalIn = async (s, expression) => { const r = await send("Runtime.evaluate
 const waitFor = async (s, expr, ms = 10000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { try { if (await evalIn(s, expr)) return true; } catch {} await sleep(200); } return false; };
 const tab = async (url) => { const { targetId } = await send("Target.createTarget", { url: "about:blank" }); await sleep(400); const s = sessions.get(targetId); await send("Runtime.enable", {}, s); await send("Page.enable", {}, s); await send("Page.navigate", { url }, s); await sleep(1800); return s; };
 await send("Target.setAutoAttach", { autoAttach: true, waitForDebuggerOnStart: false, flatten: true });
+// The third-party page: served here when the site is local and nothing else is listening, so the test needs no setup.
+const siteUrl = new URL(site); let siteServer = null;
+if (/^(localhost|127\.0\.0\.1)$/.test(siteUrl.hostname) && !(await fetch(site).then(() => true).catch(() => false))) {
+  const { createServer } = await import("node:http");
+  const html = `<!doctype html><meta charset="utf-8"><title>a third-party page</title><link rel="canonical" href="${site}/article-1"><h1>Article one</h1><div data-attest data-comments></div><script type="module" src="${service}/attest.js"></script>`;
+  siteServer = createServer((req, res) => { res.writeHead(200, { "content-type": "text/html" }); res.end(html); }).listen(Number(siteUrl.port || 80), siteUrl.hostname);
+  await new Promise((r) => siteServer.on("listening", r));
+}
 const page = await tab(site + "/");
 ok(await evalIn(page, `!!document.querySelector('[data-attest] .up')`), "widget mounted on the third-party page " + site);
 const dev = JSON.parse(await evalIn(page, `(async () => { const A = await import(${JSON.stringify(service + "/attest-core.js")}); const d = await A.deviceKey(); return JSON.stringify({ did: d.did, jwk: d.jwk }); })()`));
@@ -30,9 +38,9 @@ const handle = "x" + Math.random().toString(36).slice(2, 7);
 await evalIn(login, `document.getElementById('handle').value = ${JSON.stringify(handle)}; document.getElementById('register').click(); true`);
 // With no opener the login page takes the redirect flow: back to the site's return address with the session in the fragment,
 // which the client library consumes at load. The page tab shares that origin's localStorage.
-ok(await waitFor(login, `location.origin === ${JSON.stringify(site)} && location.hash === ''`, 15000), "registered and delegated for the foreign origin; attest sent the tab back to the site and the fragment was consumed");
+ok(await waitFor(login, `location.origin === ${JSON.stringify(site)} && location.hash === ''`, 15000), "registered and delegated for the foreign origin; attest sent the tab back to the site and the fragment was consumed" + await evalIn(login, `location.origin === ${JSON.stringify(site)} && location.hash === "" ? "" : " (at " + location.href.slice(0, 120) + ": " + (document.getElementById("msg")?.textContent || "") + ")"`).catch(() => ""));
 const session = await evalIn(login, `localStorage.getItem('attest:session')`);
-ok(JSON.parse(session).delegation.origin === site && JSON.parse(session).delegation.device === dev.did, "delegation is scoped to the page's origin and device key");
+{ const S = JSON.parse(session); const { originCommitment } = await import("../packages/orbital-attest/verify.mjs"); ok(S.origin === site && S.delegation.originHash === await originCommitment(site, S.salt) && !("origin" in S.delegation) && S.delegation.device === dev.did, "delegation is scoped to the page's origin (as a salted hash) and device key"); }
 await send("Page.reload", {}, page); await sleep(2000);
 ok(await evalIn(page, `document.body.innerText.includes('@' + ${JSON.stringify(handle)})`), "page shows the handle from the handed-over session");
 await evalIn(page, `document.querySelector('[data-attest] .up').click(); true`);
@@ -42,7 +50,7 @@ await evalIn(page, `const ta = document.querySelector('[data-attest] textarea');
 ok(await waitFor(page, `document.querySelector('[data-attest] li')?.innerText.includes('cross-origin comment')`), "comment from the third-party page");
 // The same delegation must be refused when submitted from the service's own origin (a different arena).
 const env = await evalIn(page, `(async () => { const A = await import(${JSON.stringify(service + "/attest-core.js")}); return JSON.stringify(await A.makeRecord('upvote', 'https://example.org/other')); })()`);
-const misuse = await evalIn(login, `(async () => { const A = await import('/attest-core.js'); try { await A.req('attest', ${env}); return 'accepted'; } catch (e) { return e.message; } })()`);
+const svc = await tab(service + "/faq"); const misuse = await evalIn(svc, `(async () => { const A = await import('/attest-core.js'); try { await A.req('attest', ${env}); return 'accepted'; } catch (e) { return e.message; } })()`);
 ok(/issued for/.test(misuse), "a validly signed record is refused when submitted from another origin: " + misuse);
 if (process.env.PDS_URL && process.env.PDS_ADMIN_PASSWORD) { try { const pds = await import("../server/pds.mjs"); await pds.deleteAccount(JSON.parse(session).root); console.log("  · test repo account deleted from the PDS"); } catch (e) { console.log("  · cleanup failed:", e.message); } }
-console.log(fails ? `${fails} FAILED` : "all passed"); ws.close(); chrome.kill(); process.exit(fails ? 1 : 0);
+console.log(fails ? `${fails} FAILED` : "all passed"); ws.close(); chrome.kill(); siteServer?.close(); process.exit(fails ? 1 : 0);

@@ -24,7 +24,8 @@
 <h2>2. The JavaScript API</h2>
 <p>The widget is built on a small module you can use directly for your own UI. The same module is the npm package <code>orbital-attest</code> (not yet published; it lives in <code>packages/orbital-attest</code> in the repo): <code>import * as A from "orbital-attest"</code> then <code>A.configure({ server: "ORIGIN" })</code>. The served copy below is pre-configured for this origin. The verifier alone is <code>orbital-attest/verify</code>, with no dependencies.</p>
 <pre>import * as A from "ORIGIN/attest-core.js";
-A.session()                       // {id, root, handle, until, delegation} or null
+A.session()                       // {id, root, handle, until, delegation, origin, salt} or null
+A.own("sessions")                 // the signed-in person's own sign-ins, with their sites (private to them)
 await A.signIn()                  // popup, or a redirect that comes back here; resolves with the session (popup case)
 await A.signIn({ popup: w })      // w = window.open("about:blank", …) from your tap handler (Safari); null → redirect
 await A.signIn({ mode: "redirect" })
@@ -43,9 +44,10 @@ await A.subscribe([url]); A.onCounts(({ target, counts }) => …)  // live</pre>
 <table>
 <tr><th>endpoint</th><th>returns</th></tr>
 <tr><td><code>GET /read?targets=a,b,c</code></td><td><code>{targets: {a: {target, upvotes, vouches, comments:[{id, by, handle, at, body}]}}}</code>. Up to 100 targets. Comma-separate; URL-encode each target.</td></tr>
-<tr><td><code>GET /by/:did</code></td><td><code>{did, handle, since, keys:[{id, jwk, created}], delegations:[{id, device, origin, from, until, revoked}], counts, vouchedBy:[{by, handle, at}], vouches:[{target, handle, at}], proofs:[{id, target, verifications:[{by, handle, evidence}]}], records:[…]}</code>. <code>keys</code> are the passkey public keys, for checking delegations yourself.</td></tr>
+<tr><td><code>GET /by/:did</code></td><td><code>{did, handle, since, keys:[{id, jwk, created}], delegations:[{id, device, from, until, revoked}], counts, vouchedBy:[{by, handle, at}], vouches:[{target, handle, at}], proofs:[{id, target, verifications:[{by, handle, evidence}]}], records:[…]}</code>. <code>keys</code> are the passkey public keys, for checking delegations yourself.</td></tr>
 <tr><td><code>GET /handle/:handle</code></td><td>the same, looked up by handle. <code>/@handle</code> is the human page.</td></tr>
 <tr><td><code>GET /record?uri=at://…</code> or <code>GET /record/:cid</code></td><td>the indexed record: the repo record under <code>repoRecord</code>, its <code>uri</code>, <code>cid</code>, the delegation id, and whether it was retracted</td></tr>
+<tr><td><code>GET /delegation/:id?origin=…</code></td><td><code>{id, root, handle, device, from, until, revoked, origin: "match" | "mismatch"}</code>: how a site's server confirms a sign-in. The id is unguessable, so only a holder of the session can ask, and the answer never names the site. <code>/by</code> lists only delegations that have signed something public.</td></tr>
 <tr><td><code>GET /log?since=N&amp;limit=500</code></td><td>the service's own log: delegations, revocations and passkey changes with their passkey assertions, which are not repository records. Records themselves are read from repositories or the firehose.</td></tr>
 <tr><td><code>GET /domain/:host</code></td><td>public standing of a site: totals, most-attested pages with counts, recent comments, verified domain claims. <code>/site/:host</code> is the human page.</td></tr>
 <tr><td><code>GET /stats</code></td><td>account, record and log counts</td></tr>
@@ -58,8 +60,8 @@ await A.subscribe([url]); A.onCounts(({ target, counts }) => …)  // live</pre>
 <tr><td><code>passkey.register.start</code></td><td><code>{handle}</code> → <code>{nonce, options}</code> (WebAuthn creation options)</td></tr>
 <tr><td><code>passkey.register.finish</code></td><td><code>{nonce, response}</code> → <code>{did, handle}</code></td></tr>
 <tr><td><code>lookup</code></td><td><code>{handle}</code> → <code>{did, handle}</code></td></tr>
-<tr><td><code>delegate.start</code></td><td><code>{delegation}</code> → <code>{id, options}</code> (WebAuthn request options whose challenge is the delegation's id)</td></tr>
-<tr><td><code>delegate.finish</code></td><td><code>{delegation, credentialId, assertion}</code> → <code>{id, root, handle, until}</code></td></tr>
+<tr><td><code>delegate.start</code></td><td><code>{delegation, proof: {origin, salt}}</code> → <code>{id, options}</code> (WebAuthn request options whose challenge is the delegation's id)</td></tr>
+<tr><td><code>delegate.finish</code></td><td><code>{delegation, proof, credentialId, assertion}</code> → <code>{id, root, handle, until}</code></td></tr>
 <tr><td><code>attest</code></td><td><code>{collection, rkey?, record, del}</code> → <code>{uri, id (cid), counts, duplicate?}</code>. Refused with "delegation revoked" once the root has revoked that delegation.</td></tr>
 <tr><td><code>retract</code></td><td><code>{uri, at, del, sig}</code> → deletes the repo record; <code>sig</code> is the device key over <code>{type:"retract", uri, at}</code></td></tr>
 <tr><td><code>root.start</code>, <code>root.finish</code></td><td>actions only the passkey may sign, on the service origin: <code>{v:1, type:"revoke", root, del, at}</code>, <code>{type:"add-key", credentialId}</code>, <code>{type:"remove-key", credentialId}</code>. Same shape as sign-in: the action's id is the WebAuthn challenge.</td></tr>
@@ -85,6 +87,7 @@ uri, cid     at://did:plc:…/monster.attest.vote/&lt;rkey&gt; and the record's 
 <li>Fetch the record from the repo: <code>com.atproto.repo.getRecord</code> on the PDS named in the DID document of <code>did:plc:…</code>, or from any relay. Or take it from our index at <code>/record?uri=at://…</code>.</li>
 <li>Take the inline entry's <code>key</code>. Rebuild <code>$sig = {$type, key, repository: &lt;repo did&gt;}</code>, remove <code>signatures</code>, encode as DAG-CBOR, compute the CIDv1 bytes.</li>
 <li>Verify the raw ECDSA P-256 signature over those 36 bytes with the public key inside the <code>did:key</code>. <code>orbital-attest/verify</code> exports <code>inlineVerify(record, repoDid)</code>, which does exactly this in browsers and Node.</li>
+<li>A delegation (v2) is <code>{v:2, type:"delegation", root, device, devKey, originHash, from, until}</code>, where <code>originHash</code> = <code>idOf({origin, salt})</code> (sha-256 of the canonical JSON). The session holds <code>origin</code> and <code>salt</code>, so your server can check the delegation is for your site without asking us; nobody without the salt can tell which site it is for.</li>
 <li>To bind that device key to the person: the delegation in our log names it and carries the passkey assertion over the delegation's hash; the passkey public key is at <code>/by/&lt;did&gt;</code> → <code>keys</code>.</li>
 </ol>
 <p>The end-to-end test in the repo does steps 1 to 3 from Node against the live service.</p>

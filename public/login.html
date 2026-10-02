@@ -49,12 +49,15 @@ function credToJSON(c) {
 }
 async function delegate(root, handle) {
   const now = new Date(), until = new Date(now.getTime() + 30 * 86400e3);
-  const delegation = { v: 1, type: "delegation", root, device: device.did, devKey: { x: device.jwk.x, y: device.jwk.y }, origin, from: now.toISOString(), until: until.toISOString() };
-  const { options } = await A.req("delegate.start", { delegation });
+  // The delegation names the site only as a salted hash, so the public record of it does not say where you signed in. The site
+  // gets origin and salt in its session; attest keeps the origin privately to check requests and to show you your own sign-ins.
+  const salt = b64u(crypto.getRandomValues(new Uint8Array(16))), proof = { origin, salt };
+  const delegation = { v: 2, type: "delegation", root, device: device.did, devKey: { x: device.jwk.x, y: device.jwk.y }, originHash: await A.originCommitment(origin, salt), from: now.toISOString(), until: until.toISOString() };
+  const { options } = await A.req("delegate.start", { delegation, proof });
   msg("Your passkey signs a 30-day permission for this device…");
   const cred = await navigator.credentials.get({ publicKey: requestOptions(options) });
-  const r = await A.req("delegate.finish", { delegation, credentialId: cred.id, assertion: credToJSON(cred) });
-  const session = { id: r.id, delegation, root: r.root, handle: r.handle, until: r.until };
+  const r = await A.req("delegate.finish", { delegation, proof, credentialId: cred.id, assertion: credToJSON(cred) });
+  const session = { id: r.id, delegation, origin, salt, root: r.root, handle: r.handle, until: r.until };
   localStorage.setItem("attest:handle", r.handle);
   const back = q.get("return");
   if (window.opener && origin !== location.origin) { window.opener.postMessage({ type: "attest:session", session }, origin); msg("Signed in as @" + r.handle + ". You can close this window.", "ok"); setTimeout(() => window.close(), 800); }

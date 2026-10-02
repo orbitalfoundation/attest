@@ -1,6 +1,6 @@
 // Server-side identity: COSE public keys from passkeys → JWK → did:key; delegation and record verification.
 import { decodeCredentialPublicKey, cose, isoBase64URL } from "@simplewebauthn/server/helpers";
-import { didFromJwk, isDid, isAccountDid, canonical, idOf, verifyObject, unb64u, b64u } from "../packages/orbital-attest/verify.mjs";
+import { didFromJwk, isDid, isAccountDid, canonical, idOf, verifyObject, unb64u, b64u, originCommitment } from "../packages/orbital-attest/verify.mjs";
 export { didFromJwk, isDid, canonical, idOf, verifyObject, b64u, unb64u };
 // A passkey's COSE public key (from registration) as a JWK; ES256 only.
 export function jwkFromCose(coseBytes) {
@@ -11,17 +11,22 @@ export function jwkFromCose(coseBytes) {
 }
 export const DELEGATION_MAX_DAYS = 90;
 // Shape check for a delegation the client built. Returns the canonical id. Throws with a reason.
-export async function checkDelegation(d) {
-  if (!d || d.v !== 1 || d.type !== "delegation") throw new Error("not a v1 delegation");
+// v2 (the only kind accepted for new sign-ins) names its site as originHash; `proof` = { origin, salt } arrives beside it, privately,
+// and must match. v1 named the origin in clear and is no longer accepted, though stored v1 delegations stay valid until they expire.
+export async function checkDelegation(d, proof) {
+  if (!d || d.v !== 2 || d.type !== "delegation") throw new Error("not a v2 delegation; reload the page to update the sign-in library");
   if (!isAccountDid(d.root) || !isDid(d.device)) throw new Error("root must be an account did, device a did:key");
   if (!d.devKey || typeof d.devKey.x !== "string" || typeof d.devKey.y !== "string") throw new Error("devKey {x,y} required");
   if (didFromJwk(d.devKey) !== d.device) throw new Error("device did does not match devKey");
-  if (typeof d.origin !== "string" || !/^https?:\/\/[^/]+$/.test(d.origin)) throw new Error("origin must be a bare origin");
+  if (!/^[0-9a-f]{64}$/.test(d.originHash || "")) throw new Error("originHash must be a sha-256 hex digest");
+  if (!proof || typeof proof.origin !== "string" || !/^https?:\/\/[^/]+$/.test(proof.origin)) throw new Error("origin must be a bare origin");
+  if (typeof proof.salt !== "string" || !/^[A-Za-z0-9_-]{22,}$/.test(proof.salt)) throw new Error("salt must be at least 16 random bytes, base64url");
+  if ((await originCommitment(proof.origin, proof.salt)) !== d.originHash) throw new Error("originHash does not match origin and salt");
   const from = Date.parse(d.from), until = Date.parse(d.until), now = Date.now();
   if (!(from > 0) || !(until > from)) throw new Error("bad from/until");
   if (until - from > DELEGATION_MAX_DAYS * 86400e3) throw new Error("delegation longer than " + DELEGATION_MAX_DAYS + " days");
   if (Math.abs(from - now) > 10 * 60e3) throw new Error("delegation 'from' is not near now");
-  const keys = Object.keys(d).sort().join(","); if (keys !== "devKey,device,from,origin,root,type,until,v") throw new Error("unexpected delegation fields: " + keys);
+  const keys = Object.keys(d).sort().join(","); if (keys !== "devKey,device,from,originHash,root,type,until,v") throw new Error("unexpected delegation fields: " + keys);
   return idOf(d);
 }
 // Shape check for a record; returns its id.

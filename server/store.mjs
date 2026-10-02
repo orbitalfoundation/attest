@@ -27,7 +27,7 @@ export function open(path = process.env.ATTEST_DB || "data/attest.sqlite") {
   for (const [table, col, type] of [["accounts", "key_did", "TEXT"], ["accounts", "pds_handle", "TEXT"], ["accounts", "pds_password", "TEXT"], ["records", "uri", "TEXT"], ["records", "cid", "TEXT"], ["records", "collection", "TEXT"], ["records", "rkey", "TEXT"]])
     if (!db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`);
   db.exec("CREATE INDEX IF NOT EXISTS records_uri ON records(uri); CREATE INDEX IF NOT EXISTS records_cid ON records(cid); CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT); CREATE TABLE IF NOT EXISTS moderation (seq INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, subject TEXT NOT NULL, action TEXT NOT NULL, reason TEXT, by_did TEXT NOT NULL, at TEXT NOT NULL); CREATE TABLE IF NOT EXISTS kv (ns TEXT NOT NULL, k TEXT NOT NULL, v TEXT NOT NULL, at TEXT NOT NULL, PRIMARY KEY (ns, k)); CREATE TABLE IF NOT EXISTS released_handles (handle TEXT PRIMARY KEY, did TEXT, at TEXT NOT NULL); CREATE TABLE IF NOT EXISTS record_tags (record_id TEXT NOT NULL, tag TEXT NOT NULL, PRIMARY KEY (record_id, tag)); CREATE INDEX IF NOT EXISTS record_tags_tag ON record_tags(tag); CREATE TABLE IF NOT EXISTS identity_links (attest_did TEXT NOT NULL, external_did TEXT NOT NULL, handle TEXT, via TEXT, at TEXT NOT NULL, PRIMARY KEY (attest_did, external_did)); CREATE TABLE IF NOT EXISTS edges (uri TEXT PRIMARY KEY, src TEXT NOT NULL, dst TEXT NOT NULL, kind TEXT NOT NULL, at TEXT, reason TEXT, imported TEXT NOT NULL); CREATE INDEX IF NOT EXISTS edges_src ON edges(src, kind); CREATE INDEX IF NOT EXISTS edges_dst ON edges(dst, kind);");
-  for (const [table, col, type] of [["accounts", "status", "TEXT"], ["records", "about_did", "TEXT"], ["records", "about_via", "TEXT"]]) if (!db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`);
+  for (const [table, col, type] of [["accounts", "status", "TEXT"], ["records", "about_did", "TEXT"], ["records", "about_via", "TEXT"], ["delegations", "published", "INTEGER NOT NULL DEFAULT 1"]]) if (!db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`);
   return db;
 }
 const now = () => new Date().toISOString();
@@ -50,23 +50,36 @@ export const handleOf = (did) => getAccount(did)?.handle || null;
 export const keysOf = (did) => db.prepare("SELECT id, jwk, created, transports FROM credentials WHERE did = ?").all(did).map((c) => ({ id: c.id, jwk: JSON.parse(c.jwk), created: c.created, transports: JSON.parse(c.transports) }));
 export function addCredential(did, credential) { db.prepare("INSERT INTO credentials (id, did, public_key, jwk, counter, transports, created) VALUES (?, ?, ?, ?, ?, ?, ?)").run(credential.id, did, credential.publicKey, JSON.stringify(credential.jwk), credential.counter, JSON.stringify(credential.transports), now()); }
 export const removeCredential = (did, id) => db.prepare("DELETE FROM credentials WHERE did = ? AND id = ?").run(did, id).changes;
-export const delegationsOf = (root) => db.prepare("SELECT d.id, d.device, d.origin, d.from_at, d.until_at, r.at AS revoked FROM delegations d LEFT JOIN revocations r ON r.del = d.id WHERE d.root = ? ORDER BY d.from_at DESC").all(root).map((d) => ({ id: d.id, device: d.device, origin: d.origin, from: d.from_at, until: d.until_at, revoked: d.revoked || null }));
+// An account's delegations. The site each was issued for is private: `withOrigin` only for the owner's own signed request.
+// Without it, only published delegations (those that signed something public) are listed, and no origins.
+export const delegationsOf = (root, { withOrigin = false } = {}) => db.prepare(`SELECT d.id, d.device, d.origin, d.from_at, d.until_at, d.published, r.at AS revoked FROM delegations d LEFT JOIN revocations r ON r.del = d.id WHERE d.root = ? ${withOrigin ? "" : "AND d.published = 1"} ORDER BY d.from_at DESC`).all(root).map((d) => ({ id: d.id, device: d.device, ...(withOrigin ? { origin: d.origin, published: !!d.published } : {}), from: d.from_at, until: d.until_at, revoked: d.revoked || null }));
+export const delegationOrigin = (id) => db.prepare("SELECT origin FROM delegations WHERE id = ?").get(id)?.origin || null;
+export const delegationStatus = (id) => { const d = db.prepare("SELECT d.id, d.root, d.device, d.origin, d.from_at, d.until_at, r.at AS revoked FROM delegations d LEFT JOIN revocations r ON r.del = d.id WHERE d.id = ?").get(id); return d || null; };
 export const isRevoked = (del) => !!db.prepare("SELECT 1 FROM revocations WHERE del = ?").get(del);
 export function putRevocation(id, envelope) {
   const a = envelope.action;
-  db.exec("BEGIN"); try { appendLog("revoke", id, envelope); db.prepare("INSERT OR IGNORE INTO revocations (del, root, at, json) VALUES (?, ?, ?, ?)").run(a.del, a.root, a.at, JSON.stringify(envelope)); db.exec("COMMIT"); } catch (e) { db.exec("ROLLBACK"); throw e; }
+  // A revocation is logged only if its delegation was ever published; an unpublished one leaves no public trace at all.
+  const pub = db.prepare("SELECT published FROM delegations WHERE id = ?").get(a.del)?.published;
+  db.exec("BEGIN"); try { if (pub) appendLog("revoke", id, envelope); db.prepare("INSERT OR IGNORE INTO revocations (del, root, at, json) VALUES (?, ?, ?, ?)").run(a.del, a.root, a.at, JSON.stringify(envelope)); db.exec("COMMIT"); } catch (e) { db.exec("ROLLBACK"); throw e; }
 }
 // log + delegations + records
 function appendLog(type, id, obj) { db.prepare("INSERT INTO log (type, id, json, received) VALUES (?, ?, ?, ?)").run(type, id, JSON.stringify(obj), now()); }
-export function putDelegation(id, envelope) {
+// A delegation is stored privately when signed (`origin` is the site it was issued for, never published) and enters the public log
+// only when it first signs something public (publishDelegation, from putRecord). Signing in alone leaves nothing public.
+export function putDelegation(id, envelope, origin) {
   const d = envelope.delegation;
-  db.exec("BEGIN"); try { appendLog("delegation", id, envelope); db.prepare("INSERT INTO delegations (id, root, device, origin, from_at, until_at, json) VALUES (?, ?, ?, ?, ?, ?, ?)").run(id, d.root, d.device, d.origin, d.from, d.until, JSON.stringify(envelope)); db.exec("COMMIT"); } catch (e) { db.exec("ROLLBACK"); throw e; }
+  db.prepare("INSERT INTO delegations (id, root, device, origin, from_at, until_at, json, published) VALUES (?, ?, ?, ?, ?, ?, ?, 0)").run(id, d.root, d.device, origin, d.from, d.until, JSON.stringify(envelope));
+}
+function publishDelegation(id) {
+  const r = db.prepare("SELECT json, published FROM delegations WHERE id = ?").get(id); if (!r || r.published) return;
+  appendLog("delegation", id, JSON.parse(r.json)); db.prepare("UPDATE delegations SET published = 1 WHERE id = ?").run(id);
 }
 export function getDelegation(id) { const r = db.prepare("SELECT json FROM delegations WHERE id = ?").get(id); return r ? JSON.parse(r.json) : null; }
 // A repo record, indexed. id = cid. `kind` is the collection's last segment; `target` the subject/target; `ref` a referenced record's cid.
 export function putRecord(id, envelope) {
   const r = envelope.record;
   db.exec("BEGIN"); try {
+    if (envelope.del) publishDelegation(envelope.del);
     appendLog("record", id, envelope);
     db.prepare("INSERT INTO records (id, by_did, kind, target, at, ref, json, uri, cid, collection, rkey, about_did, about_via) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(id, r.by, r.kind, r.target, r.at, r.ref || null, JSON.stringify(envelope), envelope.uri || null, envelope.cid || null, envelope.collection || null, envelope.rkey || null, envelope.about?.did || null, envelope.about?.via || null);
     for (const t of envelope.tags || []) db.prepare("INSERT OR IGNORE INTO record_tags (record_id, tag) VALUES (?, ?)").run(id, t);
