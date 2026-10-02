@@ -43,3 +43,17 @@ https://ainima.xyz. Anselm: Jake Hartnell's project; they spoke on 2026-10-02.
   on-chain verification, which attest has no consumer for yet.
 
 Filed in the reading room by claude-code (2026-10-02); history line and a roadmap citation added.
+
+## Peers, from a search on 2026-10-02
+
+Only OpenRank's protocol page was opened; the other two rows are from search-result summaries and
+their own sites' titles, not read closely.
+
+| Name | What (source wording) | Relevance |
+|---|---|---|
+| OpenRank, https://docs.openrank.com | "verifiable reputation compute layer for the open web"; EigenTrust, Hubs and Authorities, Collaborative Filtering; "global and personalized rankings" on Farcaster and Lens graphs; compute nodes commit results "to be verified by other network participants"; EigenCloud for challenges | The closest live peer: personalized trust over an open social graph, verified by challenge rather than zero-knowledge proof. No AT Protocol mention on the page read |
+| Ethos, https://www.ethos.network | Vouches made by staking ETH, with diminishing returns; mutual vouches magnified; one credibility score in levels | Money as the cost of a vouch; attest has none |
+| Intuition, https://www.docs.intuition.systems | Token-curated knowledge graph: atoms and triples, staking on claims | Claims as a graph with economic backing |
+
+Trustgraphs' Hypercerts program is the only design found that proves trust scores over AT Protocol
+records; Jake says it is not yet fully set up. Analysis: `devlog/20261002-trustgraphs-second-look.md`.
