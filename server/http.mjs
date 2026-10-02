@@ -59,11 +59,7 @@ export async function routes(app) {
   app.get("/by/:did", async (req, reply) => { reply.header("Cache-Control", "public, max-age=0, s-maxage=5"); return records.by(req.params.did); });
   app.get("/record", async (req, reply) => { const r = req.query.uri ? store.getRecordByUri(req.query.uri) : null; if (!r) return reply.code(404).send({ error: "no such record" }); reply.header("Cache-Control", "public, max-age=3600"); return r; });
   app.get("/record/:id", async (req, reply) => { const r = store.getRecord(req.params.id); if (!r) return reply.code(404).send({ error: "no such record" }); reply.header("Cache-Control", "public, max-age=3600"); return r; });
-  // The public log. Delegations from before 2026-10-02 (v1) named their site in clear; for any site other than attest itself the
-  // site is withheld here (their signatures then no longer check from this log alone; v2 delegations carry only a salted hash).
-  const SELF = "https://" + (process.env.CANONICAL_HOST || "attest.monster");
-  const redact = (e) => e.type === "delegation" && e.delegation?.v === 1 && e.delegation.origin !== SELF ? { ...e, delegation: { ...e.delegation, origin: "withheld" }, withheld: "origin" } : e;
-  app.get("/log", async (req, reply) => { reply.header("Cache-Control", "public, max-age=5"); return { entries: store.logSince(Number(req.query.since || 0), Number(req.query.limit || 500)).map(redact) }; });
+  app.get("/log", async (req, reply) => { reply.header("Cache-Control", "public, max-age=5"); return { entries: store.logSince(Number(req.query.since || 0), Number(req.query.limit || 500)) }; });
   // One delegation's status, for a site's server confirming a sign-in (see records.delegationStatus). Not cached: revocation matters.
   app.get("/delegation/:id", async (req, reply) => {
     if (!/^[0-9a-f]{64}$/.test(req.params.id)) return reply.code(400).send({ error: "bad id" });

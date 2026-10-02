@@ -43,3 +43,13 @@ the call, so the redirect's session was silently dropped; now a hoisted function
 
 Timing: a published delegation's `from` still says when someone signed in somewhere. Records
 published from a site name their page, by design.
+
+## Later the same day: old entries deleted, not withheld
+
+Anselm: "it is ok to delete old earlier sign in attempts - i don't see this as a big deal". The
+three v1 delegations naming another site were deleted from the live database (`delegations`,
+`log`, `revocations`): Anselm's two matchmaker.monster sign-ins, which had signed no records (his
+matchmaker session needs a fresh sign-in), and the deleted cross-test account's localhost one,
+with its two test records. Backup first: `data/attest-before-v1-delete-20261002T2244.sqlite` on
+the VM. The `/log` redaction code is gone with them. v1 delegations to attest.monster itself
+remain and back existing records.
