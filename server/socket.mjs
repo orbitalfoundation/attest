@@ -54,6 +54,19 @@ const handlers = {
   async "delegate.finish"({ delegation, proof, credentialId, assertion }, ctx) {
     return records.acceptDelegation({ envelope: { delegation, credentialId, assertion }, origin: ctx.origin, proof });
   },
+  // Agent approval (attest's own /agents/approve page): show a pending request, then the passkey signs the agent permission.
+  async "agent.pending"({ code }) { return (await import("./agents.mjs")).pending(code); },
+  async "agent.start"({ code, delegation }, ctx) {
+    const agents = await import("./agents.mjs"); const { checkAgentDelegation } = await import("./identity.mjs");
+    agents.check(code, delegation); const id = await checkAgentDelegation(delegation);
+    const options = await passkeys.authenticationOptions({ origin: ctx.origin, challenge: Buffer.from(id, "hex").toString("base64url"), allow: store.keysOf(delegation.root) });
+    return { id, options };
+  },
+  async "agent.finish"({ code, delegation, credentialId, assertion }, ctx) {
+    const agents = await import("./agents.mjs"); agents.check(code, delegation);
+    const r = await records.acceptAgentDelegation({ envelope: { delegation, credentialId, assertion }, origin: ctx.origin });
+    agents.approve(code, r.id, delegation); return r;
+  },
   // The owner's own private reads, signed by their device key on any site they signed in to: today, the list of their sign-ins.
   async own(envelope, ctx) {
     const dg = await records.checkSigned(envelope, ctx.origin, "own");

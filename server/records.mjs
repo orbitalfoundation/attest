@@ -5,8 +5,8 @@ import * as pds from "./pds.mjs";
 import * as dns from "./dns.mjs";
 import { aboutFor } from "./people.mjs";
 import * as atoauth from "./atoauth.mjs";
-import { checkDelegation, checkAction } from "./identity.mjs";
-import { normalizeTarget, normalizeTags, isDid, isAccountDid, didFromJwk, inlineSign, inlineVerify, INLINE_TYPE, canonical, verifyObject, jwkFromDidKey } from "../packages/orbital-attest/verify.mjs";
+import { checkDelegation, checkAction, checkAgentDelegation } from "./identity.mjs";
+import { normalizeTarget, normalizeTags, isDid, isAccountDid, didFromJwk, inlineSign, inlineVerify, INLINE_TYPE, canonical, verifyObject, jwkFromDidKey, permits } from "../packages/orbital-attest/verify.mjs";
 import { cidString } from "../packages/orbital-attest/cid.mjs";
 import { verifyAssertion } from "./passkeys.mjs";
 import { Lexicons, jsonToLex } from "@atproto/lexicon";
@@ -62,17 +62,29 @@ export async function acceptDelegation({ envelope, origin, proof }) {
   if (!store.getDelegation(id)) store.putDelegation(id, envelope, proof.origin);
   return { id, root: account.did, handle: account.handle, until: envelope.delegation.until };
 }
-function liveDelegation(del, origin) {
+// A live delegation, normalised to { root, device, devKey, agent?, permissions?, limits? }. A site sign-in must be used from the
+// site it was issued for (a request with no origin is refused). An agent permission is not tied to a site; `agentOnly` (the
+// agents' HTTP endpoints) refuses anything else, so a site sign-in can never be replayed without its origin.
+function liveDelegation(del, origin, { agentOnly = false } = {}) {
   const d = store.getDelegation(del); if (!d) throw new Error("unknown delegation");
-  if (store.isRevoked(del)) throw new Error("delegation revoked; sign in again");
-  const dg = d.delegation, issued = store.delegationOrigin(del); if (origin && issued !== origin) throw new Error("this sign-in was issued for another site, not " + origin);
-  if (Date.now() > Date.parse(dg.until)) throw new Error("delegation expired; sign in again");
-  return dg;
+  const dg = d.delegation, isAgent = dg.type === "agent";
+  if (store.isRevoked(del)) throw new Error(isAgent ? "this agent's permission was revoked" : "delegation revoked; sign in again");
+  if (Date.now() > Date.parse(dg.until)) throw new Error(isAgent ? "this agent's permission has expired; ask again" : "delegation expired; sign in again");
+  if (isAgent) return { root: dg.root, device: dg.agent, devKey: dg.agentKey, agent: dg.name, permissions: dg.permissions, limits: dg.limits };
+  if (agentOnly) throw new Error("this endpoint is for agents; use an agent permission");
+  const issued = store.delegationOrigin(del); if (!origin || issued !== origin) throw new Error("this sign-in was issued for another site, not " + (origin || "a request without an origin"));
+  return { root: dg.root, device: dg.device, devKey: dg.devKey };
+}
+// An agent may act only within its permission: the record type and action, and its daily limit.
+function agentMay(dg, collection, action, del) {
+  if (!dg.agent) return;
+  if (!permits(dg.permissions, collection, action)) throw new Error(`agent "${dg.agent}" is not permitted to ${action} ${collection}`);
+  if (action === "create" && store.countByDelSince(del, new Date(Date.now() - 86400e3).toISOString()) >= dg.limits.perDay) throw new Error(`agent "${dg.agent}" has reached its limit of ${dg.limits.perDay} records a day`);
 }
 // A request signed by a live delegation's device key over {type, name, payload, at}, from the site the delegation was issued for.
 // Returns the delegation (its root is the signer). Used for the owner's own private reads and, with an admin check, for admin.
 export async function checkSigned({ name, payload, at, del, sig }, origin, type) {
-  const dg = liveDelegation(del, origin);
+  const dg = liveDelegation(del, origin); if (dg.agent) throw new Error("agents cannot make this request");
   if (!(Math.abs(Date.parse(at) - Date.now()) < 5 * 60e3)) throw new Error("request time is not near now");
   if (!(await verifyObject(dg.devKey, { type, name, payload: payload ?? null, at }, sig))) throw new Error("signature does not verify");
   return dg;
@@ -83,6 +95,17 @@ export function delegationStatus(id, origin) {
   const d = store.delegationStatus(id); if (!d) return null;
   return { id: d.id, root: d.root, handle: store.handleOf(d.root), device: d.device, from: d.from_at, until: d.until_at, revoked: d.revoked || null, ...(origin ? { origin: d.origin === origin ? "match" : "mismatch" } : {}) };
 }
+// ---- agent permissions: the passkey signs it (assertion challenge = its id) on attest's own pages; stored and published at once.
+export async function acceptAgentDelegation({ envelope, origin }) {
+  const id = await checkAgentDelegation(envelope.delegation);
+  const credential = store.getCredential(envelope.credentialId); if (!credential) throw new Error("unknown passkey");
+  const account = store.getAccount(credential.did); if (!account || account.did !== envelope.delegation.root) throw new Error("passkey does not belong to root " + envelope.delegation.root);
+  const { counter } = await verifyAssertion({ origin, response: envelope.assertion, challenge: hexToB64u(id), credential });
+  store.setCounter(credential.id, counter);
+  if (!store.getDelegation(id)) store.putAgentDelegation(id, envelope);
+  return { id, root: account.did, handle: account.handle, until: envelope.delegation.until };
+}
+export const agentInfo = (id) => store.agentInfo(id);
 // ---- a record from a client: { collection, rkey?, record, del }
 export function indexShape(collection, record, by) {
   const k = collection.slice(NS.length), kind = KIND_OF[k]; const at = record.createdAt;
@@ -94,11 +117,11 @@ export function indexShape(collection, record, by) {
   if (k === "verification") return { by, kind, target: record.target, at, ref: record.claim?.cid, body: record.evidence };
   if (k === "bookmark") return { by, kind, target: record.subject, at, body: record.note || record.title };
 }
-export async function acceptRecord({ envelope, origin }) {
+export async function acceptRecord({ envelope, origin, agentOnly = false }) {
   const { collection, record, del } = envelope || {}; let { rkey } = envelope || {};
   if (!COLLECTIONS.includes(collection)) throw new Error("unknown collection " + collection);
   if (collection === NS + "verification") throw new Error("verifications are issued by verifiers, not submitted");
-  const dg = liveDelegation(del, origin); const repo = dg.root;
+  const dg = liveDelegation(del, origin, { agentOnly }); const repo = dg.root; agentMay(dg, collection, "create", del);
   if (!record || record.$type !== collection) throw new Error("record $type must be " + collection);
   const at = Date.parse(record.createdAt); if (!(at > 0) || Math.abs(at - Date.now()) > 10 * 60e3) throw new Error("createdAt is not near now");
   // subjects normalised, and kind rules
@@ -126,8 +149,9 @@ export async function acceptRecord({ envelope, origin }) {
   return { uri, id: cid, counts };
 }
 // ---- retract: delete the repo record. The device key signs {type:"retract", uri, at}.
-export async function acceptRetract({ envelope, origin }) {
-  const { uri, at, del, sig } = envelope || {}; const dg = liveDelegation(del, origin); const repo = dg.root;
+export async function acceptRetract({ envelope, origin, agentOnly = false }) {
+  const { uri, at, del, sig } = envelope || {}; const dg = liveDelegation(del, origin, { agentOnly }); const repo = dg.root;
+  if (dg.agent) agentMay(dg, String(uri || "").split("/")[3] || "", "delete", del);
   const r = store.getRecordByUri(uri); if (!r || r.record.by !== repo) throw new Error("no such record of yours");
   if (!(Date.parse(at) > 0) || Math.abs(Date.parse(at) - Date.now()) > 10 * 60e3) throw new Error("retract time is not near now");
   if (!(await verifyObject(dg.devKey, { type: "retract", uri, at }, sig))) throw new Error("retract signature does not verify");
@@ -159,6 +183,6 @@ export async function acceptAction({ envelope, origin }) {
 }
 // ---- reads
 export function read(targets) { const out = {}; for (const t of targets.slice(0, 100)) { try { const n = normalizeTarget(t); out[t] = { target: n, ...store.countsFor(n) }; } catch (e) { out[t] = { error: e.message }; } } return out; }
-export const by = (did) => { const a = store.getAccount(did); return { did, handle: a?.handle || null, repoHandle: a?.pds_handle || null, since: a?.created || null, status: a?.status || "active", service: did === service?.did || undefined, elsewhere: store.linksOf(did).map((l) => ({ ...l, out: store.edgeCountsFrom(l.did) })), trustIn: store.memberEdgesTo(did), trustOut: store.memberEdgesFrom(did), about: store.aboutSummary(did), tags: store.tagsOf(did), bookmarks: store.bookmarksBy(did, null, 100), keys: store.keysOf(did).map(({ id, jwk, created, transports }) => ({ id, jwk, created, transports })), delegations: store.delegationsOf(did), counts: store.countsBy(did), vouchedBy: store.vouchesFor(did), vouches: store.vouchesBy(did), proofs: store.claimsOf(did), records: store.recordsBy(did) }; };
+export const by = (did) => { const a = store.getAccount(did); return { did, handle: a?.handle || null, repoHandle: a?.pds_handle || null, since: a?.created || null, status: a?.status || "active", service: did === service?.did || undefined, elsewhere: store.linksOf(did).map((l) => ({ ...l, out: store.edgeCountsFrom(l.did) })), trustIn: store.memberEdgesTo(did), trustOut: store.memberEdgesFrom(did), about: store.aboutSummary(did), tags: store.tagsOf(did), bookmarks: store.bookmarksBy(did, null, 100), agents: store.agentsOf(did), keys: store.keysOf(did).map(({ id, jwk, created, transports }) => ({ id, jwk, created, transports })), delegations: store.delegationsOf(did), counts: store.countsBy(did), vouchedBy: store.vouchesFor(did), vouches: store.vouchesBy(did), proofs: store.claimsOf(did), records: store.recordsBy(did) }; };
 export const byHandle = (handle) => { const a = store.getAccountByHandle(String(handle || "").toLowerCase()); if (!a) return null; return by(a.did); };
 export const whois = (did) => store.handleOf(did);

@@ -12,6 +12,7 @@
 <ul id="aboutelse" class="small"></ul>
 <h2>Vouched for by <span id="nvb" class="muted"></span></h2>
 <ul id="vouchedby" class="small"></ul>
+<div id="agentsw" hidden><h2>Agents acting for them</h2><p class="small muted">Programs this person has allowed to write for them, each within public bounds. What an agent signs counts as theirs.</p><ul id="agents"></ul></div>
 <h2>Elsewhere on AT Protocol</h2>
 <ul id="elsewhere" class="small"></ul>
 <h2>Proofs of control</h2>
@@ -32,6 +33,7 @@ const me = await r.json(); document.title = "attest · @" + me.handle;
 { const l = document.createElement("link"); l.rel = "canonical"; l.href = location.origin + "/" + me.handle; document.head.appendChild(l); if (location.pathname !== "/" + me.handle) history.replaceState(null, "", "/" + me.handle + location.search); }
 $("h").textContent = "@" + me.handle + (me.service ? " (the service)" : "");
 $("who").innerHTML = `<code>${esc(me.repoHandle || me.handle)}</code> · <a href="https://bsky.app/profile/${esc(me.repoHandle || me.did)}">on Bluesky</a> · <code>${esc(me.did)}</code>${me.since ? " · since " + new Date(me.since).toLocaleDateString() : ""} · ${me.keys.length} passkey${me.keys.length === 1 ? "" : "s"} · <a href="/by/${encodeURIComponent(me.did)}">json</a>`;
+{ const live = (me.agents || []).filter((a) => !a.revoked && Date.parse(a.until) > Date.now()); if (live.length) { $("agentsw").hidden = false; $("agents").innerHTML = live.map((a) => `<li><a href="/agent/${a.id}">${esc(a.name)}</a> <span class="muted small">${esc(a.purpose || "")} · until ${new Date(a.until).toLocaleDateString()}</span></li>`).join(""); } }
 $("nvb").textContent = me.vouchedBy.length; $("nv").textContent = me.vouches.length;
 $("vouchedby").innerHTML = me.vouchedBy.map((v) => `<li><a href="/${esc(v.handle)}">@${esc(v.handle || A.short(v.by))}</a> <span class="muted">${new Date(v.at).toLocaleDateString()}</span></li>`).join("") || "<li class='muted'>nobody yet</li>";
 $("vouches").innerHTML = me.vouches.map((v) => `<li><a href="/${esc(v.handle)}">@${esc(v.handle || A.short(v.target))}</a> <span class="muted">${new Date(v.at).toLocaleDateString()}</span></li>`).join("") || "<li class='muted'>nobody yet</li>";

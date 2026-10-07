@@ -1,6 +1,6 @@
 // Server-side identity: COSE public keys from passkeys → JWK → did:key; delegation and record verification.
 import { decodeCredentialPublicKey, cose, isoBase64URL } from "@simplewebauthn/server/helpers";
-import { didFromJwk, isDid, isAccountDid, canonical, idOf, verifyObject, unb64u, b64u, originCommitment } from "../packages/orbital-attest/verify.mjs";
+import { didFromJwk, isDid, isAccountDid, canonical, idOf, verifyObject, unb64u, b64u, originCommitment, parsePermission, AGENT_COLLECTIONS } from "../packages/orbital-attest/verify.mjs";
 export { didFromJwk, isDid, canonical, idOf, verifyObject, b64u, unb64u };
 // A passkey's COSE public key (from registration) as a JWK; ES256 only.
 export function jwkFromCose(coseBytes) {
@@ -27,6 +27,25 @@ export async function checkDelegation(d, proof) {
   if (until - from > DELEGATION_MAX_DAYS * 86400e3) throw new Error("delegation longer than " + DELEGATION_MAX_DAYS + " days");
   if (Math.abs(from - now) > 10 * 60e3) throw new Error("delegation 'from' is not near now");
   const keys = Object.keys(d).sort().join(","); if (keys !== "devKey,device,from,originHash,root,type,until,v") throw new Error("unexpected delegation fields: " + keys);
+  return idOf(d);
+}
+// Shape check for an agent permission: the passkey lets an agent's own key write certain record kinds into the person's repo,
+// within limits, until a date. Public by design, so anyone reading what the agent signed can see who it acts for and its bounds.
+// { v:1, type:"agent", root, agent (did:key), agentKey {x,y}, name, purpose, permissions [atproto repo strings], limits {perDay}, from, until }
+export const AGENT_MAX_DAYS = 90;
+export async function checkAgentDelegation(d) {
+  if (!d || d.v !== 1 || d.type !== "agent") throw new Error("not a v1 agent permission");
+  if (!isAccountDid(d.root) || !isDid(d.agent)) throw new Error("root must be an account did, agent a did:key");
+  if (!d.agentKey || typeof d.agentKey.x !== "string" || typeof d.agentKey.y !== "string" || didFromJwk(d.agentKey) !== d.agent) throw new Error("agent did does not match agentKey");
+  if (typeof d.name !== "string" || !/^[A-Za-z0-9][A-Za-z0-9 ._-]{0,39}$/.test(d.name)) throw new Error("name: 1 to 40 letters, digits, spaces, dots, dashes");
+  if (typeof d.purpose !== "string" || d.purpose.length > 300) throw new Error("purpose must be a string of at most 300 characters");
+  if (!Array.isArray(d.permissions) || !d.permissions.length || d.permissions.length > 12) throw new Error("permissions: 1 to 12 atproto repo permission strings");
+  for (const p of d.permissions) { const q = parsePermission(p); if (!q || !AGENT_COLLECTIONS.includes(q.collection)) throw new Error("permission not allowed: " + p); }
+  if (!d.limits || !Number.isInteger(d.limits.perDay) || d.limits.perDay < 1 || d.limits.perDay > 1000 || Object.keys(d.limits).join() !== "perDay") throw new Error("limits must be {perDay: 1 to 1000}");
+  const from = Date.parse(d.from), until = Date.parse(d.until), now = Date.now();
+  if (!(from > 0) || !(until > from) || until - from > AGENT_MAX_DAYS * 86400e3) throw new Error("an agent permission lasts at most " + AGENT_MAX_DAYS + " days");
+  if (Math.abs(from - now) > 10 * 60e3) throw new Error("'from' is not near now");
+  const keys = Object.keys(d).sort().join(","); if (keys !== "agent,agentKey,from,limits,name,permissions,purpose,root,type,until,v") throw new Error("unexpected fields: " + keys);
   return idOf(d);
 }
 // Shape check for a record; returns its id.

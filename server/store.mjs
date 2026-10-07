@@ -52,7 +52,7 @@ export function addCredential(did, credential) { db.prepare("INSERT INTO credent
 export const removeCredential = (did, id) => db.prepare("DELETE FROM credentials WHERE did = ? AND id = ?").run(did, id).changes;
 // An account's delegations. The site each was issued for is private: `withOrigin` only for the owner's own signed request.
 // Without it, only published delegations (those that signed something public) are listed, and no origins.
-export const delegationsOf = (root, { withOrigin = false } = {}) => db.prepare(`SELECT d.id, d.device, d.origin, d.from_at, d.until_at, d.published, r.at AS revoked FROM delegations d LEFT JOIN revocations r ON r.del = d.id WHERE d.root = ? ${withOrigin ? "" : "AND d.published = 1"} ORDER BY d.from_at DESC`).all(root).map((d) => ({ id: d.id, device: d.device, ...(withOrigin ? { origin: d.origin, published: !!d.published } : {}), from: d.from_at, until: d.until_at, revoked: d.revoked || null }));
+export const delegationsOf = (root, { withOrigin = false } = {}) => db.prepare(`SELECT d.id, d.device, d.origin, d.from_at, d.until_at, d.published, r.at AS revoked FROM delegations d LEFT JOIN revocations r ON r.del = d.id WHERE d.root = ? AND d.origin != 'agent' ${withOrigin ? "" : "AND d.published = 1"} ORDER BY d.from_at DESC`).all(root).map((d) => ({ id: d.id, device: d.device, ...(withOrigin ? { origin: d.origin, published: !!d.published } : {}), from: d.from_at, until: d.until_at, revoked: d.revoked || null }));
 export const delegationOrigin = (id) => db.prepare("SELECT origin FROM delegations WHERE id = ?").get(id)?.origin || null;
 export const delegationStatus = (id) => { const d = db.prepare("SELECT d.id, d.root, d.device, d.origin, d.from_at, d.until_at, r.at AS revoked FROM delegations d LEFT JOIN revocations r ON r.del = d.id WHERE d.id = ?").get(id); return d || null; };
 export const isRevoked = (del) => !!db.prepare("SELECT 1 FROM revocations WHERE del = ?").get(del);
@@ -74,6 +74,18 @@ function publishDelegation(id) {
   const r = db.prepare("SELECT json, published FROM delegations WHERE id = ?").get(id); if (!r || r.published) return;
   appendLog("delegation", id, JSON.parse(r.json)); db.prepare("UPDATE delegations SET published = 1 WHERE id = ?").run(id);
 }
+// Agent permissions share the delegations table (device = the agent's did:key, origin = "agent") and are public at once.
+export function putAgentDelegation(id, envelope) {
+  const d = envelope.delegation;
+  db.exec("BEGIN"); try { appendLog("agent", id, envelope); db.prepare("INSERT INTO delegations (id, root, device, origin, from_at, until_at, json, published) VALUES (?, ?, ?, 'agent', ?, ?, ?, 1)").run(id, d.root, d.agent, d.from, d.until, JSON.stringify(envelope)); db.exec("COMMIT"); } catch (e) { db.exec("ROLLBACK"); throw e; }
+}
+const agentRow = (r) => { const e = JSON.parse(r.json), d = e.delegation; return { id: r.id, root: d.root, handle: handleOf(d.root), agent: d.agent, name: d.name, purpose: d.purpose, permissions: d.permissions, limits: d.limits, from: d.from, until: d.until, revoked: r.revoked || null }; };
+export const agentsOf = (root) => db.prepare("SELECT d.id, d.json, r.at AS revoked FROM delegations d LEFT JOIN revocations r ON r.del = d.id WHERE d.root = ? AND d.origin = 'agent' ORDER BY d.from_at DESC").all(root).map(agentRow);
+export const agentInfo = (id) => { const r = db.prepare("SELECT d.id, d.json, r.at AS revoked FROM delegations d LEFT JOIN revocations r ON r.del = d.id WHERE d.id = ? AND d.origin = 'agent'").get(id); return r ? agentRow(r) : null; };
+const agentNameStmt = () => db.prepare("SELECT json FROM delegations WHERE id = ? AND origin = 'agent'");
+export const agentName = (id) => { if (!id) return null; const r = agentNameStmt().get(id); return r ? JSON.parse(r.json).delegation.name : null; };
+// Records written under one delegation since a time (an agent's daily limit). The envelope's del is in the record row's json.
+export const countByDelSince = (del, sinceIso) => db.prepare("SELECT COUNT(*) AS n FROM log WHERE type = 'record' AND received > ? AND json LIKE ?").get(sinceIso, '%"del":"' + del + '"%').n;
 export function getDelegation(id) { const r = db.prepare("SELECT json FROM delegations WHERE id = ?").get(id); return r ? JSON.parse(r.json) : null; }
 // A repo record, indexed. id = cid. `kind` is the collection's last segment; `target` the subject/target; `ref` a referenced record's cid.
 export function putRecord(id, envelope) {
@@ -109,7 +121,7 @@ export const findUpvote = (by, target) => db.prepare("SELECT id FROM records WHE
 export function countsFor(target) {
   const up = db.prepare("SELECT COUNT(*) AS n FROM records WHERE target = ? AND kind = 'upvote' AND retracted = 0 AND by_did NOT IN (SELECT did FROM accounts WHERE status IS NOT NULL AND status != 'active')").get(target).n;
   const comments = db.prepare("SELECT r.id, r.by_did, r.at, r.json, a.handle FROM records r LEFT JOIN accounts a ON a.did = r.by_did WHERE r.target = ? AND r.kind = 'comment' AND r.retracted = 0 AND r.by_did NOT IN (SELECT did FROM accounts WHERE status IS NOT NULL AND status != 'active') ORDER BY r.at DESC LIMIT 50").all(target)
-    .map((c) => ({ id: c.id, by: c.by_did, handle: c.handle, at: c.at, body: JSON.parse(c.json).record.body }));
+    .map((c) => { const e = JSON.parse(c.json), via = agentName(e.del); return { id: c.id, by: c.by_did, handle: c.handle, at: c.at, body: e.record.body, ...(via ? { via, del: e.del } : {}) }; });
   const vouches = db.prepare("SELECT COUNT(*) AS n FROM records WHERE target = ? AND kind = 'vouch' AND retracted = 0 AND by_did NOT IN (SELECT did FROM accounts WHERE status IS NOT NULL AND status != 'active')").get(target).n;
   return { upvotes: up, vouches, comments };
 }

@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>attest for integrators: widget, API, record format, verification</title><meta name="description" content="Put signed upvotes and comments on a static page with one script tag. The JavaScript API, HTTP reads, socket writes, the record format and how to verify a record without the service.">
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>attest for integrators: widget, API, record format, verification</title><meta name="description" content="Put signed upvotes and comments on a static page with one script tag, or let an agent write for a person within a public permission. The JavaScript API, HTTP reads, socket writes, agents, the record format and how to verify a record without the service.">
 <link rel="canonical" href="https://attest.monster/builders">
 <meta property="og:type" content="website"><meta property="og:site_name" content="attest"><meta property="og:title" content="attest for integrators: widget, API, record format, verification"><meta property="og:description" content="Put signed upvotes and comments on a static page with one script tag. The JavaScript API, HTTP reads, socket writes, the record format and how to verify a record without the service."><meta property="og:url" content="https://attest.monster/builders">
 <meta property="og:image" content="https://attest.monster/og.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://attest.monster/og.png"><meta name="theme-color" content="#1f6f8b">
@@ -71,6 +71,28 @@ await A.subscribe([url]); A.onCounts(({ target, counts }) => …)  // live</pre>
 <tr><td><code>whois</code>, <code>read</code></td><td>as the GETs</td></tr>
 </table>
 <p>Limits: 60 writes a minute per address, 30 per key. A duplicate upvote returns the existing id with <code>duplicate: true</code>. Records dated more than 10 minutes from server time are refused.</p>
+
+<h2 id="agents">Agents acting for people</h2>
+<p>An agent writes for a person with its own key, inside a public permission the person's passkey signed. Use the JavaScript client from any runtime with WebCrypto (Node 20+, Deno, Bun):</p>
+<pre>import * as Agent from "https://attest.monster/lib/agent.mjs";   // or packages/orbital-attest/agent.mjs
+const key = await Agent.createKey();                                 // keep key.privateJwk secret: it is the agent
+const ask = await Agent.requestAccess({ server: "https://attest.monster", key, name: "research-bot",
+  purpose: "files reading notes", permissions: ["repo:monster.attest.bookmark?action=create&amp;action=delete"],
+  limits: { perDay: 50 }, days: 30 });
+// show the person ask.url and ask.code; they approve on attest with their passkey within 15 minutes
+const grant = await Agent.waitForApproval({ server: "https://attest.monster", token: ask.token });
+const me = Agent.agent({ server: "https://attest.monster", key, grant });
+await me.attest("bookmark", "https://example.org/paper", { title: "A paper", tags: "reading-room trust" });</pre>
+<p>Or from a terminal, with the command-line tool in the same package: <code>node agent-cli.mjs request --name research-bot --allow bookmark,comment</code>, then <code>node agent-cli.mjs attest bookmark https://… --tags "…"</code>. It keeps the key in <code>~/.config/attest-agent/</code>.</p>
+<table>
+<tr><th>HTTP</th><th>what</th></tr>
+<tr><td><code>POST /agent/request</code></td><td><code>{agentKey:{x,y}, name, purpose, permissions:[…], limits:{perDay}, days}</code> → <code>{code, url, token, expires}</code>. Permissions are AT Protocol permission strings for <code>monster.attest.*</code> record types; days at most 90.</td></tr>
+<tr><td><code>GET /agent/poll/:token</code></td><td><code>{status:"pending"}</code>, then <code>{status:"approved", id, delegation}</code>; <code>expired</code> after 15 minutes.</td></tr>
+<tr><td><code>POST /agent/attest</code></td><td><code>{collection, record, del}</code>: a record signed inline by the agent's key with <code>repository</code> = the person's DID, and the permission id as <code>del</code> → <code>{uri, id, counts}</code>. Refused outside the permission, over the daily limit, or once revoked or expired.</td></tr>
+<tr><td><code>POST /agent/retract</code></td><td><code>{uri, at, del, sig}</code>, sig by the agent key over <code>{type:"retract", uri, at}</code>; needs the delete action.</td></tr>
+<tr><td><code>GET /agent/:id</code></td><td>the public permission: <code>{id, root, handle, agent, name, purpose, permissions, limits, from, until, revoked}</code> (add <code>?format=json</code> from a browser). <code>/by/:did</code> lists a person's <code>agents</code>; comments written by an agent carry <code>via</code> and <code>del</code>.</td></tr>
+</table>
+<p>Agents should read <a href="/auth.md">/auth.md</a>, a plain description of the same flow addressed to them.</p>
 
 <h2>5. The record</h2>
 <p>Since the fold (see <a href="/changes">changes</a>), a record is an AT Protocol record in the person's own repository, in one of our lexicons, carrying the person's inline signature. The service writes it into the repo and indexes it; anyone can read it back from the repo without us.</p>

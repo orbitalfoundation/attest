@@ -104,3 +104,26 @@ export function base58decode(s) {
   let n = 0n; for (const c of s) { const i = B58.indexOf(c); if (i < 0) throw new Error("bad base58"); n = n * 58n + BigInt(i); }
   const out = []; while (n > 0n) { out.unshift(Number(n & 255n)); n >>= 8n; } for (const c of s) { if (c !== "1") break; out.unshift(0); } return new Uint8Array(out);
 }
+
+// ---- records and agent permissions, shared by the browser client, agents and the server.
+export const NS = "monster.attest.";
+// The lexicon shape of a record of one kind (unsigned, without createdAt): { collection, record }.
+// kind: upvote | comment | statement | vouch | claim | bookmark. extra: {body}, {reason}, {anchor}, {title, tags, note}.
+export function shapeRecord(kind, target, extra = {}) {
+  if (kind === "upvote") return { collection: NS + "vote", record: { subject: normalizeTarget(target) } };
+  if (kind === "comment") return { collection: NS + "comment", record: { subject: normalizeTarget(target), text: extra.body, ...(extra.anchor ? { anchor: extra.anchor } : {}) } };
+  if (kind === "statement") return { collection: NS + "statement", record: { ...(target ? { subject: normalizeTarget(target) } : {}), text: extra.body } };
+  if (kind === "vouch") return { collection: NS + "vouch", record: { subject: target, ...(extra.reason ? { reason: extra.reason } : {}) } };
+  if (kind === "claim") return { collection: NS + "claim", record: { target: normalizeTarget(target) } };
+  if (kind === "bookmark") { const tags = normalizeTags(extra.tags); return { collection: NS + "bookmark", record: { subject: normalizeTarget(target), ...(extra.title ? { title: String(extra.title).slice(0, 300) } : {}), ...(tags.length ? { tags } : {}), ...(extra.note ? { note: extra.note } : {}) } }; }
+  throw new Error("unknown kind " + kind);
+}
+// Agent permissions are AT Protocol permission strings (atproto.com/specs/permission): "repo:<collection>" grants every action on
+// that record type; "repo:<collection>?action=create&action=delete" grants only those. Collections must be attest's own.
+export const AGENT_COLLECTIONS = ["vote", "comment", "statement", "vouch", "claim", "bookmark"].map((k) => NS + k);
+export function parsePermission(p) {
+  const m = /^repo:([a-z][a-z0-9.]*[a-z0-9])(?:\?(.*))?$/.exec(String(p || "")); if (!m) return null;
+  const actions = new Set(); for (const kv of (m[2] || "").split("&").filter(Boolean)) { const [k, v] = kv.split("="); if (k !== "action" || !["create", "update", "delete"].includes(v)) return null; actions.add(v); }
+  return { collection: m[1], actions: actions.size ? [...actions].sort() : ["create", "delete", "update"] };
+}
+export const permits = (permissions, collection, action) => (permissions || []).some((p) => { const q = parsePermission(p); return q && q.collection === collection && q.actions.includes(action); });

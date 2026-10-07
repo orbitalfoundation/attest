@@ -4,13 +4,35 @@
   "description": "Client and verifier for attest: signed statements about URLs and keys, passkey sign-in with per-site delegated device keys.",
   "license": "MIT",
   "type": "module",
-  "repository": { "type": "git", "url": "git+https://github.com/orbitalfoundation/attest.git", "directory": "packages/orbital-attest" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/orbitalfoundation/attest.git",
+    "directory": "packages/orbital-attest"
+  },
   "homepage": "https://attest.monster/builders",
   "exports": {
     ".": "./client.mjs",
-    "./verify": "./verify.mjs"
+    "./verify": "./verify.mjs",
+    "./agent": "./agent.mjs"
   },
-  "files": ["client.mjs", "verify.mjs", "README.md"],
+  "files": [
+    "README.md",
+    "agent-cli.mjs",
+    "agent.mjs",
+    "client.mjs",
+    "verify.mjs"
+  ],
   "sideEffects": false,
-  "keywords": ["attestation", "passkey", "webauthn", "did", "web-of-trust", "reputation", "signed"]
+  "keywords": [
+    "attestation",
+    "passkey",
+    "webauthn",
+    "did",
+    "web-of-trust",
+    "reputation",
+    "signed"
+  ],
+  "bin": {
+    "attest-agent": "./agent-cli.mjs"
+  }
 }

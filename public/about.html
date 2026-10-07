@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>About attest: why a signed web of trust, and where it goes</title><meta name="description" content="Why attest exists, what is built, what comes next: emitter trust from a root you choose, burnable identity, public by construction. Opens with Vonnegut's Cat's Cradle.">
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>About attest: why a signed web of trust, and where it goes</title><meta name="description" content="Why attest exists, what is built, what comes next: people and the agents acting for them, signing in public; trust from a root you choose; burnable identity. Opens with Vonnegut's Cat's Cradle.">
 <link rel="canonical" href="https://attest.monster/about">
 <meta property="og:type" content="website"><meta property="og:site_name" content="attest"><meta property="og:title" content="About attest: why a signed web of trust, and where it goes"><meta property="og:description" content="Why attest exists, what is built, what comes next: emitter trust from a root you choose, burnable identity, public by construction. Opens with Vonnegut's Cat's Cradle."><meta property="og:url" content="https://attest.monster/about">
 <meta property="og:image" content="https://attest.monster/og.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://attest.monster/og.png"><meta name="theme-color" content="#1f6f8b">
@@ -13,9 +13,10 @@
 <p>attest takes the other view. A key here has no profile, no badge and no score of its own. It is defined entirely by what it has signed, who has vouched for it, and what it turned out to be right about. Pull those strings away and there is nothing left, which is the point. You cannot buy a shape that is made only of other people's hands.</p>
 
 <h2>What it is</h2>
-<p>A public bag of signed statements about URLs and about keys, and a service that lets any web page use it without running accounts.</p>
+<p>A public bag of signed statements about URLs and about keys, made by people and by the agents acting for them, and a service that lets any web page use it without running accounts. It is the bottom of a stack whose top is being able to tell what is more likely to be real.</p>
 <ul>
-<li>You sign up once, with a passkey. Your phone or laptop holds the private key. You also get an AT Protocol account and a handle under attest.monster.</li>
+<li>You sign up once, with a passkey. Your phone or laptop holds the private key. You also get an AT Protocol account and a handle under attest.monster. AT Protocol leaves sign-in to each hosting server, and the reference server uses a password; here the passkey is the sign-in, and it also authorises every key that signs for you.</li>
+<li>An agent can act for you: it asks with its own key, you approve with your passkey and set what it may write, how much and for how long. That permission is public, so anyone can see whom the agent answers to.</li>
 <li>Any site can put an upvote, a comment box, a vouch or a public statement on a page with one script tag. The site keeps no users, no passwords, no database. Static pages on a CDN work.</li>
 <li>Every statement is signed by your key and stored in your own AT Protocol repository, which relays copy. Anyone can check a statement with your key without asking us.</li>
 <li>Counts are a plain cacheable GET. What a person has attested is a plain GET. The records themselves can be read from their repositories by any AT Protocol tool.</li>
@@ -32,6 +33,8 @@
 <tr><td>Custody</td><td>Revoke any session; add a second passkey from a new device, approved by an existing one; remove one with another's signature.</td></tr>
 <tr><td>Profiles, vouches, proofs</td><td>A page per handle; "I know this person" with its cost shown; proof of control over a website, domain, GitHub user or Bluesky handle, verified by the service.</td></tr>
 <tr><td>Trust from elsewhere</td><td>Prove a Bluesky handle and your Tangled vouches and follows and your Bluesky follows come in as trust edges of different strengths.</td></tr>
+<tr><td>Agents</td><td>An agent asks with its own key; you approve on attest with your passkey, narrowing it if you like. The permission (record kinds as AT Protocol permission strings, a daily limit, an expiry) is public at <code>/agent/&lt;id&gt;</code>. Its records go into your repository marked "via" the agent and count as yours, once. Revoke any time.</td></tr>
+<tr><td>Private sign-ins</td><td>Which sites you sign in to is not published: a sign-in names its site only as a salted hash, and appears in the log only once something signed with it does.</td></tr>
 <tr><td>Limits</td><td>Per-address and per-session rate limits on writes. Reads carry cache headers for CDNs. No cookies.</td></tr>
 </table>
 
@@ -39,6 +42,10 @@
 <p>Nothing on the web scores the people and outlets that feed us. The founder's phrase for it: "I liken this to the food and drug administration, or to a river; I am being fed pollutants and there isn't even any scoring." PageRank scored emitters once. The platforms took it away and score items, or nothing.</p>
 <p>From the builder's side the same gap looks different. A small publication should not have to write its own sign-up, votes and comments, and should not have to hand its readers to a platform that then owns the relationship. Every small service rebuilds the same identity layer, badly, and each rebuild is another silo where reputation cannot travel.</p>
 <p>Those are one problem. Signed statements are the anchor. Everything else, scores included, can be rebuilt by anyone from the log. The longer argument, with a fungus in it, is the essay <a href="https://anselm.substack.com/p/foundations-of-trust-attestmonster">Foundations of Trust</a>.</p>
+
+<h2>People and their agents</h2>
+<p>The internet is changing shape. Trust is moving out of the platforms in the middle and into systems with no center, where people vouch for each other directly and anyone can check the record. And "we" are changing. More of what each of us does online will be done by software acting for us, so a person becomes their own will plus the powers they hand to their agents, and can take back.</p>
+<p>That is close to how a company works: each employee has their own badge, a job, limits on what they may sign, and a record of what they did, and the company answers for them. attest gives people the same arrangement with their agents, in public. Each agent has its own key. Your passkey signs what it may do and until when. Everything it writes says so. It earns no trust of its own: a hundred agents vouching add nothing that one does not, because their vouches are yours. In a web full of agents, the useful question is less "is this a person?" than "which accountable person stands behind this?", and that is a question signed records can answer.</p>
 
 <h2>What is different about it</h2>
 <p>We read forty-eight prior efforts before writing a line. Labelers on the AT Protocol, Community Notes, the Ethereum Attestation Service, Nostr reactions, Advogato's trust metric, EigenTrust, SybilGuard, Certificate Transparency, the web of trust, Keybase, the outlet raters. None combines ordinary sign-up with a key the person holds, signed statements about arbitrary URLs and keys, a read endpoint a static page can render, and trust computed by bounded flow with burnable identity. Each of the nearest is missing at least two of those. The flow-based trust math was worked out twenty years ago and shelved because nobody had an adversary worth it. The adversary has arrived.</p>
@@ -55,6 +62,9 @@
 <ul>
 <li><a href="https://badge.blue/">badge.blue</a>: a CID-first attestation spec for AT Protocol records, inline signatures or remote proof records, with the repository DID bound into the signed payload so a signature cannot be replayed elsewhere. The closest thing to a shared envelope convention in the atproto world; we are adopting its context binding and low-S normalisation.</li>
 <li><a href="https://hypercerts.org/">Hypercerts</a>: records of impact work on AT Protocol, in the author's own repo, with evaluations that carry a bounded numeric score, acknowledgements that accept or reject a link, badge awards, and a shared <code>app.certified.*</code> vocabulary whose signature proofs are badge.blue in production. The lexicons our v2 write-out should map onto.</li>
+<li><a href="https://trustgraphs.xyz/">Trustgraphs</a>, Jake Hartnell's project: each community chooses its starting accounts and rules, members sign weighted, revocable vouches, and a seeded PageRank-style program turns them into scores that anyone can check with a zero-knowledge proof. A working example of the scoring layer that sits above records like ours.</li>
+<li><a href="https://workos.com/auth-md">auth.md</a>, from WorkOS: an open protocol for agents to register for services on behalf of people. Our agent hand-off borrows its code ceremony.</li>
+<li><a href="https://github.com/ucan-wg/spec">UCAN</a>: capabilities a key delegates to another key, attenuated at each step and checkable by anyone. The general form of what an agent permission is here.</li>
 <li><a href="https://socialweb.computer/">socialweb.computer</a>: a pre-alpha compute marketplace on AT Protocol whose access policies read a vouch graph ("only keys my graph vouches for may bid"). A consumer of exactly what this service publishes.</li>
 <li><a href="https://atproto.com/specs/label">AT Protocol labels</a> and <a href="https://github.com/bluesky-social/ozone">Ozone</a>: signed, revocable annotations any client can subscribe to; our record envelope follows theirs.</li>
 <li><a href="https://levien.com/free/tmetric-HOWTO.html">Advogato's trust metric</a> and Raph Levien's metadata HOWTO: flow from seeds through certifications with a capacity bound. The scoring we intend, written in 2000.</li>
@@ -68,7 +78,7 @@
 <p class="small muted">The full catalogue, 50 entries with the URL read and the date, is in the repository under <code>reference/</code>.</p>
 
 <h2>What comes next</h2>
-<p>The <a href="/roadmap">roadmap</a> has what is built, what is next, and the longer list: scores relative to you on any post, voting, place-based attestations, and the projects we are still reading. attest moved onto AT Protocol a day after launch; the <a href="/changes">changes</a> page explains why.</p>
+<p>attest is the bottom layer: signed statements by people and their agents. Above it comes scoring that follows trust outward from people you choose; above that, tools that tell you how likely something is to be real, and why. The <a href="/roadmap">roadmap</a> has what is built, what is next, and the longer list: scores relative to you on any post, voting, place-based attestations, and the projects we are still reading. attest moved onto AT Protocol a day after launch; the <a href="/changes">changes</a> page explains why.</p>
 
 <h2 id="ways-in">Ways in</h2>
 <p>This project is useful in more than one way, and not all of them involve using it.</p>

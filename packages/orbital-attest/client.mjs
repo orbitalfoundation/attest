@@ -1,7 +1,7 @@
 // orbital-attest client: a per-site device key, a delegation from the person's passkey, signing, and one socket to the service.
 // Plain ES module, no build step, no dependencies (socket.io's client is loaded from the service itself).
 // Usage: import * as A from "orbital-attest"; A.configure({ server: "https://attest.monster" }).
-import { didFromJwk, canonical, idOf, signObject, normalizeTarget, normalizeTags, b64u, unb64u, KINDS, inlineSign, inlineVerify, originCommitment } from "./verify.mjs";
+import { didFromJwk, canonical, idOf, signObject, normalizeTarget, normalizeTags, b64u, unb64u, KINDS, inlineSign, inlineVerify, originCommitment, shapeRecord } from "./verify.mjs";
 export { didFromJwk, canonical, idOf, normalizeTarget, normalizeTags, b64u, unb64u, KINDS, inlineSign, inlineVerify };
 const NS = "monster.attest.";
 export let server = null;
@@ -49,14 +49,7 @@ export const subscribe = (targets) => req("subscribe", { targets });
 export async function makeRecord(kind, target, extra = {}) {
   const s = session(); if (!s) throw new Error("not signed in");
   const dev = await deviceKey(); if (dev.did !== s.delegation.device) throw new Error("session belongs to another device key; sign in again");
-  const createdAt = new Date().toISOString(); let collection, record;
-  if (kind === "upvote") { collection = NS + "vote"; record = { subject: normalizeTarget(target) }; }
-  else if (kind === "comment") { collection = NS + "comment"; record = { subject: normalizeTarget(target), text: extra.body, ...(extra.anchor ? { anchor: extra.anchor } : {}) }; }
-  else if (kind === "statement") { collection = NS + "statement"; record = { ...(target ? { subject: normalizeTarget(target) } : {}), text: extra.body }; }
-  else if (kind === "vouch") { collection = NS + "vouch"; record = { subject: target, ...(extra.reason ? { reason: extra.reason } : {}) }; }
-  else if (kind === "claim") { collection = NS + "claim"; record = { target: normalizeTarget(target) }; }
-  else if (kind === "bookmark") { collection = NS + "bookmark"; const tags = normalizeTags(extra.tags); record = { subject: normalizeTarget(target), ...(extra.title ? { title: String(extra.title).slice(0, 300) } : {}), ...(tags.length ? { tags } : {}), ...(extra.note ? { note: extra.note } : {}) }; }
-  else throw new Error("unknown kind " + kind);
+  const createdAt = new Date().toISOString(); let { collection, record } = shapeRecord(kind, target, extra);
   record = await inlineSign(dev.privateKey, { $type: collection, ...record, createdAt }, s.root, dev.did);
   return { collection, record, del: s.id };
 }

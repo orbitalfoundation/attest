@@ -33,6 +33,9 @@
 <h3>Or without a bookmarklet</h3>
 <p>Copy a link, open <a href="/save">attest.monster/save</a> (add it to your home screen once), and paste. Or make a Shortcut that receives URLs from the share sheet and opens <code>https://attest.monster/save?url=</code> followed by the shared URL; the share sheet works in any browser.</p>
 
+<h2>From an agent or a script</h2>
+<p>An agent can save and comment for you within limits you approve. Run <code>node agent-cli.mjs request --name my-agent --allow bookmark</code> from the <a href="https://github.com/orbitalfoundation/attest/tree/main/packages/orbital-attest">orbital-attest package</a>, open the link it shows, check the code and approve with your passkey. Then <code>node agent-cli.mjs attest bookmark https://… --tags "reading-room trust"</code>. Details on <a href="/builders#agents">the builders page</a>.</p>
+
 <h2>Where saves go</h2>
 <p>Each bookmark is a <code>monster.attest.bookmark</code> record in your own AT Protocol repository, signed by your key: the address, title, tags and note. Filing a page under a tag is not the same as vouching for it; the checkbox adds a separate upvote. Your bookmarks are on your page at <code>attest.monster/yourname</code>, and everything filed under a word is at <code>attest.monster/tag/word</code>.</p>
 </main>

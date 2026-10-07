@@ -55,11 +55,22 @@ export async function routes(app) {
   app.get("/u/:handle", (req, reply) => reply.redirect("/" + encodeURIComponent(req.params.handle), 301));
   app.get("/domain/:host", async (req, reply) => { if (!/^[a-z0-9.-]+\.[a-z]{2,}$|^localhost(:\d+)?$/i.test(req.params.host)) return reply.code(400).send({ error: "host" }); reply.header("Cache-Control", "public, max-age=0, s-maxage=30"); return store.siteSummary(req.params.host); });
   app.get("/site/:host", (req, reply) => reply.type("text/html").sendFile("site.html", join(root, "public")));
+  app.get("/agents/approve", (req, reply) => reply.type("text/html").sendFile("agents.html", join(root, "public")));
   app.get("/service", async () => ({ ...records.serviceInfo(), note: "The service's own repo and signing key; it writes verification records after checking a proof. Trust it as far as you trust this service." }));
   app.get("/by/:did", async (req, reply) => { reply.header("Cache-Control", "public, max-age=0, s-maxage=5"); return records.by(req.params.did); });
   app.get("/record", async (req, reply) => { const r = req.query.uri ? store.getRecordByUri(req.query.uri) : null; if (!r) return reply.code(404).send({ error: "no such record" }); reply.header("Cache-Control", "public, max-age=3600"); return r; });
   app.get("/record/:id", async (req, reply) => { const r = store.getRecord(req.params.id); if (!r) return reply.code(404).send({ error: "no such record" }); reply.header("Cache-Control", "public, max-age=3600"); return r; });
   app.get("/log", async (req, reply) => { reply.header("Cache-Control", "public, max-age=5"); return { entries: store.logSince(Number(req.query.since || 0), Number(req.query.limit || 500)) }; });
+  // Agents (see server/agents.mjs and /auth.md). Plain HTTP and JSON: agents are programs, not browsers.
+  const agents = await import("./agents.mjs"); const { allow } = await import("./ratelimit.mjs");
+  const baseOf = (req) => process.env.CANONICAL_HOST ? "https://" + process.env.CANONICAL_HOST : `${req.protocol}://${req.headers.host}`;
+  const agentErr = (reply, e) => reply.code(400).send({ error: e.message });
+  app.post("/agent/request", async (req, reply) => { if (!allow("agentreq:" + req.ip, 10)) return reply.code(429).send({ error: "slow down" }); try { return agents.request(req.body || {}, baseOf(req)); } catch (e) { return agentErr(reply, e); } });
+  app.get("/agent/poll/:token", async (req, reply) => { reply.header("Cache-Control", "no-store"); return agents.poll(req.params.token); });
+  app.post("/agent/attest", async (req, reply) => { if (!allow("agentw:" + req.ip, 120)) return reply.code(429).send({ error: "slow down" }); try { return await records.acceptRecord({ envelope: req.body, origin: null, agentOnly: true }); } catch (e) { return agentErr(reply, e); } });
+  app.post("/agent/retract", async (req, reply) => { if (!allow("agentw:" + req.ip, 120)) return reply.code(429).send({ error: "slow down" }); try { return await records.acceptRetract({ envelope: req.body, origin: null, agentOnly: true }); } catch (e) { return agentErr(reply, e); } });
+  // An agent permission, public: who the agent acts for and within what bounds. Anyone holding something an agent signed can check.
+  app.get("/agent/:id", async (req, reply) => { if (!/^[0-9a-f]{64}$/.test(req.params.id)) return reply.code(400).send({ error: "bad id" }); reply.header("Vary", "Accept"); if (req.query.format !== "json" && /text\/html/.test(req.headers.accept || "")) return reply.type("text/html").sendFile("agents.html", join(root, "public")); const a = records.agentInfo(req.params.id); reply.header("Cache-Control", "public, max-age=30"); return a || reply.code(404).send({ error: "unknown agent permission" }); });
   // One delegation's status, for a site's server confirming a sign-in (see records.delegationStatus). Not cached: revocation matters.
   app.get("/delegation/:id", async (req, reply) => {
     if (!/^[0-9a-f]{64}$/.test(req.params.id)) return reply.code(400).send({ error: "bad id" });
@@ -69,7 +80,7 @@ export async function routes(app) {
   app.get("/stats", async () => store.stats());
   const pkg = join(root, "packages", "orbital-attest");
   app.get("/lib/did.js", (req, reply) => reply.type("text/javascript").header("Cache-Control", "public, max-age=300").sendFile("verify.mjs", pkg));
-  for (const f of ["verify.mjs", "client.mjs", "cid.mjs"]) app.get("/lib/" + f, (req, reply) => reply.type("text/javascript").header("Cache-Control", "public, max-age=300").sendFile(f, pkg));
+  for (const f of ["verify.mjs", "client.mjs", "cid.mjs", "agent.mjs"]) app.get("/lib/" + f, (req, reply) => reply.type("text/javascript").header("Cache-Control", "public, max-age=300").sendFile(f, pkg));
   await app.register(fastifyStatic, { root: join(root, "public"), prefix: "/", extensions: ["html"], cacheControl: true, maxAge: "5m" });
   // Crumpled namespace: /<handle> is a person's page, unless a page of ours has that name (pages are reserved as handles at startup).
   const pages = readdirSync(join(root, "public"));

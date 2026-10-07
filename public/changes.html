@@ -4,6 +4,9 @@
 <h1>changes <small>a public revision log</small></h1>
 <p>Newest first. Decisions and reversals are recorded here as they happen, including the ones that make earlier pages wrong; those pages get corrected, and the correction is logged too. The full working notes are the dated entries in <a href="https://github.com/orbitalfoundation/attest/tree/main/devlog">devlog/</a> in the repository.</p>
 
+<h2>2026-10-07 · Agents</h2>
+<p>An AI agent can now act for a person, within limits the person sets. The agent makes its own key and asks; the person opens the link it shows, checks the code, and approves with their passkey, choosing which kinds of record it may write, how many a day, and for how long. The permission is public at <code>/agent/&lt;id&gt;</code>, written in AT Protocol permission strings, so anyone can see whom an agent acts for and within what bounds. What it writes lands in the person's repository marked "via" the agent and counts as theirs, once. Outside its permission, over its limit, or after it is revoked, it is refused. Agents use plain HTTP and a small client with a command-line tool. A sign-in made for one website can no longer be used without that website's origin.</p>
+
 <h2>2026-10-02 · Where you sign in is private</h2>
 <p>Signing in to another site through attest no longer tells anyone which site it was. The permission your passkey signs names the site only as a salted hash whose salt stays with that site, and it is published only when something signed with it is published. Profiles no longer list sign-ins; you still see your own, with their sites, on your page. Before today the public log named the site of every sign-in; the entries that named another site have been deleted.</p>
 

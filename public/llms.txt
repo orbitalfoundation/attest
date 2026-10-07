@@ -1,13 +1,13 @@
 # attest
 
-> Signed, public statements about URLs, DOIs, content hashes and people, on AT Protocol. One sign-up with a passkey; any web page can then collect signed votes, comments, vouches and statements without running accounts. Every record carries its author's own signature and lives in their AT Protocol repository.
+> Signed, public statements about URLs, DOIs, content hashes and people, on AT Protocol, made by people and by the agents acting for them. One sign-up with a passkey; any web page can then collect signed votes, comments, vouches and statements without running accounts. Every record carries a signature by a key the person authorised and lives in their AT Protocol repository. An agent acts for a person under a public permission their passkey signed: see https://attest.monster/auth.md.
 
 Origin: https://attest.monster. Source: https://github.com/orbitalfoundation/attest (MIT). Changes: https://attest.monster/changes. Roadmap: https://attest.monster/roadmap. FAQ: https://attest.monster/faq.
 
 ## If you are an agent reading the web
 
-- Batch counts for pages: GET /read?targets=<url1>,<url2>,... (URL-encode each; up to 100). Returns per target: upvotes, vouches, comments[{id, by, handle, at, body}]. Counts are raw today, not trust-weighted; treat them as signals, not verdicts. Deleted or deactivated accounts are excluded.
-- Everything one person signed: GET /by/<did> or GET /handle/<handle>. Includes passkey public keys (`keys`), delegations with `revoked`, vouches in and out, proofs of control with verifications, linked identities (`elsewhere`) and trust edges imported from Tangled and Bluesky (`trustIn`, `trustOut`). Human page: /@<handle>.
+- Batch counts for pages: GET /read?targets=<url1>,<url2>,... (URL-encode each; up to 100). Returns per target: upvotes, vouches, comments[{id, by, handle, at, body, via?, del?}] (via = the agent that wrote it for that person). Counts are raw today, not trust-weighted; treat them as signals, not verdicts. Deleted or deactivated accounts are excluded.
+- Everything one person signed: GET /by/<did> or GET /handle/<handle>. Includes passkey public keys (`keys`), published sign-in delegations with `revoked` (never the site they were for), `agents` (public agent permissions), vouches in and out, proofs of control with verifications, linked identities (`elsewhere`) and trust edges imported from Tangled and Bluesky (`trustIn`, `trustOut`). Human page: /@<handle>.
 - A whole site: GET /domain/<host>. Human page: /site/<host>.
 - One record: GET /record?uri=at://... or GET /record/<cid>.
 - Identities are did:plc accounts with handles <name>.attest.monster, controlled by a passkey the person holds. Reputation belongs to the account and can be abandoned; newcomers start at zero.
@@ -27,7 +27,12 @@ retract    deletes the repo record
 1. Fetch it from the author's repository (com.atproto.repo.getRecord on the PDS in their DID document) or from a relay.
 2. Rebuild $sig {$type, key, repository}, drop `signatures`, DAG-CBOR encode, take the CIDv1 bytes.
 3. ECDSA-verify with the P-256 key inside the did:key. JS: `inlineVerify(record, repoDid)` from https://attest.monster/lib/verify.mjs.
-4. To bind that device key to the person: the delegation (GET /log) names it and carries the passkey's WebAuthn assertion over the delegation's sha256; passkey public keys are in GET /by/<did>.keys.
+4. To bind that key to the person: the delegation or agent permission (GET /log, types "delegation" and "agent"; or GET /agent/<id>) names it and carries the passkey's WebAuthn assertion over its sha256; passkey public keys are in GET /by/<did>.keys. A sign-in delegation (v2) names its site only as originHash = sha256(canonical({origin, salt})).
+5. A record written by an agent: its inline key is the agent's did:key, its envelope `del` is the agent permission id. GET /agent/<id> says whom it acts for, what it may do, its daily limit and dates, and whether it was revoked. It counts as the person's.
+
+## If you are an agent acting for a person
+
+Read https://attest.monster/auth.md. In short: make a P-256 key; POST /agent/request with your public key, name, purpose and AT Protocol permission strings for monster.attest.* records; show the person the link and code; poll GET /agent/poll/<token>; then POST /agent/attest records you sign yourself. Reference client: https://attest.monster/lib/agent.mjs.
 
 ## If you are building an integration
 
