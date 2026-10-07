@@ -14,7 +14,7 @@ Origin: https://attest.monster. Source: https://github.com/orbitalfoundation/att
 
 ## Records
 
-Lexicons (resolvable via _lexicon.attest.monster): monster.attest.vote | comment | statement | vouch | claim | verification.
+Lexicons (resolvable via _lexicon.attest.monster): monster.attest.vote | comment | statement | vouch | claim | verification | bookmark.
 record     {$type, subject|target, text?, reason?, anchor?, createdAt, signatures:[inline]}
 subject    a normalised URL (lowercase scheme and host, no fragment), doi:..., or sha256:<hex>; for vouch, an account DID
 target     for claim: https://<origin>/, dns:<domain>, github:<user>, bsky:<handle>
@@ -43,6 +43,7 @@ Integrator page: https://attest.monster/builders. Design and threat model: https
 
 ## Principles that constrain future scoring
 
+- Agents earn no trust of their own: their records count as the person's, once per subject.
 - Emitters are scored, not items. Scores will be relative to a root the asker names ("trusted as seen from R"), never a global "trustworthy".
 - Edges have kinds and weights: an attest vouch > a Tangled vouch > follows. Denouncements are evidence and never propagate.
 - Everything is public by construction; there are no private metrics.

@@ -1,6 +1,6 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>attest for integrators: widget, API, record format, verification</title><meta name="description" content="Put signed upvotes and comments on a static page with one script tag, or let an agent write for a person within a public permission. The JavaScript API, HTTP reads, socket writes, agents, the record format and how to verify a record without the service.">
 <link rel="canonical" href="https://attest.monster/builders">
-<meta property="og:type" content="website"><meta property="og:site_name" content="attest"><meta property="og:title" content="attest for integrators: widget, API, record format, verification"><meta property="og:description" content="Put signed upvotes and comments on a static page with one script tag. The JavaScript API, HTTP reads, socket writes, the record format and how to verify a record without the service."><meta property="og:url" content="https://attest.monster/builders">
+<meta property="og:type" content="website"><meta property="og:site_name" content="attest"><meta property="og:title" content="attest for integrators: widget, API, record format, verification"><meta property="og:description" content="Put signed upvotes and comments on a static page with one script tag, or let an agent write for a person within a public permission. The JavaScript API, HTTP reads, socket writes, the record format and how to verify a record without the service."><meta property="og:url" content="https://attest.monster/builders">
 <meta property="og:image" content="https://attest.monster/og.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://attest.monster/og.png"><meta name="theme-color" content="#1f6f8b">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/style.css"></head><body><main>
@@ -96,14 +96,14 @@ await me.attest("bookmark", "https://example.org/paper", { title: "A paper", tag
 
 <h2>5. The record</h2>
 <p>Since the fold (see <a href="/changes">changes</a>), a record is an AT Protocol record in the person's own repository, in one of our lexicons, carrying the person's inline signature. The service writes it into the repo and indexes it; anyone can read it back from the repo without us.</p>
-<pre>collection   monster.attest.vote | comment | statement | vouch | claim   (verification is issued by verifiers)
+<pre>collection   monster.attest.vote | comment | statement | vouch | claim | bookmark   (verification is issued by verifiers)
 record       {$type: collection, subject|target, text?, createdAt, signatures: [inline]}
 inline       {$type: "app.certified.signature.defs#inline", key: "did:key:z…#z…", signature: {$bytes}}
 signed       the 36-byte CIDv1 (dag-cbor, sha-256) of the record with `signatures` removed and
              $sig = {$type, key, repository: &lt;the repo did&gt;} inserted; ECDSA P-256, raw r||s, low-S
 uri, cid     at://did:plc:…/monster.attest.vote/&lt;rkey&gt; and the record's CID, both returned on write</pre>
-<p><b>subject</b> (vote, comment, statement) is a normalised URL, a <code>doi:</code> URI or a <code>sha256:</code> URI. <b>target</b> (claim) is <code>https://origin/</code>, <code>dns:domain</code>, <code>github:user</code> or <code>bsky:handle</code>. A vouch's subject is an account DID, never your own. Vote, vouch and claim use a deterministic record key derived from the subject, so there is one live record per author per subject; comments and statements get a time-ordered key. Retraction deletes the repo record; the client signs <code>{type:"retract", uri, at}</code> with the device key to authorise it.</p>
-<p>The lexicons are in the repository under <code>lexicons/monster/attest/</code> and validate with the AT Protocol lexicon tooling. The shared inline-signature shape is <code>app.certified.signature.defs#inline</code>, the same one Hypercerts and badge.blue use, so their verifiers can check our records.</p>
+<p><b>subject</b> (vote, comment, statement, bookmark) is a normalised URL, a <code>doi:</code> URI or a <code>sha256:</code> URI. <b>target</b> (claim) is <code>https://origin/</code>, <code>dns:domain</code>, <code>github:user</code> or <code>bsky:handle</code>. A vouch's subject is an account DID, never your own. Vote, vouch, claim and bookmark use a deterministic record key derived from the subject, so there is one live record per author per subject; comments and statements get a time-ordered key. Retraction deletes the repo record; the client signs <code>{type:"retract", uri, at}</code> with the device key to authorise it.</p>
+<p>The lexicons are in the repository under <code>lexicons/monster/attest/</code> and validate with the AT Protocol lexicon tooling. The shared inline-signature shape is <code>app.certified.signature.defs#inline</code>, the same one Hypercerts and badge.blue use.</p>
 <h2>6. Verifying without us</h2>
 <ol>
 <li>Fetch the record from the repo: <code>com.atproto.repo.getRecord</code> on the PDS named in the DID document of <code>did:plc:…</code>, or from any relay. Or take it from our index at <code>/record?uri=at://…</code>.</li>
@@ -114,7 +114,7 @@ uri, cid     at://did:plc:…/monster.attest.vote/&lt;rkey&gt; and the record's 
 </ol>
 <p>The end-to-end test in the repo does steps 1 to 3 from Node against the live service.</p>
 <h2>7. A static site, concretely</h2>
-<p>A page on a CDN adds the script tag and a widget. Sign-in opens the popup; the session is stored in the page's own <code>localStorage</code>, the device key in its own IndexedDB. Counts render from <code>/read</code>; the reader's own votes from <code>/by</code>. Your build does not change and your host learns nothing new. If attest is down, counts fall back to whatever your page last cached, and nothing else on the page is affected.</p>
+<p>A page on a CDN adds the script tag and a widget. Sign-in opens the popup; the session is stored in the page's own <code>localStorage</code>, the device key in its own IndexedDB. Counts render from <code>/read</code>; the reader's own votes from <code>/by</code>. Your build does not change and your host learns nothing new. If attest is down, the widget shows no counts, and nothing else on the page is affected.</p>
 <p>Source and issues: <a href="https://github.com/orbitalfoundation/attest">github.com/orbitalfoundation/attest</a> (MIT). Machine-readable summary: <a href="/llms.txt">/llms.txt</a>. Design: <a href="/technical">technical</a>.</p>
 </main>
 <script type="module">import { server } from "/attest-core.js"; import "/menu.js"; document.querySelectorAll("pre, td, p").forEach((n) => { if (n.innerHTML.includes("ORIGIN")) n.innerHTML = n.innerHTML.replaceAll("ORIGIN", server); });</script></body></html>

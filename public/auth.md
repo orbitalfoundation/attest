@@ -71,5 +71,4 @@ for less than this write needs; ask again), limit reached (wait), revoked or exp
 ## What is public
 
 The permission is public at `GET /agent/<id>`: whom you act for, your name and purpose, what you may do, your limits and dates,
-and whether it was revoked. Everything you write is marked as written via you. That is the point: a reader can see which
-person answers for what you say.
+and whether it was revoked. Everything you write is marked as written via you. A reader can see which person answers for what you say.

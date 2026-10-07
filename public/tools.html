@@ -2,11 +2,11 @@
 <meta name="description" content="A bookmarklet and phone setup to save, tag and vouch for any page with attest."><link rel="canonical" href="https://attest.monster/tools">
 <link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="stylesheet" href="/style.css"></head><body><main>
 <h1>save from anywhere <small>bookmarklet and phones</small></h1>
-<p>Save any page you are reading, with tags and a note, and vouch for it if you want to. A small attest window opens with the page's address and title; you sign there, with attest's own session, so the page you are reading never touches your key.</p>
+<p>Save any page you are reading, with tags and a note, and upvote it if you stand behind it. A small attest window opens with the page's address and title; you sign there, with attest's own session, so the page you are reading never touches your key.</p>
 
 <h2>On a computer</h2>
 <p>Drag this to your bookmarks bar, then click it on any page:</p>
-<p><a id="bm" class="card" style="display:inline-block;padding:.5rem .9rem;text-decoration:none;font-weight:600">＋ attest</a></p>
+<p><a id="bm" class="card" style="display:inline-block;padding:.5rem .9rem;text-decoration:none;font-weight:600">＋ attest</a> <span id="copied" class="small muted"></span></p>
 
 <h2>On an Android phone</h2>
 <ol>
@@ -37,7 +37,7 @@
 <p>An agent can save and comment for you within limits you approve. Run <code>node agent-cli.mjs request --name my-agent --allow bookmark</code> from the <a href="https://github.com/orbitalfoundation/attest/tree/main/packages/orbital-attest">orbital-attest package</a>, open the link it shows, check the code and approve with your passkey. Then <code>node agent-cli.mjs attest bookmark https://… --tags "reading-room trust"</code>. Details on <a href="/builders#agents">the builders page</a>.</p>
 
 <h2>Where saves go</h2>
-<p>Each bookmark is a <code>monster.attest.bookmark</code> record in your own AT Protocol repository, signed by your key: the address, title, tags and note. Filing a page under a tag is not the same as vouching for it; the checkbox adds a separate upvote. Your bookmarks are on your page at <code>attest.monster/yourname</code>, and everything filed under a word is at <code>attest.monster/tag/word</code>.</p>
+<p>Each bookmark is a <code>monster.attest.bookmark</code> record in your own AT Protocol repository, signed by your key: the address, title, tags and note. Filing a page under a tag is not the same as upvoting it; the checkbox adds a separate upvote. Your bookmarks are on your page at <code>attest.monster/yourname</code>, and everything filed under a word is at <code>attest.monster/tag/word</code>.</p>
 </main>
 <script type="module">
 import "/menu.js";

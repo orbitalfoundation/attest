@@ -30,7 +30,7 @@
 import * as A from "/attest-core.js"; import "/menu.js";
 const q = new URLSearchParams(location.search), did = q.get("did") || A.session()?.root;
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-if (!did) { document.getElementById("empty").innerHTML = `Not signed in. <a href="/login?return=/me">Sign in</a>, or open <code>/me?did=did:key:…</code> for any key.`; }
+if (!did) { document.getElementById("empty").innerHTML = `Not signed in. <a href="/login?return=/me">Sign in</a>, or open <code>/me?did=did:plc:…</code> for any account.`; }
 else {
   const me = await A.by(did);
   document.getElementById("h").textContent = me.handle ? "@" + me.handle : "an unknown key";

@@ -1,6 +1,6 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>About attest: why a signed web of trust, and where it goes</title><meta name="description" content="Why attest exists, what is built, what comes next: people and the agents acting for them, signing in public; trust from a root you choose; burnable identity. Opens with Vonnegut's Cat's Cradle.">
 <link rel="canonical" href="https://attest.monster/about">
-<meta property="og:type" content="website"><meta property="og:site_name" content="attest"><meta property="og:title" content="About attest: why a signed web of trust, and where it goes"><meta property="og:description" content="Why attest exists, what is built, what comes next: emitter trust from a root you choose, burnable identity, public by construction. Opens with Vonnegut's Cat's Cradle."><meta property="og:url" content="https://attest.monster/about">
+<meta property="og:type" content="website"><meta property="og:site_name" content="attest"><meta property="og:title" content="About attest: why a signed web of trust, and where it goes"><meta property="og:description" content="Why attest exists, what is built, what comes next: people and their agents signing in public, trust from a root you choose (planned), burnable identity, public by construction. Opens with Vonnegut's Cat's Cradle."><meta property="og:url" content="https://attest.monster/about">
 <meta property="og:image" content="https://attest.monster/og.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://attest.monster/og.png"><meta name="theme-color" content="#1f6f8b">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/style.css"></head><body><main>
@@ -28,7 +28,7 @@
 <tr><th>piece</th><th>how</th></tr>
 <tr><td>Sign-up and sign-in</td><td>A passkey (WebAuthn, ES256) plus an AT Protocol account on our data server: a <code>did:plc</code> and a handle under attest.monster, bound by DNS.</td></tr>
 <tr><td>Silent signing</td><td>On sign-in your passkey signs a 30-day delegation to a device key that lives in the site's own browser storage. Records are then signed on your device with no prompt. Each site gets its own device key.</td></tr>
-<tr><td>Records</td><td>vote, comment, statement, vouch, claim, verification, as <code>monster.attest.*</code> records in your repository, each with your inline signature. Subjects: a URL, a DOI, a content hash, or another account. Retracting deletes the record.</td></tr>
+<tr><td>Records</td><td>vote, comment, statement, vouch, claim, verification, bookmark, as <code>monster.attest.*</code> records in your repository, each with your inline signature. Subjects: a URL, a DOI, a content hash, or another account. Retracting deletes the record.</td></tr>
 <tr><td>Index</td><td>Follows the repository firehose, verifies every record it counts, drops deleted accounts. <code>/read</code>, <code>/by/&lt;did&gt;</code>, <code>/handle/&lt;name&gt;</code>, <code>/site/&lt;host&gt;</code>.</td></tr>
 <tr><td>Custody</td><td>Revoke any session; add a second passkey from a new device, approved by an existing one; remove one with another's signature.</td></tr>
 <tr><td>Profiles, vouches, proofs</td><td>A page per handle; "I know this person" with its cost shown; proof of control over a website, domain, GitHub user or Bluesky handle, verified by the service.</td></tr>
@@ -48,7 +48,7 @@
 <p>That is close to how a company works: each employee has their own badge, a job, limits on what they may sign, and a record of what they did, and the company answers for them. attest gives people the same arrangement with their agents, in public. Each agent has its own key. Your passkey signs what it may do and until when. Everything it writes says so. It earns no trust of its own: a hundred agents vouching add nothing that one does not, because their vouches are yours. In a web full of agents, the useful question is less "is this a person?" than "which accountable person stands behind this?", and that is a question signed records can answer.</p>
 
 <h2>What is different about it</h2>
-<p>We read forty-eight prior efforts before writing a line. Labelers on the AT Protocol, Community Notes, the Ethereum Attestation Service, Nostr reactions, Advogato's trust metric, EigenTrust, SybilGuard, Certificate Transparency, the web of trust, Keybase, the outlet raters. None combines ordinary sign-up with a key the person holds, signed statements about arbitrary URLs and keys, a read endpoint a static page can render, and trust computed by bounded flow with burnable identity. Each of the nearest is missing at least two of those. The flow-based trust math was worked out twenty years ago and shelved because nobody had an adversary worth it. The adversary has arrived.</p>
+<p>We read forty-eight prior efforts before writing a line. Labelers on the AT Protocol, Community Notes, the Ethereum Attestation Service, Nostr reactions, Advogato's trust metric, EigenTrust, SybilGuard, Certificate Transparency, the web of trust, Keybase, the outlet raters. None combines ordinary sign-up with a key the person holds, signed statements about arbitrary URLs and keys, a read endpoint a static page can render, and trust computed by bounded flow with burnable identity. Each of the nearest is missing at least two of those. The flow-based trust math was worked out twenty years ago and shelved because nobody had an adversary worth it.</p>
 <ul>
 <li><b>Emitters are scored, not items.</b> An article inherits the standing of whoever wrote it and whoever vouched for it.</li>
 <li><b>The score is never global.</b> When scoring lands, every answer will be "trusted as seen from this root", and the asker picks the root. A million fake keys vouching for each other in a cluster you never touched cannot reach you. There is no symmetric sybil-proof reputation function; there are asymmetric ones, and this is one.</li>
@@ -75,7 +75,7 @@
 <li>Keybase, Certificate Transparency, the PGP web of trust, Webmention, Hypothesis, Farcaster's per-app signer keys: each contributed one idea here, named on the <a href="/technical">technical page</a>.</li>
 <li>The theory: <a href="https://www.freehaven.net/anonbib/cache/cheap-pseudonyms.pdf">Friedman and Resnick</a>, <a href="https://dl.acm.org/doi/10.1145/1080192.1080202">Cheng and Friedman</a>, <a href="https://nlp.stanford.edu/pubs/eigentrust.pdf">EigenTrust</a>, <a href="https://www.comp.nus.edu.sg/~yuhf/sybilguard-sigcomm06.pdf">SybilGuard</a>, <a href="https://www.usenix.org/system/files/conference/nsdi12/nsdi12-final42_2.pdf">SybilRank</a>, <a href="https://www.vldb.org/conf/2004/RS15P3.PDF">TrustRank</a>.</li>
 </ul>
-<p class="small muted">The full catalogue, 50 entries with the URL read and the date, is in the repository under <code>reference/</code>.</p>
+<p class="small muted">The full catalogue, 66 entries with the URL read and the date, is in the repository under <code>reference/</code>.</p>
 
 <h2>What comes next</h2>
 <p>attest is the bottom layer: signed statements by people and their agents. Above it comes scoring that follows trust outward from people you choose; above that, tools that tell you how likely something is to be real, and why. The <a href="/roadmap">roadmap</a> has what is built, what is next, and the longer list: scores relative to you on any post, voting, place-based attestations, and the projects we are still reading. attest moved onto AT Protocol a day after launch; the <a href="/changes">changes</a> page explains why.</p>
@@ -84,11 +84,11 @@
 <p>This project is useful in more than one way, and not all of them involve using it.</p>
 <ul>
 <li><b>Take the approach.</b> Read <a href="https://github.com/orbitalfoundation/attest">the source</a> (MIT), copy the shape, or just the idea: let users sign their own statements with a key they hold. A signature made here matches across every project that checks it, which gives a person durable control over their record that walled gardens do not offer. Enough projects doing this, and the web of trust people have talked about since 1992 starts to exist.</li>
-<li><b>Critique it.</b> This was built fast by one person with a reading list. What is missing? Who did it better, and why have we not heard of them? Tell us. We read forty-eight prior efforts and would rather find the forty-ninth now than later.</li>
-<li><b>Attack it.</b> Mint a thousand keys and vouch for each other. Burn an identity and try to come back with standing. Steal a delegation and try to use it from another site. The threat model is in the devlog; the service is in staging; break it before the readers arrive.</li>
+<li><b>Critique it.</b> This was built fast, from a reading list. What is missing? Who did it better, and why have we not heard of them? Tell us. We would rather find the effort we missed now than later.</li>
+<li><b>Attack it.</b> Mint a thousand keys and vouch for each other. Burn an identity and try to come back with standing. Steal a delegation and try to use it from another site. The threat model is on the <a href="/technical">technical page</a>; break it before the readers arrive.</li>
 <li><b>Build on it.</b> Put the script tag on a page and stop running accounts, passwords and a comments database. Outsource your sign-in and your attestations, keep your content.</li>
 <li><b>Use it.</b> Sign up, upvote, vouch for people you know. Every signed statement is one more string in the cradle.</li>
-<li><b>Read it.</b> The log is public and the score is deliberately not part of the service. Compute your own root's view, study the graph, feed it to a retrieval agent. Competing scorers over the same records are the design, not a fork.</li>
+<li><b>Read it.</b> The log is public and the score is deliberately not part of the service. Compute your own root's view, study the graph, feed it to a retrieval agent. Competing scorers over the same records are the design.</li>
 <li><b>Run one.</b> Host an instance, or index the records yourself from the firehose. The promise that identities and statements outlive this service is stronger for every copy someone else holds.</li>
 <li><b>Fund it.</b> Donations go to <code>anselm.eth</code>. There is no company behind this, no token, and nothing for sale.</li>
 <li><b>Improve it.</b> Contribute <a href="https://github.com/orbitalfoundation/attest">on GitHub</a>, or point us at the similar effort you are already part of. We would rather join than duplicate.</li>
@@ -97,8 +97,8 @@
 <h2>What it will not do</h2>
 <ul>
 <li>Publish a single number called "trustworthy". Every score names its root.</li>
-<li>Carry a left-right axis, or any party colours. Neutrality here is arithmetic, not policy.</li>
-<li>Sell, log or retain what anyone reads. The extension is designed so we cannot know.</li>
+<li>Carry a left-right axis, or any party colours. Neutrality here is arithmetic.</li>
+<li>Sell, log or retain what anyone reads. The planned browser extension is designed so we cannot know.</li>
 <li>Keep private metrics. If it is in the log it is public; if it is not in the log we do not have it.</li>
 <li>Bind a key to a person against their will. You can leave. It will cost you years, and that cost is what makes the standing of everyone who stays mean something.</li>
 </ul>

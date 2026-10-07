@@ -22,7 +22,7 @@ if (path.startsWith("/agent/")) {
     document.title = a.name + " · agent"; $("h").textContent = a.name;
     const live = !a.revoked && Date.parse(a.until) > Date.now();
     $("out").innerHTML = `<p>An agent acting for <a href="/${esc(a.handle)}">@${esc(a.handle)}</a>, ${live ? "within these bounds:" : `<b>no longer valid</b> (${a.revoked ? "revoked " + new Date(a.revoked).toLocaleString() : "expired"}).`}</p>
-      <table class="kv"><tr><td>purpose</td><td>${esc(a.purpose || "—")}</td></tr><tr><td>may</td><td>${a.permissions.map((p) => esc(plain(p))).join("<br>")}</td></tr>
+      <table class="kv"><tr><td>purpose</td><td>${esc(a.purpose || "none given")}</td></tr><tr><td>may</td><td>${a.permissions.map((p) => esc(plain(p))).join("<br>")}</td></tr>
       <tr><td>at most</td><td>${a.limits.perDay} records a day</td></tr><tr><td>valid</td><td>${new Date(a.from).toLocaleDateString()} to ${new Date(a.until).toLocaleDateString()}</td></tr>
       <tr><td>agent key</td><td><code>${esc(a.agent)}</code></td></tr><tr><td>permission id</td><td><code>${esc(a.id)}</code></td></tr></table>
       <p class="small muted">@${esc(a.handle)}'s passkey signed this permission; the signature is in the public <a href="/log">log</a> (entry type "agent"). Anything this agent signs carries its key and this id, is written into @${esc(a.handle)}'s own repository, and counts as theirs: an agent adds no trust of its own. The permissions are AT Protocol permission strings: <code>${a.permissions.map(esc).join("</code>, <code>")}</code>.</p>`;
@@ -37,7 +37,7 @@ if (path.startsWith("/agent/")) {
     if (ask) {
       $("h").textContent = "an agent asks to act for you";
       $("out").innerHTML = `<p>Check this code matches the one your agent shows:</p><p class="code">${esc(ask.code)}</p>
-        <table class="kv"><tr><td>name</td><td><b>${esc(ask.name)}</b></td></tr><tr><td>purpose</td><td>${esc(ask.purpose || "—")}</td></tr><tr><td>its key</td><td><code>${esc(ask.agent.slice(0, 24))}…</code></td></tr><tr><td>for</td><td>@${esc(s.handle)}</td></tr></table>
+        <table class="kv"><tr><td>name</td><td><b>${esc(ask.name)}</b></td></tr><tr><td>purpose</td><td>${esc(ask.purpose || "none given")}</td></tr><tr><td>its key</td><td><code>${esc(ask.agent.slice(0, 24))}…</code></td></tr><tr><td>for</td><td>@${esc(s.handle)}</td></tr></table>
         <h2>It may</h2><div class="perm">${ask.permissions.map((p, i) => `<label><input type="checkbox" data-p="${esc(p)}" checked> ${esc(plain(p))}</label>`).join("")}</div>
         <p><label>at most <input id="perday" type="number" min="1" max="${ask.limits.perDay}" value="${ask.limits.perDay}" style="width:6rem"> records a day</label></p>
         <p><label>for <input id="days" type="number" min="1" max="${ask.days}" value="${ask.days}" style="width:5rem"> days</label></p>
