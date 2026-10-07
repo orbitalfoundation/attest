@@ -47,3 +47,15 @@ devlog shows significant evolution in thinking." The devlog is public already, i
 repository, but not linked from the site and written for us. Options: link it from the site as
 "the thinking, as it happened"; and/or a /notes page of short public pieces distilled from it,
 drafted by Claude and published only when Anselm passes them; longer essays stay on his Substack.
+
+## Later the same day: OpenVTC
+
+Anselm: "openid and so on are now wrapped up under a new umbrella (i think?) ... the current
+thinking is all here: github.com/OpenVTC/openvtc". Read (catalogue: reference/20261007-openvtc.md).
+What the sources show: OpenVTC is "an LF Decentralized Trust lab"; its specs live in Trust over IP's
+Decentralized Trust Graph working group repositories; it uses OpenID's SIOPv2 for site sign-in. So
+OpenID specifications are part of the stack; nothing read places the OpenID Foundation itself under
+that umbrella. Closest point to attest: its browser plugin binds a passkey into the person's DID
+document so any site can verify a passkey sign-in against it. Two ideas to keep: publish attest
+passkeys in the did:plc document; accept SIOPv2 sign-ins (or issue them) so people with an OpenVTC
+agent and people with an attest passkey can meet.
