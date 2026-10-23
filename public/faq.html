@@ -24,6 +24,9 @@
 <h2>Who holds my key?</h2>
 <p>Your device does. The passkey is created and kept by your phone or computer, and synced by Apple or Google if you use their passkey sync. We store only its public half. The repository account behind it has a server-side password you never see; that part is held by us, the way any AT Protocol host holds it, which is why every record also carries your own signature.</p>
 
+<h2>Does attest care which device or app holds my passkey?</h2>
+<p>No. attest asks the device nothing about itself and accepts any passkey manager, any operating system, or a hardware security key. The WebAuthn standard lets a site demand proof of an approved device; attest does not use it, and critics of passkeys are right that it could be misused elsewhere.</p>
+
 <h2>What if I lose my phone?</h2>
 <p>Add a second passkey from another device now, on your own page. With one passkey, a lost device is a lost account. Key export is planned.</p>
 
