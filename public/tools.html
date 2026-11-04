@@ -1,8 +1,11 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>attest · save from anywhere</title>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>attest · bookmark a page</title>
 <meta name="description" content="A bookmarklet and phone setup to save, tag and vouch for any page with attest."><link rel="canonical" href="https://attest.monster/tools">
 <link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="stylesheet" href="/style.css"></head><body><main>
-<h1>save from anywhere <small>bookmarklet and phones</small></h1>
+<h1>bookmark a page <small>computer, phone or agent</small></h1>
 <p>Save any page you are reading, with tags and a note, and upvote it if you stand behind it. A small attest window opens with the page's address and title; you sign there, with attest's own session, so the page you are reading never touches your key.</p>
+
+<h2>The quickest way, no setup</h2>
+<p>Open <a href="/save">attest.monster/save</a>, paste the link, add tags and a note, and save. Everything below only spares you the paste.</p>
 
 <h2>On a computer</h2>
 <p>Drag this to your bookmarks bar, then click it on any page:</p>
@@ -30,8 +33,8 @@
 <li>Open bookmarks, <b>Edit</b>, tap the new one, and replace its address with what you copied.</li>
 <li>On any page, tap the address bar and choose <b>attest</b> from your bookmarks.</li>
 </ol>
-<h3>Or without a bookmarklet</h3>
-<p>Copy a link, open <a href="/save">attest.monster/save</a> (add it to your home screen once), and paste. Or make a Shortcut that receives URLs from the share sheet and opens <code>https://attest.monster/save?url=</code> followed by the shared URL; the share sheet works in any browser.</p>
+<h3>Or a Shortcut</h3>
+<p>Make a Shortcut that receives URLs from the share sheet and opens <code>https://attest.monster/save?url=</code> followed by the shared URL; the share sheet works in any browser.</p>
 
 <h2>From an agent or a script</h2>
 <p>An agent can save and comment for you within limits you approve. Run <code>node agent-cli.mjs request --name my-agent --allow bookmark</code> from the <a href="https://github.com/orbitalfoundation/attest/tree/main/packages/orbital-attest">orbital-attest package</a>, open the link it shows, check the code and approve with your passkey. Then <code>node agent-cli.mjs attest bookmark https://… --tags "reading-room trust"</code>. Details on <a href="/builders#agents">the builders page</a>.</p>

@@ -11,7 +11,7 @@ body{background:#0c2a33}
 .bg video,.bg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:opacity 1.5s ease}.bg video{opacity:0}.bg video.on{opacity:1}
 .bg::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(6,18,22,.35) 0%,rgba(6,18,22,.72) 100%)}
 .page{position:relative;z-index:1;color:#fff}
-.hero{min-height:100svh;display:flex;align-items:center}
+.hero{min-height:82svh;display:flex;align-items:center}
 .hero .in{max-width:44rem;margin:0 auto;padding:5rem 1.1rem 4rem;width:100%;text-shadow:0 1px 18px rgba(0,0,0,.45)}
 .hero .brand{display:flex;align-items:center;gap:.5rem;font-weight:700;letter-spacing:.02em;margin-bottom:1.2rem}
 .hero h1{font-size:clamp(2.2rem,7.5vw,3.6rem);line-height:1.05;margin:0 0 1rem;letter-spacing:-.02em}
@@ -35,7 +35,7 @@ body{background:#0c2a33}
 <div class="brand"><img src="/mascot.svg" alt="" width="34" height="34">attest</div>
 <h1>Trust, passed hand to hand.</h1>
 <p class="lead">Save what you read. Vouch for what you stand behind. See the web through the eyes of the people you trust, and the people they trust. Your record is yours, signed with your phone, and the agents you allow sign only within the limits you give them.</p>
-<div class="cta"><a class="go" id="start" href="/login?return=/tools">Start</a><a class="how" href="#how">How it works</a></div>
+<div class="cta"><a class="go" id="start" href="/login?return=/tools">Sign in or create account</a><a class="how" href="#how">How it works</a></div>
 <p class="quote">Give me a lever long enough and a fulcrum on which to place it, and I shall move the world. <span style="font-style:normal">(Archimedes)</span></p>
 </div>
 <span class="credit" id="credit">illustration generated with Seedream and Seedance</span>
@@ -43,11 +43,12 @@ body{background:#0c2a33}
 <div class="panel"><main>
 <h2 id="how">How it works</h2>
 <div class="steps">
-<div><b><span class="n">1</span>Sign in with your phone</b>Your face or fingerprint unlock is your key. No password, no email, nothing to remember.</div>
-<div><b><span class="n">2</span>Save and vouch as you read</b>Tag any page from any site, with a button in your browser or your phone's share menu. Say which ones you stand behind.</div>
+<div><b><span class="n">1</span>Create an account</b>Tap <i>Sign in or create account</i>, choose a handle, and your phone's face or fingerprint unlock becomes your key. No password, no email, nothing to remember.</div>
+<div><b><span class="n">2</span>Bookmark as you read</b>Paste a link at <a href="/save">attest.monster/save</a>, or set up the <a href="/tools">one-click button</a> for your browser or your phone's share menu. Tag it, and say whether you stand behind it.</div>
 <div><b><span class="n">3</span>See through trusted eyes</b>See what the people you trust saved, vouched for and said, on their own pages and under each tag.</div>
 </div>
 <p id="status" class="small muted"></p>
+<p class="small muted">The ☰ at the top right has everything else: your page, settings, the FAQ and the docs.</p>
 
 <h2>Why</h2>
 <p>Much of what reaches us is pushed by people we would never trust if we could see who they were. We end up judging each post by its content, squinting at a photograph to decide whether it is real. attest lets you look at the envelope instead: who sent this, who stands behind them, and how that has turned out before. It is built for people who want to find each other, and act together, on the things that matter, including the living world we share.</p>

@@ -7,6 +7,7 @@
 <h1>attest</h1>
 <p id="for" class="muted"></p>
 <div class="card">
+  <p class="small" style="margin:0 0 .7rem"><b>New here?</b> Type the handle you would like and tap <b>Create account</b>; your phone makes a passkey, and there is no password. <b>Already have one?</b> Type it and tap <b>Sign in</b>.</p>
   <label class="small muted" for="handle">your handle</label>
   <input id="handle" placeholder="your handle" autocomplete="username webauthn" spellcheck="false">
   <div style="display:flex;gap:.5rem;margin-top:.75rem;flex-wrap:wrap"><button id="signin">Sign in with passkey</button><button id="register" class="quiet">Create account</button></div>
@@ -21,7 +22,7 @@
 <p class="small muted">Sign-in is your passkey signing a 30-day permission for this device, on this site, to sign on your behalf. Creating an account also makes you an AT Protocol account with the handle you choose under attest.monster. No email, no password, no cookies. Any passkey manager, any operating system, or a hardware key: attest asks the device nothing about itself.</p>
 </main>
 <script type="module">
-import * as A from "/attest-core.js";
+import * as A from "/attest-core.js"; import "/menu.js";
 const q = new URLSearchParams(location.search), $ = (id) => document.getElementById(id), msg = (t, cls = "") => { $("msg").textContent = t; $("msg").className = "small " + cls; };
 // Whose device key: passed in by another site's widget, or this origin's own.
 let device, origin = location.origin;
