@@ -66,3 +66,16 @@ without `VTC_URL` and `VTC_DID`. Ask the room owner for both. Then:
 
 Answered in the comparison: VTI cannot make a passkey the signer of documents; its passkey logs the
 person in to the agent. attest's passkey-rooted delegation is a real difference and should stay.
+
+## Later the same day: what was done while waiting for the community's address
+
+Anselm: "ok do what you can - i will get that info for you."
+
+- **attest's identity in their system** is minted: `did:key:z6MkiJhsEFmq8nMzTUnHK58zpCybjkDtjPiQvZTBti2tDWVS` (a did:key; the seed is in the harness
+  private notes, `private/attest-vti.md`, and in the kit's `.env` in the session scratchpad). This is the
+  DID to give the owner of the open room. The attributed room will need a persona did:webvh instead,
+  which waits on a VTA with a DID host.
+- **A local VTA image is building** in the background from the kit's pin (vta-service 0.72.0, release
+  commit 26d0da81), VTC left out. Docker was already running; this user was added to the `docker` group
+  to reach it. The build gives a VTA to run `hello` and the client against; it does not give a DID host.
+- Nothing applied yet: the community's `VTC_URL` and `VTC_DID` are still unknown.
