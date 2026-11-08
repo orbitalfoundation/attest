@@ -85,5 +85,29 @@
 
 <h2>How early is this?</h2>
 <p>It went live on 2026-09-23 and was rebuilt on AT Protocol the next day. Test data was wiped twice in that first week; the data is now backed up nightly. Breaking it now, and telling us, is one of the most useful things you can do.</p>
+
+<h2 id="openvtc" style="margin-top:3rem">attest and OpenVTC</h2>
+<p class="small muted">Written after a week with the OpenVTC team, 2026-11-08. Draft.</p>
+
+<h3>What is a DID?</h3>
+<p>A Decentralized Identifier is a name for something that keys control. It looks like <code>did:plc:abc…</code> and it resolves to a small document listing the public keys allowed to sign for it and the addresses where it can be reached. The part after <code>did:</code> says where that document lives and who may change it. A <code>did:key</code> is the key itself and can never change. A <code>did:web</code> is a file on a domain. A <code>did:webvh</code> is that file with a tamper-evident history, so it can move domains and keep its name. A <code>did:plc</code>, which attest accounts use, is an entry in one public directory that the account's rotation keys control. The syntax is shared; the trust is not. The question to ask of any DID is who runs the place its document lives, and what happens when they stop.</p>
+
+<h3>What is AT Protocol?</h3>
+<p>The protocol under Bluesky. Every account has a DID, a handle that is a domain name, and a repository of signed records on a hosting server of its choice. Relays republish every repository as one public stream, and anyone can fetch a repository and check each record against the account's keys. attest accounts are AT Protocol accounts on our server; attest records are typed records in those repositories, which is why you can take them with you.</p>
+
+<h3>What is OpenVTC?</h3>
+<p>A Linux Foundation lab, with specifications at Trust over IP and software from the First Person Project, for communities built on cryptographic membership. Each person has an agent, a server-side program that holds their keys, mints their identifiers and signs for them. Each community is a server that admits members, issues them membership credentials, and runs rooms, directories and polls behind those credentials. Relationships between people are private credentials exchanged pairwise. One of its architects put the difference on a slide: a website is an anonymous, one-way publishing endpoint; a community in their system is an accountable, membership-gated trust endpoint.</p>
+
+<h3>How do the two differ?</h3>
+<p>AT Protocol is the web with signatures. Public by default, readable and verifiable by anyone, with large aggregators in the middle because the design wants them there. OpenVTC is a federation of clubs with cryptographic membership cards: private by default, readable by members, and with no global directory or stream at all. One has years of production use and tens of millions of accounts. The other is at version 0.x, and its own documentation marks much of it unverified.</p>
+
+<h3>Which is more decentralised?</h3>
+<p>Each is, in a different place. AT Protocol has one global dependency, the directory that holds <code>did:plc</code> documents, and one large relay most people read through. OpenVTC has no global dependency by design. A person on AT Protocol depends on one hosting server, which they can leave. A person on OpenVTC depends on an agent host, an identifier host and a message relay, each of which they can in principle leave. Fewer points of failure is true of the OpenVTC network and not of the OpenVTC person. For attest the deciding fact is a different one: our records are statements about the open web, and strangers outside any community must be able to check them. That needs the public, verifiable kind of network.</p>
+
+<h3>Can OpenVTC do passkey sign-in the way attest does?</h3>
+<p>Not the part that matters. In attest your passkey is the root of your keys: it signs the 30-day permission for each device, and anyone can check that signature against your published public key. No server holds a key that can act as you. In OpenVTC the root keys live in your agent, and the agent signs documents; a passkey can log you in to the agent or confirm a step, and their browser plugin can put one in your identifier for signing in to websites. Their own security notes say it: passkeys authenticate a person to a service and do not sign documents. The trade runs the other way too. Our design loses the account with the last passkey; theirs survives devices because the agent holds everything, at the price of trusting the host.</p>
+
+<h3>Will attest use OpenVTC?</h3>
+<p>In parts. attest stays on AT Protocol, where its public records belong. We are joining an OpenVTC community as an agent to learn the stack, and we intend to let people with an OpenVTC identity sign in to attest as a second door, as Bluesky accounts already can. Later, vouches may travel as their relationship credentials, since a vouch is exactly the accountable, two-party statement their system is built for.</p>
 </main>
 <script type="module" src="/menu.js"></script></body></html>
