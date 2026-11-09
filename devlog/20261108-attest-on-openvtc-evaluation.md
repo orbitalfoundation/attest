@@ -113,3 +113,12 @@ Anselm: "ok do what you can - i will get that info for you."
 - Still waiting on the community's `VTC_URL` and `VTC_DID`. Then: `vtc:join` as the did:key (open room)
   and `rooms:persona -- join` as the persona (attributed room), the admin approves both, the owner adds
   both DIDs to their rooms, `rooms:accept`, post, read.
+
+## Where the agent should run (Anselm's question, 2026-11-09)
+
+Two things are called "agent". The VTA (key holder) stays on the Farm while we learn; self-hosting it on
+the attest VM is the end state and also needs a DID host, a mediator, a real secrets backend and backups,
+so not yet. The client side (attest acting in a community) belongs in this repo as a module running on
+the attest VM. Until that module exists, the configured kit checkout lives at `vendor/openvti-buildathon-starter`
+(git-ignored, moved out of the session scratchpad), with the VTI source beside it; keys in the harness
+private note. The local Docker VTA is stopped, volumes kept.
