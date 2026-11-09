@@ -87,7 +87,7 @@
 <p>It went live on 2026-09-23 and was rebuilt on AT Protocol the next day. Test data was wiped twice in that first week; the data is now backed up nightly. Breaking it now, and telling us, is one of the most useful things you can do.</p>
 
 <h2 id="openvtc" style="margin-top:3rem">attest and OpenVTC</h2>
-<p class="small muted">Written after a week with the OpenVTC team, 2026-11-08. Draft.</p>
+<p class="small muted">Written after a week with the OpenVTC team, 2026-11-08.</p>
 
 <h3>What is a DID?</h3>
 <p>A Decentralized Identifier is a name for something that keys control. It looks like <code>did:plc:abc…</code> and it resolves to a small document listing the public keys allowed to sign for it and the addresses where it can be reached. The part after <code>did:</code> says where that document lives and who may change it. A <code>did:key</code> is the key itself and can never change. A <code>did:web</code> is a file on a domain. A <code>did:webvh</code> is that file with a tamper-evident history, so it can move domains and keep its name. A <code>did:plc</code>, which attest accounts use, is an entry in one public directory that the account's rotation keys control. The syntax is shared; the trust is not. The question to ask of any DID is who runs the place its document lives, and what happens when they stop.</p>
@@ -108,6 +108,6 @@
 <p>Not the part that matters. In attest your passkey is the root of your keys: it signs the 30-day permission for each device, and anyone can check that signature against your published public key. No server holds a key that can act as you. In OpenVTC the root keys live in your agent, and the agent signs documents; a passkey can log you in to the agent or confirm a step, and their browser plugin can put one in your identifier for signing in to websites. Their own security notes say it: passkeys authenticate a person to a service and do not sign documents. The trade runs the other way too. Our design loses the account with the last passkey; theirs survives devices because the agent holds everything, at the price of trusting the host.</p>
 
 <h3>Will attest use OpenVTC?</h3>
-<p>In parts. attest stays on AT Protocol, where its public records belong. We are joining an OpenVTC community as an agent to learn the stack, and we intend to let people with an OpenVTC identity sign in to attest as a second door, as Bluesky accounts already can. Later, vouches may travel as their relationship credentials, since a vouch is exactly the accountable, two-party statement their system is built for.</p>
+<p>Where the shapes match. attest stays on AT Protocol, where its public records belong. attest also holds an agent and an identity in their system, so the two can meet. The meeting point is the vouch: an accountable statement between two parties is exactly what their system is built to carry.</p>
 </main>
 <script type="module" src="/menu.js"></script></body></html>
