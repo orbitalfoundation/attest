@@ -96,3 +96,20 @@ Anselm: "ok do what you can - i will get that info for you."
   `vta/webvh/servers/register/1.0`, so a persona could be published from a self-hosted agent if we ran
   or were given a DID host. The Farm agent has one (`control` on dids.ic3.dev), which is why the
   attributed room goes through it.
+
+## 2026-11-09 00:11Z: the Farm agent answers, and attest has a persona
+
+- The portal reached "Running" (vta-service 0.78.0, the nightly, not the kit's 0.72.0 pin). The kit's
+  `farm:check` warned about the version; `vta:provision` and `hello` then worked unchanged: context
+  `attest` created, the application role granted to attest's did:key, 304 Trust Tasks discovered, a
+  signed `auth/whoami` answered with scope `ctx:attest`. So 0.78.0 still serves the task versions the
+  kit sends; no need to recreate the agent.
+- The first provision run used the kit's default context name and minted a throwaway identity; the
+  second run, with the context named `attest`, reused attest's own did:key as intended.
+- **Persona minted:** the VTA, asked with the admin key, created
+  `did:webvh:QmPkuLQFLR5hQ1xnetJbFU1VfA48A3Sd6eRF9Q3MrDmd8M:dids.ic3.dev:reduce-toy` on the Farm's DID
+  host (`control`), portable. Its keys never leave the VTA; the kit signs for it through
+  `keys/sign-document`. This is the DID the owner of the attributed room must add.
+- Still waiting on the community's `VTC_URL` and `VTC_DID`. Then: `vtc:join` as the did:key (open room)
+  and `rooms:persona -- join` as the persona (attributed room), the admin approves both, the owner adds
+  both DIDs to their rooms, `rooms:accept`, post, read.
