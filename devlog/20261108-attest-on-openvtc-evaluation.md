@@ -79,3 +79,20 @@ Anselm: "ok do what you can - i will get that info for you."
   commit 26d0da81), VTC left out. Docker was already running; this user was added to the `docker` group
   to reach it. The build gives a VTA to run `hello` and the client against; it does not give a DID host.
 - Nothing applied yet: the community's `VTC_URL` and `VTC_DID` are still unknown.
+
+## Evening: the Farm agent, and the local agent answering
+
+- Anselm created the Farm agent `attest-monster` at vtafarm.ic3.dev (portal default image 0.78.0 nightly,
+  not the kit's 0.72.0 pin; to be seen at provisioning). The kit minted the admin key on canada1
+  (`npm run farm:setup`); its DID went to the portal's "Admin DID" field. Agent URL
+  `https://vta-attest-monster.ic3.dev`, DID on `dids.ic3.dev`; health 404 until deployed. Keys in
+  `harness/private/attest-vti.md`. The kit's `.env` is set up for farm mode with attest's existing
+  did:key as the app identity, so `vta:provision` will keep that DID.
+- The local VTA image built on the second try (16 GB cap, 12 cores, 11m50s; the default 6 GB cap ran out
+  of memory). Brought up under `ENV_FILE=.env.local`, no VTC. `npm run hello`: 289 Trust Tasks, a signed
+  `auth/whoami` answered with the application role's capabilities (`sign-document`, `room-present`,
+  `room-open` among them). So the client path is proven here before the Farm agent exists.
+- The local VTA lists no DID hosting server (`vta/webvh/servers/list` is empty) but serves
+  `vta/webvh/servers/register/1.0`, so a persona could be published from a self-hosted agent if we ran
+  or were given a DID host. The Farm agent has one (`control` on dids.ic3.dev), which is why the
+  attributed room goes through it.
